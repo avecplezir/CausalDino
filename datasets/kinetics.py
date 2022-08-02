@@ -59,7 +59,6 @@ class Kinetics(torch.utils.data.Dataset):
             assert mode == "train", "invalid: flow only for train mode"
         self.get_flow = get_flow
 
-        self._video_meta = {}
         self._num_retries = num_retries
         # For training or validation mode, one single clip is sampled from every
         # video. For testing, NUM_ENSEMBLE_VIEWS clips are sampled from every
@@ -73,48 +72,9 @@ class Kinetics(torch.utils.data.Dataset):
             )
 
         print("Constructing Kinetics {}...".format(mode))
-        self._construct_loader()
-
-    def _construct_loader(self):
-        """
-        Construct the video loader.
-        """
-        path_to_file = os.path.join(
-            self.cfg.DATA.PATH_TO_DATA_DIR, "{}.csv".format(self.mode)
-        )
-        assert os.path.exists(path_to_file), "{} dir not found".format(
-            path_to_file
-        )
-
-        self._path_to_videos = []
-        self._labels = []
-        self._spatial_temporal_idx = []
-        with open(path_to_file, "r") as f:
-            for clip_idx, path_label in enumerate(f.read().splitlines()):
-                assert (
-                        len(path_label.split(self.cfg.DATA.PATH_LABEL_SEPARATOR))
-                        == 2
-                )
-                path, label = path_label.split(
-                    self.cfg.DATA.PATH_LABEL_SEPARATOR
-                )
-                for idx in range(self._num_clips):
-                    self._path_to_videos.append(
-                        os.path.join(self.cfg.DATA.PATH_PREFIX, path)
-                    )
-                    self._labels.append(int(label))
-                    self._spatial_temporal_idx.append(idx)
-                    self._video_meta[clip_idx * self._num_clips + idx] = {}
-        assert (
-                len(self._path_to_videos) > 0
-        ), "Failed to load Kinetics split {} from {}".format(
-            self._split_idx, path_to_file
-        )
-        print(
-            "Constructing kinetics dataloader (size: {}) from {}".format(
-                len(self._path_to_videos), path_to_file
-            )
-        )
+        self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' + '.mp4')
+        print('self.cfg.DATA.PATH_TO_DATA_DIR', self.cfg.DATA.PATH_TO_DATA_DIR)
+        print('self._path_to_videos', len(self._path_to_videos))
 
     def __getitem__(self, index):
         """
@@ -126,7 +86,6 @@ class Kinetics(torch.utils.data.Dataset):
         Returns:
             frames (tensor): the frames of sampled from the video. The dimension
                 is `channel` x `num frames` x `height` x `width`.
-            label (int): the label of the current video.
             index (int): if the video provided by pytorch sampler can be
                 decoded, then return the index of the video. If not, return the
                 index of the video replacement that can be decoded.
@@ -228,7 +187,6 @@ class Kinetics(torch.utils.data.Dataset):
                 num_frames=self.cfg.DATA.NUM_FRAMES,
                 clip_idx=temporal_sample_index,
                 num_clips=self.cfg.TEST.NUM_ENSEMBLE_VIEWS,
-                video_meta=self._video_meta[index],
                 target_fps=self.cfg.DATA.TARGET_FPS,
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
@@ -249,8 +207,6 @@ class Kinetics(torch.utils.data.Dataset):
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
-
-            label = self._labels[index]
 
             if self.mode in ["test", "val"] or self.cfg.DATA.NO_RGB_AUG:
                 # Perform color normalization.
@@ -307,24 +263,7 @@ class Kinetics(torch.utils.data.Dataset):
                     ).long(),
                 ) for x in frames]
 
-            meta_data = {}
-            if self.get_flow:
-                assert self.mode == "train", "flow only for train"
-                try:
-                    flow_path = self._path_to_videos[index].replace("train_d256", "train_flow")[:-4]
-                    flow_tensor = self.get_flow_from_folder(flow_path)
-                    flow_tensor = kornia.filters.sobel(flow_tensor)
-                    if self.cfg.DATA.NO_FLOW_AUG:
-                        flow_tensor = resize(flow_tensor, size=self.cfg.DATA.CROP_SIZE, mode="bicubic")
-                        flow_tensor = [x for x in flow_tensor]
-                    else:
-                        flow_tensor = augmentation(flow_tensor)
-                        flow_tensor = [rearrange(x, "t c h w -> c t h w") for x in flow_tensor]
-                    meta_data["flow"] = flow_tensor
-                except Exception as e:
-                    print(e)
-                    continue
-            return frames, label, index, meta_data
+            return frames, index
 
         else:
             raise RuntimeError(
@@ -339,13 +278,6 @@ class Kinetics(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
-
-    @staticmethod
-    def get_flow_from_folder(dir_path):
-        flow_image_list = sorted(glob.glob(f"{dir_path}/*.jpg"))
-        flow_image_list = [Image.open(im_path) for im_path in flow_image_list]
-        flow_image_list = [torchvision.transforms.functional.to_tensor(im_path) for im_path in flow_image_list]
-        return torch.stack(flow_image_list, dim=0)
 
 
 if __name__ == '__main__':

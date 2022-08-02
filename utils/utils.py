@@ -25,6 +25,7 @@ import random
 import datetime
 import subprocess
 from collections import defaultdict, deque
+import wandb
 
 import numpy as np
 import torch
@@ -119,12 +120,26 @@ def cancel_gradients_last_layer(epoch, model, freeze_last_layer):
             p.grad = None
 
 
+def synchronize():
+    if not is_dist_avail_and_initialized():
+        return
+    world_size = dist.get_world_size()
+    if world_size == 1:
+        return
+    if dist.get_backend() == dist.Backend.NCCL:
+        # This argument is needed to avoid warnings.
+        # It's valid only for NCCL backend.
+        dist.barrier(device_ids=[torch.cuda.current_device()])
+    else:
+        dist.barrier()
+
+
 def restart_from_checkpoint(ckp_path, run_variables=None, **kwargs):
     """
     Re-start from checkpoint
     """
     if not os.path.isfile(ckp_path):
-        return
+        return wandb.util.generate_id()
     print("Found checkpoint at {}".format(ckp_path))
 
     # open checkpoint file
@@ -152,6 +167,10 @@ def restart_from_checkpoint(ckp_path, run_variables=None, **kwargs):
         for var_name in run_variables:
             if var_name in checkpoint:
                 run_variables[var_name] = checkpoint[var_name]
+
+    wandb_id = (checkpoint["args"].wandb_id if ("args" in checkpoint and "wandb_id" in checkpoint["args"])
+                else wandb.util.generate_id())
+    return wandb_id
 
 
 def cosine_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epochs=0, start_warmup_value=0):

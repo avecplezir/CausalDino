@@ -19,6 +19,7 @@ import time
 import math
 import json
 from pathlib import Path
+import wandb
 
 import numpy as np
 from PIL import Image
@@ -146,6 +147,9 @@ def get_args_parser():
     parser.add_argument('--temperature', default=0.07, type=float,
                         help='Temperature used in the voting coefficient')
 
+    parser.add_argument('--exp_name', default='svt', type=str, help='Experiment name.')
+    parser.add_argument("--log_every", type=int, default=100, help="Log loss every")
+
     return parser
 
 
@@ -161,6 +165,7 @@ def train_svt(args):
     if utils.is_main_process():
         json.dump(vars(args), open(Path(args.output_dir) / "config.txt", "w"), indent=4)
     config.DATA.PATH_TO_DATA_DIR = args.data_path
+
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=config.DATA.USE_FLOW)
     sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
@@ -179,22 +184,23 @@ def train_svt(args):
     else:
         rand_conv = None
 
-    # validation data
-    # config.DATA.PATH_TO_DATA_DIR = f"{os.path.expanduser('~')}/repo/mmaction2/data/ucf101/knn_splits"
-    # config.DATA.PATH_PREFIX = f"{os.path.expanduser('~')}/repo/mmaction2/data/ucf101/videos"
-    # config.TEST.NUM_SPATIAL_CROPS = 1
-    # eval_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
-    # eval_test = UCFReturnIndexDataset(cfg=config, mode="val", num_retries=10)
-    #
-    # sampler = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
-    # eval_loader_train = torch.utils.data.DataLoader(
-    #     eval_train, sampler=sampler, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
-    #     pin_memory=True, drop_last=False,
-    # )
-    # eval_loader_test = torch.utils.data.DataLoader(
-    #     eval_test, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers, pin_memory=True, drop_last=False,
-    # )
-    # print(f"Data loaded with {len(eval_train)} train and {len(eval_test)} val imgs.")
+    do_eval = True
+    if do_eval:
+        # validation data
+        config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
+        config.DATA.PATH_PREFIX = ""
+        config.TEST.NUM_SPATIAL_CROPS = 1
+        eval_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
+        eval_test = UCFReturnIndexDataset(cfg=config, mode="val", num_retries=10)
+        sampler = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
+        eval_loader_train = torch.utils.data.DataLoader(
+            eval_train, sampler=sampler, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
+            pin_memory=True, drop_last=False,
+        )
+        eval_loader_test = torch.utils.data.DataLoader(
+            eval_test, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers, pin_memory=True, drop_last=False,
+        )
+        print(f"Data loaded with {len(eval_train)} train and {len(eval_test)} val imgs.")
 
     # ============ building student and teacher networks ... ============
     # we changed the name DeiT-S for ViT-S to avoid confusions
@@ -258,58 +264,18 @@ def train_svt(args):
     else:
         print(f"Unknow architecture: {args.arch}")
 
-    if config.MODEL.CNN_DISTILL:
-        cnn_model = S3D()
-        cnn_ckpt = torch.load("checkpoints/pretrained/CoCLR-k400-rgb-128-s3d.pth.tar")
-        new_ckpt = {}
-        for k, v in cnn_ckpt['state_dict'].items():  # only take the encoder_q
-            if k.startswith("encoder_q.0."):
-                new_ckpt[k[12:]] = v
-        msg = cnn_model.load_state_dict(new_ckpt, strict=False)
-        print(f"Loaded cnn model with msg: {msg}")
-
-        cnn_model = cnn_model.cuda()
-        cnn_model = nn.SyncBatchNorm.convert_sync_batchnorm(cnn_model)
-        cnn_model = nn.parallel.DistributedDataParallel(cnn_model, device_ids=[args.gpu], find_unused_parameters=False)
-    else:
-        cnn_model = None
-
     # multi-crop wrapper handles forward with inputs of different resolutions
-    if config.MODEL.TWO_STREAM or config.MODEL.TWO_TOKEN:
-        student = utils.MultiCropWrapper(student, MultiDINOHead(
-            embed_dim,
-            args.out_dim,
-            use_bn=args.use_bn_in_head,
-            norm_last_layer=args.norm_last_layer,
-        ))
-        teacher = utils.MultiCropWrapper(
-            teacher,
-            MultiDINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
-        )
-    else:
-        student = utils.MultiCropWrapper(student, DINOHead(
-            embed_dim,
-            args.out_dim,
-            use_bn=args.use_bn_in_head,
-            norm_last_layer=args.norm_last_layer,
-        ), vary_fr=config.DATA.RAND_FR)
-        teacher = utils.MultiCropWrapper(
-            teacher,
-            DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
-            vary_fr=config.DATA.RAND_FR
-        )
-
-    if config.MODEL.TWO_STREAM:
-        motion_student = utils.MultiCropWrapper(
-            motion_student,
-            DINOHead(motion_embed_dim, args.out_dim, args.use_bn_in_head),
-        )
-        motion_teacher = utils.MultiCropWrapper(
-            motion_teacher,
-            DINOHead(motion_embed_dim, args.out_dim, args.use_bn_in_head),
-        )
-        # move networks to gpu
-        motion_student, motion_teacher = motion_student.cuda(), motion_teacher.cuda()
+    student = utils.MultiCropWrapper(student, DINOHead(
+        embed_dim,
+        args.out_dim,
+        use_bn=args.use_bn_in_head,
+        norm_last_layer=args.norm_last_layer,
+    ), vary_fr=config.DATA.RAND_FR)
+    teacher = utils.MultiCropWrapper(
+        teacher,
+        DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
+        vary_fr=config.DATA.RAND_FR
+    )
 
     # move networks to gpu
     student, teacher = student.cuda(), teacher.cuda()
@@ -331,24 +297,7 @@ def train_svt(args):
         p.requires_grad = False
     print(f"Student and Teacher are built: they are both {args.arch} network.")
 
-    if config.MODEL.TWO_STREAM:
-        if utils.has_batchnorms(motion_student):
-            motion_student = nn.SyncBatchNorm.convert_sync_batchnorm(motion_student)
-            motion_teacher = nn.SyncBatchNorm.convert_sync_batchnorm(motion_teacher)
-            motion_teacher = nn.parallel.DistributedDataParallel(motion_teacher, device_ids=[args.gpu])
-            motion_teacher_without_ddp = motion_teacher.module
-        else:
-            # teacher_without_ddp and teacher are the same thing
-            motion_teacher_without_ddp = motion_teacher
-
-        motion_student = nn.parallel.DistributedDataParallel(motion_student, device_ids=[args.gpu])
-        motion_teacher_without_ddp.load_state_dict(motion_student.module.state_dict())
-        for p in motion_teacher.parameters():
-            p.requires_grad = False
-        print(f"Motion Student and Teacher are built: they are both 2D ViT networks.")
-
-    else:
-        motion_teacher_without_ddp = None
+    motion_teacher_without_ddp = None
 
     # ============ preparing loss ... ============
     dino_loss = DINOLoss(
@@ -362,21 +311,11 @@ def train_svt(args):
         two_token=config.MODEL.TWO_TOKEN
     ).cuda()
 
-    if config.MODEL.TWO_STREAM:
-        dino_flow_loss = DINOLoss(args.out_dim, 2, args.warmup_teacher_temp,
-                                  args.teacher_temp, args.warmup_teacher_temp_epochs, args.epochs).cuda()
-        dino_cross_loss = DINOLoss(args.out_dim, args.local_crops_number + 2, args.warmup_teacher_temp,
-                                   args.teacher_temp, args.warmup_teacher_temp_epochs, args.epochs).cuda()
-    else:
-        dino_flow_loss = None
-        dino_cross_loss = None
+    dino_flow_loss = None
+    dino_cross_loss = None
 
     # ============ preparing optimizer ... ============
     params_groups = utils.get_params_groups(student)
-    if config.MODEL.TWO_STREAM:
-        motion_params_groups = utils.get_params_groups(motion_student)
-        params_groups[0]['params'] += motion_params_groups[0]['params']
-        params_groups[1]['params'] += motion_params_groups[1]['params']
 
     if args.optimizer == "adamw":
         optimizer = torch.optim.AdamW(params_groups)  # to use with ViTs
@@ -408,7 +347,7 @@ def train_svt(args):
 
     # ============ optionally resume training ... ============
     to_restore = {"epoch": 0}
-    utils.restart_from_checkpoint(
+    args.wandb_id = utils.restart_from_checkpoint(
         os.path.join(args.output_dir, "checkpoint.pth"),
         run_variables=to_restore,
         student=student,
@@ -419,10 +358,29 @@ def train_svt(args):
     )
     start_epoch = to_restore["epoch"]
 
+    wandb.init(
+        project='causal_video',
+        config=config,
+        entity="avecplezir",
+        reinit=True,
+        # Restore parameters
+        resume="allow",
+        id=args.wandb_id,
+        name=args.exp_name,
+    )
+    wandb.config.update(config, allow_val_change=True)
+
     start_time = time.time()
     print("Starting DINO training !")
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
+
+        # TODO: fix online evaluation for multi-gpu training
+        if do_eval and utils.is_main_process():
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+            print('val_stats', val_stats)
+            wandb.log(val_stats)
+            utils.synchronize()
 
         # ============ training one epoch of DINO ... ============
         train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
@@ -431,9 +389,6 @@ def train_svt(args):
                                       motion_loss=dino_flow_loss, cross_loss=dino_cross_loss,
                                       motion_student=motion_student, motion_teacher=motion_teacher,
                                       motion_teacher_without_ddp=motion_teacher_without_ddp, rand_conv=rand_conv)
-
-        # TODO: fix online evaluation for multi-gpu training
-        # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
 
         # ============ writing logs ... ============
         save_dict = {
@@ -467,7 +422,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                     motion_loss=None, cross_loss=None, motion_teacher_without_ddp=None, rand_conv=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
-    for it, (images, _, _, meta) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+    for it, (images, _) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         # update weight decay and learning rate according to their schedule
         it = len(data_loader) * epoch + it  # global training iteration
         for i, param_group in enumerate(optimizer.param_groups):
@@ -477,39 +432,12 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        if cfg.MODEL.TWO_STREAM:
-            if cfg.DATA.NO_FLOW_AUG:
-                # meta['flow'] = [x.cuda(non_blocking=True) for x in meta['flow']]
-                idx = np.random.choice(range(cfg.DATA.NUM_FRAMES), 2, replace=False)
-                flow_images = [meta['flow'][x].cuda(non_blocking=True) for x in idx]
-        elif cfg.MODEL.TWO_TOKEN:
-            # diff_images = utils.get_diff_images(images)
-            # flow_images = utils.get_flow_images(meta['flow'], temporal_length=8)
-            pass
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
-
-            if cfg.MODEL.TWO_STREAM:
-                student_output_rgb, student_output_flow = student(images)
-                teacher_output_rgb, _ = teacher(images[:2])  # only the 2 global views pass through the teacher
-                teacher_flow = motion_teacher(flow_images[:2])
-                student_flow = motion_student(flow_images)
-
-                loss = dino_loss(student_output_rgb, teacher_output_rgb, epoch) + \
-                       motion_loss(student_flow, teacher_flow, epoch) + \
-                       cross_loss(student_output_flow, teacher_flow, epoch)
-            elif cfg.MODEL.TWO_TOKEN:
-                student_output = student(images[2:])  # 2 spatially local and 2 temporally global local views
-                teacher_output = teacher(images[:2])  # only 2 global views through the teacher
-                loss = dino_loss(student_output, teacher_output, epoch)
-            else:
-                student_output = student(images)
-                if rand_conv is not None:
-                    teacher_output = teacher([images[0], rand_conv(images[1])])
-                else:
-                    teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
-                loss = dino_loss(student_output, teacher_output, epoch)
+            student_output = student(images)
+            teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
+            loss = dino_loss(student_output, teacher_output, epoch)
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)
@@ -541,16 +469,19 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
             for param_q, param_k in zip(student.module.parameters(), teacher_without_ddp.parameters()):
                 param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
 
-            if cfg.MODEL.TWO_STREAM:
-                for param_q, param_k in zip(motion_student.module.parameters(),
-                                            motion_teacher_without_ddp.parameters()):
-                    param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
-
         # logging
         torch.cuda.synchronize()
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
+
+        if it % args.log_every and utils.is_main_process():
+            wandb.log(dict(
+                batch_loss=loss.item(),
+                lr=optimizer.param_groups[0]["lr"],
+                wd=optimizer.param_groups[0]["weight_decay"],
+            ))
+
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)

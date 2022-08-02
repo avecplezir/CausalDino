@@ -82,9 +82,10 @@ class UCF101(torch.utils.data.Dataset):
                         len(path_label.split(self.cfg.DATA.PATH_LABEL_SEPARATOR))
                         == 2
                 )
-                path, label = path_label.split(
+                name, label = path_label.split(
                     self.cfg.DATA.PATH_LABEL_SEPARATOR
                 )
+                path = self.cfg.DATA.PATH_TO_DATA_DIR + '/' + name
                 for idx in range(self._num_clips):
                     self._path_to_videos.append(
                         os.path.join(self.cfg.DATA.PATH_PREFIX, path)
