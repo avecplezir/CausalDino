@@ -149,6 +149,7 @@ def get_args_parser():
 
     parser.add_argument('--exp_name', default='svt', type=str, help='Experiment name.')
     parser.add_argument("--log_every", type=int, default=100, help="Log loss every")
+    parser.add_argument('--do_eval', type=utils.bool_flag, default=False, help="""Whether to do knn eval.""")
 
     return parser
 
@@ -179,13 +180,7 @@ def train_svt(args):
     )
     print(f"Train data loaded: there are {len(dataset)} images.")
 
-    if config.DATA.RAND_CONV:
-        rand_conv = RandConv(temporal_input=True).cuda()
-    else:
-        rand_conv = None
-
-    do_eval = True
-    if do_eval:
+    if args.do_eval:
         # validation data
         config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
         config.DATA.PATH_PREFIX = ""
@@ -207,12 +202,8 @@ def train_svt(args):
     args.arch = args.arch.replace("deit", "vit")
     # if the network is a vision transformer (i.e. vit_tiny, vit_small, vit_base)
     if args.arch == "timesformer":
-        if config.MODEL.TWO_TOKEN:
-            student = get_aux_token_vit(cfg=config, no_head=True)
-            teacher = get_aux_token_vit(cfg=config, no_head=True)
-        else:
-            student = get_vit_base_patch16_224(cfg=config, no_head=True)
-            teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
+        student = get_vit_base_patch16_224(cfg=config, no_head=True)
+        teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
         embed_dim = student.embed_dim
 
         if args.pretrained_rgb is not None:
@@ -223,31 +214,12 @@ def train_svt(args):
             msg = teacher.load_state_dict(state_dict)
             print(f"Loaded pretrained rgb teacher: {msg}")
 
-        if config.MODEL.TWO_STREAM:
-            motion_student = vits.vit_small()
-            motion_teacher = vits.vit_small()
-            url = "dino_deitsmall16_pretrain/dino_deitsmall16_pretrain.pth"
-            state_dict = torch.hub.load_state_dict_from_url(url="https://dl.fbaipublicfiles.com/dino/" + url)
-            msg = motion_student.load_state_dict(state_dict)
-            print(f"Loaded motion-student with status: {msg}")
-            msg = motion_teacher.load_state_dict(state_dict)
-            print(f"Loaded motion-teacher with status: {msg}")
-            motion_embed_dim = motion_student.embed_dim
-        else:
-            motion_student = None
-            motion_teacher = None
-            motion_embed_dim = None
-
     if args.arch == "swin":
         student = SwinTransformer3D(depths=[2, 2, 18, 2], embed_dim=128, num_heads=[4, 8, 16, 32])
         teacher = SwinTransformer3D(depths=[2, 2, 18, 2], embed_dim=128, num_heads=[4, 8, 16, 32])
 
         embed_dim = 1024
         print("Loaded swin transformer network")
-
-        motion_student = None
-        motion_teacher = None
-        motion_embed_dim = None
 
     elif args.arch in vits.__dict__.keys():
         student = vits.__dict__[args.arch](
@@ -297,8 +269,6 @@ def train_svt(args):
         p.requires_grad = False
     print(f"Student and Teacher are built: they are both {args.arch} network.")
 
-    motion_teacher_without_ddp = None
-
     # ============ preparing loss ... ============
     dino_loss = DINOLoss(
         args.out_dim,
@@ -310,9 +280,6 @@ def train_svt(args):
         global_crops=2,
         two_token=config.MODEL.TWO_TOKEN
     ).cuda()
-
-    dino_flow_loss = None
-    dino_cross_loss = None
 
     # ============ preparing optimizer ... ============
     params_groups = utils.get_params_groups(student)
@@ -376,7 +343,7 @@ def train_svt(args):
         data_loader.sampler.set_epoch(epoch)
 
         # TODO: fix online evaluation for multi-gpu training
-        if do_eval and utils.is_main_process():
+        if args.do_eval and utils.is_main_process():
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
             print('val_stats', val_stats)
             wandb.log(val_stats)
@@ -391,8 +358,6 @@ def train_svt(args):
         save_dict = {
             'student': student.state_dict(),
             'teacher': teacher.state_dict(),
-            'motion_student': motion_student.state_dict() if motion_student is not None else 0,
-            'motion_teacher': motion_teacher.state_dict() if motion_teacher is not None else 0,
             'optimizer': optimizer.state_dict(),
             'epoch': epoch + 1,
             'args': args,
@@ -415,7 +380,7 @@ def train_svt(args):
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
                     optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch,
-                    fp16_scaler, args):
+                    fp16_scaler, args, cfg=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
     for it, (images, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
@@ -428,6 +393,8 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
+        # for idx, im in enumerate(images):
+        #     print('idx, im', idx, im.shape)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
