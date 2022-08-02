@@ -385,10 +385,7 @@ def train_svt(args):
         # ============ training one epoch of DINO ... ============
         train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
                                       data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
-                                      epoch, fp16_scaler, args, cfg=config,
-                                      motion_loss=dino_flow_loss, cross_loss=dino_cross_loss,
-                                      motion_student=motion_student, motion_teacher=motion_teacher,
-                                      motion_teacher_without_ddp=motion_teacher_without_ddp, rand_conv=rand_conv)
+                                      epoch, fp16_scaler, args, cfg=config)
 
         # ============ writing logs ... ============
         save_dict = {
@@ -418,11 +415,10 @@ def train_svt(args):
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
                     optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch,
-                    fp16_scaler, args, cfg=None, motion_teacher=None, motion_student=None,
-                    motion_loss=None, cross_loss=None, motion_teacher_without_ddp=None, rand_conv=None):
+                    fp16_scaler, args):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
-    for it, (images, _) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+    for it, (images, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         # update weight decay and learning rate according to their schedule
         it = len(data_loader) * epoch + it  # global training iteration
         for i, param_group in enumerate(optimizer.param_groups):
