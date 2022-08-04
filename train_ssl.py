@@ -153,6 +153,7 @@ def get_args_parser():
     parser.add_argument('--do_eval', type=utils.bool_flag, default=False, help="""Whether to do knn eval.""")
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
+    parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
 
     return parser
 
@@ -330,17 +331,18 @@ def train_svt(args):
     )
     start_epoch = to_restore["epoch"]
 
-    wandb.init(
-        project='causal_video',
-        config=config,
-        entity="avecplezir",
-        reinit=True,
-        # Restore parameters
-        resume="allow",
-        id=args.wandb_id,
-        name=args.exp_name,
-    )
-    wandb.config.update(config, allow_val_change=True)
+    if args.use_wandb:
+        wandb.init(
+            project='causal_video',
+            config=config,
+            entity="avecplezir",
+            reinit=True,
+            # Restore parameters
+            resume="allow",
+            id=args.wandb_id,
+            name=args.exp_name,
+        )
+        wandb.config.update(config, allow_val_change=True)
 
     start_time = time.time()
     print("Starting DINO training !")
@@ -351,7 +353,8 @@ def train_svt(args):
         if args.do_eval and utils.is_main_process():
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
             print('val_stats', val_stats)
-            wandb.log(val_stats)
+            if args.use_wandb:
+                wandb.log(val_stats)
             utils.synchronize()
 
         # ============ training one epoch of DINO ... ============
@@ -443,7 +446,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
 
-        if it % args.log_every and utils.is_main_process():
+        if it % args.log_every and utils.is_main_process() and args.use_wandb:
             wandb.log(dict(
                 batch_loss=loss.item(),
                 lr=optimizer.param_groups[0]["lr"],

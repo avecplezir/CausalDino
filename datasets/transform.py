@@ -747,3 +747,90 @@ class VideoDataAugmentationDINO(object):
             for _ in range(self.local_crops_number):
                 crops.append(self.local_transform(image))
         return crops
+
+
+class VideoDataAugmentationEvents(object):
+    def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4), local_crops_number=6):
+        self.global_crops_scale = global_crops_scale
+        self.local_crops_scale = local_crops_scale
+        self.local_crops_number = local_crops_number
+        self.size = 128
+
+        self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
+
+    @staticmethod
+    def flip_and_color_jitter(frames):
+        frames, _ = horizontal_flip(prob=0.5, images=frames)
+        if np.random.uniform() < 0.8:
+            frames = color_jitter(frames, img_brightness=0.4, img_contrast=0.4, img_saturation=0.2)
+        if np.random.uniform() < 0.2:
+            frames = grayscale(frames)
+        return frames
+
+    @staticmethod
+    def normalize(frames):
+        frames = color_normalization(frames, mean=[0.485, 0.456, 0.406], stddev=[0.229, 0.224, 0.225])
+        return frames
+
+    def gaussian_blur(self, frames):
+        # import kornia  # add this to top if using
+        # return self.gaussian_kernel(frames)  # negligible improvement
+        return frames
+
+    @staticmethod
+    def solarization(frames):
+        # import kornia  # add this to top if using
+        # return kornia.enhance.solarize(frames)  # negligible improvement
+        return frames
+
+    def no_aug(self, frames):
+        frames = resize(frames, size=self.size, mode="bicubic")
+        frames = self.normalize(frames)
+        return frames
+
+    # first global crop
+    def global_transform1(self, frames):
+        frames = random_resized_crop(frames, size=self.size, scale=self.global_crops_scale, interpolation="bicubic")
+        frames = self.flip_and_color_jitter(frames)
+        frames = self.gaussian_blur(frames)
+        frames = self.normalize(frames)
+        return frames
+
+    # second global crop
+    def global_transform2(self, frames):
+        frames = random_resized_crop(frames, size=self.size, scale=self.global_crops_scale, interpolation="bicubic")
+        frames = self.flip_and_color_jitter(frames)
+        if np.random.uniform() < 0.1:
+            frames = self.gaussian_blur(frames)
+        if np.random.uniform() < 0.2:
+            frames = self.solarization(frames)
+        frames = self.normalize(frames)
+        return frames
+
+    # transformation for the local small crops
+    def local_transform(self, frames):
+        frames = random_resized_crop(frames, size=self.size, scale=self.local_crops_scale, interpolation="bicubic")
+        frames = self.flip_and_color_jitter(frames)
+        if np.random.uniform() < 0.5:
+            frames = self.gaussian_blur(frames)
+        frames = self.normalize(frames)
+
+        return frames
+
+    def __call__(self, image, from_list=False, no_aug=False, two_token=False):
+        if no_aug:
+            image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
+            crops = [self.no_aug(x) for x in image]
+        elif from_list:
+            image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
+            crops = [self.global_transform1(image[0]), self.global_transform2(image[1])]
+            for local_image in image[2:]:
+                crops.append(self.local_transform(local_image))
+        else:
+            if image.dtype == torch.uint8:
+                image = image.float()
+                image = image / 255.0
+            crops = [self.global_transform1(image), self.global_transform2(image)]
+            for _ in range(self.local_crops_number):
+                crops.append(self.local_transform(image))
+        return crops

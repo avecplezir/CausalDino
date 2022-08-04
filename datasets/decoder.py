@@ -23,6 +23,7 @@ def temporal_sampling(frames, start_idx, end_idx, num_samples):
     """
     index = torch.linspace(start_idx, end_idx, num_samples)
     index = torch.clamp(index, 0, frames.shape[0] - 1).long()
+    # print('temporal_sampling index', index)
     frames = torch.index_select(frames, 0, index)
     return frames
 
@@ -386,6 +387,11 @@ def decode(
     if frames is None or frames.size(0) == 0:
         return None
 
+    # print('decode decode_all_video', decode_all_video)
+    # print('decode frames', frames.shape)
+    # print('decode clip_idx', clip_idx)
+    # print('decode num_clips', num_clips)
+    # print('decode num_frames', num_frames)
     clip_sz = sampling_rate * num_frames / target_fps * fps
     start_idx, end_idx = get_start_end_idx(
         video_size=frames.shape[0],
@@ -393,47 +399,23 @@ def decode(
         clip_idx=clip_idx if decode_all_video else 0,
         num_clips=num_clips if decode_all_video else 1,
     )
+    # print('decode start_idx, end_idx', start_idx, end_idx)
+    # print('decode temporal_aug', temporal_aug)
+    # print('decode rand_fr', rand_fr)
     # Perform temporal sampling from the decoded video.
-    if two_token:
-        max_len = frames.shape[0]
-        global_samples = []
-        for _ in range(3):
-            random_idx = random.randint(0, 6)
-            cur_global = temporal_sampling(frames, random_idx, max_len - random_idx, num_frames)
-            global_samples.append(cur_global)
-        local_samples = []
-        local_width = max_len // 8
-        for _ in range(2):
-            random_idx = random.randint(0, max_len - local_width - 1)
-            cur_local = temporal_sampling(frames, random_idx, random_idx + local_width, num_frames)
-            local_samples.append(cur_local)
-        frames = [*global_samples, *local_samples]
-    elif temporal_aug:
+    if temporal_aug:
         max_len = frames.shape[0]
 
-        if rand_fr:
-            global_1 = temporal_sampling(frames, 0, max_len - 5, 4)
-            global_2 = temporal_sampling(frames, 5, max_len, 8)
-            local_samples = []
-            local_width = max_len // 8
-            num_local_frames = [2, 2, 4, 4, 8, 8, 16, 16]
-            for l_idx in range(8):
-                random_idx = random.randint(0, max_len - local_width - 1)
-                cur_local = temporal_sampling(frames, random_idx, random_idx + local_width, num_local_frames[l_idx])
-                local_samples.append(cur_local)
-        else:
-            num_global_frames = num_frames
-            num_local_frames = num_frames
-            global_1 = temporal_sampling(frames, 0, max_len - 5, num_global_frames)
-            global_2 = temporal_sampling(frames, 5, max_len, num_global_frames)
-            local_samples = []
-            local_width = max_len // 8
-            for _ in range(8):
-                random_idx = random.randint(0, max_len - local_width - 1)
-                cur_local = temporal_sampling(frames, random_idx, random_idx + local_width, num_local_frames)
-                local_samples.append(cur_local)
+        samples = []
+        local_width = max_len // 9
+        # print('decode local_width', local_width)
+        idx = random.randint(0, local_width - 1)
+        for _ in range(8):
+            cur_local = temporal_sampling(frames, idx, idx + local_width, num_frames)
+            samples.append(cur_local)
+            idx += local_width
 
-        frames = [global_1, global_2, *local_samples]
+        frames = [*samples]
 
     else:
         frames = temporal_sampling(frames, start_idx, end_idx, num_frames)  # frames.shape = (T, H, W, C)
