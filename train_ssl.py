@@ -27,7 +27,7 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
-from torchvision import datasets, transforms
+from torchvision import transforms
 from torchvision import models as torchvision_models
 
 from utils import utils
@@ -40,6 +40,7 @@ from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3
 from utils.parser import load_config
 from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset
 import losses
+import datasets
 
 torchvision_archs = sorted(name for name in torchvision_models.__dict__
                            if name.islower() and not name.startswith("__")
@@ -151,6 +152,7 @@ def get_args_parser():
     parser.add_argument("--log_every", type=int, default=100, help="Log loss every")
     parser.add_argument('--do_eval', type=utils.bool_flag, default=False, help="""Whether to do knn eval.""")
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
+    parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
 
     return parser
 
@@ -169,7 +171,8 @@ def train_svt(args):
     config.DATA.PATH_TO_DATA_DIR = args.data_path
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=config.DATA.USE_FLOW)
+    Dataset = datasets.__dict__[args.dataset]
+    dataset = Dataset(cfg=config, mode="train", num_retries=10, get_flow=config.DATA.USE_FLOW)
     sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
         dataset,

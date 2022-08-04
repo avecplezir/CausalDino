@@ -27,6 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --loss DINOLoss \
+  --dataset KineticsEvents \
   --opts \
   MODEL.TWO_STREAM False \
   MODEL.TWO_TOKEN False \
