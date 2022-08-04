@@ -21,12 +21,12 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 8 \
+  --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --loss DINOLoss \
+  --loss MILoss \
   --dataset KineticsEvents \
   --opts \
   MODEL.TWO_STREAM False \
