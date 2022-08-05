@@ -40,7 +40,7 @@ class MILoss(nn.Module):
         temp = self.teacher_temp_schedule[epoch]
         teacher_out = F.softmax(teacher_output, dim=-1)
         student_proba = F.softmax(student_output, dim=1)
-        self.update_center(student_proba)
+        batch_center = self.update_center_get_batch_center(student_proba)
         teacher_out = teacher_out.chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
@@ -51,13 +51,13 @@ class MILoss(nn.Module):
                 loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
                 CE += loss.mean()
                 n_loss_terms += 1
-        entropy = torch.sum(self.batch_center * torch.log(self.center), dim=-1) + self.batch_center.sum()
-        CE /= CE
+        entropy = torch.sum(batch_center * torch.log(self.center), dim=-1) + batch_center.sum()
+        CE /= n_loss_terms
         total_loss = CE + entropy
         return total_loss, {'CE': CE, 'entropy': entropy}
 
     @torch.no_grad()
-    def update_center(self, teacher_output):
+    def update_center_get_batch_center(self, teacher_output):
         """
         Update center used for teacher output.
         """
@@ -66,6 +66,7 @@ class MILoss(nn.Module):
         dist.all_reduce(batch_center)
         batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
 
-        self.batch_center = batch_center
         # ema update
-        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+        self.center = self.center * self.center_momentum + batch_center.detach() * (1 - self.center_momentum)
+
+        return batch_center
