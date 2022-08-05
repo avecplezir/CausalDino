@@ -11,7 +11,7 @@ import kornia
 
 from datasets.transform import resize
 from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
-from datasets.decoder import decode
+from datasets.decoder import decode_events
 from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
 from einops import rearrange
@@ -182,7 +182,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                 continue
 
             # Decode video. Meta info is used to perform selective decoding.
-            frames = decode(
+            frames = decode_events(
                 container=video_container,
                 sampling_rate=sampling_rate,
                 num_frames=self.cfg.DATA.NUM_FRAMES,

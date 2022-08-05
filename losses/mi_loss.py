@@ -33,13 +33,15 @@ class MILoss(nn.Module):
         total_loss = 0
         n_loss_terms = 0
 
-        student_out = (student_output - self.center) / self.student_temp
+        student_out = student_output
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = F.softmax(teacher_output / temp, dim=-1)
-        teacher_out = teacher_out.detach().chunk(self.global_crops)
+        teacher_out = F.softmax(teacher_output, dim=-1)
+        student_proba = F.softmax(student_output, dim=1)
+        self.update_center(student_proba)
+        teacher_out = teacher_out.chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
             for v in range(len(student_out)):
@@ -49,8 +51,9 @@ class MILoss(nn.Module):
                 loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
+        entropy = torch.sum(self.batch_center * torch.log(self.center), dim=-1) + self.batch_center.sum()
         total_loss /= n_loss_terms
-        self.update_center(student_output.detach())
+        total_loss = total_loss + entropy
         return total_loss
 
     @torch.no_grad()
@@ -63,5 +66,6 @@ class MILoss(nn.Module):
         dist.all_reduce(batch_center)
         batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
 
+        self.batch_center = batch_center
         # ema update
         self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
