@@ -51,10 +51,13 @@ class MILoss(nn.Module):
                 loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
                 CE += loss.mean()
                 n_loss_terms += 1
-        entropy = torch.sum(batch_center * torch.log(self.center), dim=-1) + batch_center.sum()
+        entropy = torch.sum(batch_center * torch.log(self.center), dim=-1)
+        entropy_plus = entropy + batch_center.sum()
         CE /= n_loss_terms
-        total_loss = CE + entropy
-        return total_loss, {'CE': CE, 'entropy': entropy}
+        total_loss = CE + entropy_plus
+
+        true_entropy = torch.sum(self.center * torch.log(self.center), dim=-1)
+        return total_loss, {'CE': CE, 'entropy': entropy, 'true_entropy': true_entropy, 'mean': batch_center.sum()}
 
     @torch.no_grad()
     def update_center_get_batch_center(self, teacher_output):
