@@ -408,10 +408,11 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             student_output = student(images)
             teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
-            loss = dino_loss(student_output, teacher_output, epoch)
+            loss, dict_losses = dino_loss(student_output, teacher_output, epoch)
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)
+            print('dict_losses', dict_losses)
             sys.exit(1)
 
         # student update
@@ -445,12 +446,14 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
+        metric_logger.update(**dict_losses)
 
         if it % args.log_every and utils.is_main_process() and args.use_wandb:
             wandb.log(dict(
                 batch_loss=loss.item(),
                 lr=optimizer.param_groups[0]["lr"],
                 wd=optimizer.param_groups[0]["weight_decay"],
+                **{f"batch_{key}": val for key, val in dict_losses.items()},
             ))
 
     # gather the stats from all processes

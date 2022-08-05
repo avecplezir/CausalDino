@@ -30,7 +30,7 @@ class MILoss(nn.Module):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        total_loss = 0
+        CE = 0
         n_loss_terms = 0
 
         student_out = student_output
@@ -49,12 +49,12 @@ class MILoss(nn.Module):
                     # we skip cases where student and teacher operate on the same view
                     continue
                 loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
-                total_loss += loss.mean()
+                CE += loss.mean()
                 n_loss_terms += 1
         entropy = torch.sum(self.batch_center * torch.log(self.center), dim=-1) + self.batch_center.sum()
-        total_loss /= n_loss_terms
-        total_loss = total_loss + entropy
-        return total_loss
+        CE /= CE
+        total_loss = CE + entropy
+        return total_loss, {'CE': CE, 'entropy': entropy}
 
     @torch.no_grad()
     def update_center(self, teacher_output):

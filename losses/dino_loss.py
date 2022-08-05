@@ -76,7 +76,7 @@ class DINOLoss(nn.Module):
                     n_loss_terms += 1
         total_loss /= n_loss_terms
         self.update_center(teacher_output)
-        return total_loss
+        return total_loss, {}
 
     @torch.no_grad()
     def update_center(self, teacher_output):
