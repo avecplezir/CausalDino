@@ -37,43 +37,22 @@ class MILossMinus(nn.Module):
         """
         total_loss = 0
         n_loss_terms = 0
-        if self.two_token:
-            student_out = [x / self.student_temp for x in student_output]
-            student_out = [x.chunk(self.n_crops) for x in student_out]
+        student_out = (student_output - self.center) / self.student_temp
+        student_out = student_out.chunk(self.n_crops)
 
-            # teacher centering and sharpening
-            temp = self.teacher_temp_schedule[epoch]
-            teacher_out = [F.softmax((x - self.center[idx]) / temp, dim=-1) for idx, x in enumerate(teacher_output)]
-            teacher_out = [x.detach().chunk(self.global_crops) for x in teacher_out]
+        # teacher centering and sharpening
+        temp = self.teacher_temp_schedule[epoch]
+        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
+        teacher_out = teacher_out.detach().chunk(self.global_crops)
 
-            for iv in range(len(student_out[0])):
-                if iv < 2:
-                    q = teacher_out[0][0]
-                    v = student_out[0][iv]
-                    loss = torch.sum(-q * F.log_softmax(v, dim=-1), dim=-1)
-                else:
-                    q = teacher_out[1][1]
-                    v = student_out[1][iv]
-                    loss = torch.sum(-q * F.log_softmax(v, dim=-1), dim=-1)
+        for iq, q in enumerate(teacher_out):
+            for v in range(len(student_out)):
+                if v == iq:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
-        else:
-            student_out = (student_output - self.center) / self.student_temp
-            student_out = student_out.chunk(self.n_crops)
-
-            # teacher centering and sharpening
-            temp = self.teacher_temp_schedule[epoch]
-            teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
-            teacher_out = teacher_out.detach().chunk(self.global_crops)
-
-            for iq, q in enumerate(teacher_out):
-                for v in range(len(student_out)):
-                    if v == iq:
-                        # we skip cases where student and teacher operate on the same view
-                        continue
-                    loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
-                    total_loss += loss.mean()
-                    n_loss_terms += 1
         total_loss /= n_loss_terms
         self.update_center(teacher_output)
         return total_loss, {}
