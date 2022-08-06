@@ -172,6 +172,7 @@ def train_svt(args):
     if utils.is_main_process():
         json.dump(vars(args), open(Path(args.output_dir) / "config.txt", "w"), indent=4)
     config.DATA.PATH_TO_DATA_DIR = args.data_path
+    config.local_crops_number = args.local_crops_number
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]

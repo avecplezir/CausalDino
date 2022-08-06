@@ -317,7 +317,8 @@ def decode(
     frames_length=None,
     temporal_aug=False,
     two_token=False,
-    rand_fr=False
+    rand_fr=False,
+    local_crops_number=8,
 ):
     """
     Decode the video and perform temporal sampling.
@@ -429,7 +430,7 @@ def decode(
             global_2 = temporal_sampling(frames, 5, max_len, num_global_frames)
             local_samples = []
             local_width = max_len // 8
-            for _ in range(8):
+            for _ in range(local_crops_number):
                 random_idx = random.randint(0, max_len - local_width - 1)
                 cur_local = temporal_sampling(frames, random_idx, random_idx + local_width, num_local_frames)
                 local_samples.append(cur_local)
