@@ -57,8 +57,8 @@ class CILossTemp(nn.Module):
 
         batch_center = self.update_center(teacher_output)
 
-        true_entropy = torch.sum(self.center * torch.log(self.center), dim=-1)
-        entropy = torch.sum(batch_center * torch.log(self.center), dim=-1)
+        true_entropy = torch.sum(self.center * F.log_softmax(self.center), dim=-1)
+        entropy = torch.sum(batch_center * F.log_softmax(self.center), dim=-1)
 
         return total_loss, {'CE': CE, 'entropy': entropy, 'true_entropy': true_entropy}
 
