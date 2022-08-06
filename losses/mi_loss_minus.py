@@ -56,8 +56,8 @@ class MILossMinus(nn.Module):
         total_loss /= n_loss_terms
         batch_center = self.update_center(teacher_output)
 
-        true_entropy = torch.sum(self.center * torch.log(self.center), dim=-1)
-        entropy = torch.sum(batch_center * torch.log(self.center), dim=-1)
+        true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
 
         return total_loss, {'CE': total_loss, 'entropy': entropy, 'true_entropy': true_entropy}
 

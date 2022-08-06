@@ -34,7 +34,7 @@ class CILoss(nn.Module):
         n_loss_terms = 0
         CE = 0
 
-        student_out = (student_output - self.center) #/ self.student_temp
+        student_out = F.softmax(student_output - self.center) #/ self.student_temp
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
@@ -48,8 +48,8 @@ class CILoss(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-q * F.log_softmax(student_out[v]/(1-student_out[v]+1e-4), dim=-1), dim=-1)
-                CE_loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
+                loss = torch.sum(-q * torch.log(student_out[v]/(1-student_out[v]+1e-4), dim=-1), dim=-1)
+                CE_loss = torch.sum(-q * torch.log(student_out[v], dim=-1), dim=-1)
                 total_loss += loss.mean()
                 CE += CE_loss.mean()
                 n_loss_terms += 1
@@ -58,8 +58,8 @@ class CILoss(nn.Module):
 
         batch_center = self.update_center(teacher_output)
 
-        true_entropy = torch.sum(self.center * F.log_softmax(self.center), dim=-1)
-        entropy = torch.sum(batch_center * F.log_softmax(self.center), dim=-1)
+        true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
 
         return total_loss, {'CE': CE, 'entropy': entropy, 'true_entropy': true_entropy}
 
