@@ -36,7 +36,6 @@ class MILoss(nn.Module):
         student_out = student_output / self.student_temp
         student_out = student_out.chunk(self.n_crops)
 
-        # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
         teacher_out = F.softmax(teacher_output / temp, dim=-1)
         student_proba = F.softmax(student_output, dim=1)
