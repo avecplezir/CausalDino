@@ -47,8 +47,8 @@ class CILossTemp(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-q * torch.log(student_out[v]/(1-student_out[v]+1e-3), dim=-1), dim=-1)
-                CE_loss = torch.sum(-q * torch.log(student_out[v], dim=-1), dim=-1)
+                loss = torch.sum(-q * torch.log(student_out[v]/(1-student_out[v]+0.1)), dim=-1)
+                CE_loss = torch.sum(-q * torch.log(student_out[v]), dim=-1)
                 total_loss += loss.mean()
                 CE += CE_loss.mean()
                 n_loss_terms += 1
