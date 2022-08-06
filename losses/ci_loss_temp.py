@@ -1,4 +1,4 @@
-__all__ = ['CILoss']
+__all__ = ['CILossTemp']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class CILoss(nn.Module):
+class CILossTemp(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, global_crops=2, two_token=False):
@@ -34,13 +34,12 @@ class CILoss(nn.Module):
         n_loss_terms = 0
         CE = 0
 
-        student_out = (student_output - self.center) #/ self.student_temp
+        student_out = (student_output - self.center) / self.student_temp
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        # teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
-        teacher_out = F.softmax(teacher_output - self.center, dim=-1)
+        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
