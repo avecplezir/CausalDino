@@ -4,7 +4,7 @@ PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
 EXP_NAME="svt_ucf101_ci_sim_check"
-PORT='1026'
+PORT='1027'
 
 cd "$PROJECT_PATH" || exit
 
