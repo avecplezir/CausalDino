@@ -3,8 +3,8 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_pred"
-PORT='1023'
+EXP_NAME="svt_ucf101_future"
+PORT='1024'
 
 cd "$PROJECT_PATH" || exit
 
@@ -27,7 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --use_wandb False \
-  --loss PredLoss \
+  --loss FutureLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \

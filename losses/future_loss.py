@@ -1,4 +1,4 @@
-__all__ = ['PredLoss']
+__all__ = ['FutureLoss']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class PredLoss(nn.Module):
+class FutureLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, global_crops=2, two_token=False):
@@ -41,15 +41,16 @@ class PredLoss(nn.Module):
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         pred = student.module.predictor.get_all()
-        for iq, q in enumerate(teacher_out):
-            for v, s in enumerate(student_out):
-                if v == iq:
+        for iq, q in enumerate(teacher_out): #future
+            for v, s in enumerate(student_out): #past
+                if v <= iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
                 p_sq = s.unsqueeze(2)*q.unsqueeze(1)
                 loss = -torch.sum(torch.sum(p_sq * F.log_softmax(pred, dim=-1), dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
+        print('n_loss_terms', n_loss_terms)
         total_loss /= n_loss_terms
         batch_center = self.update_center(teacher_output)
 

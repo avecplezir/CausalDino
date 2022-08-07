@@ -258,12 +258,12 @@ def train_svt(args):
                                          use_bn=args.use_bn_in_head,
                                          norm_last_layer=args.norm_last_layer,
                                      ),
-                                     predictor=Predictor(args.out_dim),
+                                     predictor=Predictor(args.out_dim) if Predictor else None,
                                      vary_fr=config.DATA.RAND_FR)
     teacher = utils.MultiCropWrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
-        predictor=Predictor(args.out_dim),
+        predictor=Predictor(args.out_dim) if Predictor else None,
         vary_fr=config.DATA.RAND_FR
     )
 

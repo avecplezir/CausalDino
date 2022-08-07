@@ -23,7 +23,6 @@ def temporal_sampling(frames, start_idx, end_idx, num_samples):
     """
     index = torch.linspace(start_idx, end_idx, num_samples)
     index = torch.clamp(index, 0, frames.shape[0] - 1).long()
-    print('temporal_sampling index', index)
     frames = torch.index_select(frames, 0, index)
     return frames
 
@@ -459,8 +458,9 @@ def decode_events(
     temporal_aug=False,
     two_token=False,
     rand_fr=False,
-    num_clips_2=8,
+    num_clips_2=2,
     random_sample=True,
+    local_crops_number=8,
 ):
     """
     Decode the video and perform temporal sampling.
@@ -540,15 +540,13 @@ def decode_events(
     # Perform temporal sampling from the decoded video.
     if random_sample:
         max_len = frames.shape[0]
-
         samples = []
         local_width = max_len // 9
         start_idx = random.randint(0, local_width - 1)
         indices = np.random.choice(np.arange(0, 8), replace=False, size=num_clips_2)
         indices = sorted(indices)
-        print('indices', indices)
         for idx in indices:
-            cur_local = temporal_sampling(frames, start_idx+idx*local_width, start_idx + idx*(1+local_width), num_frames)
+            cur_local = temporal_sampling(frames, start_idx+idx*local_width, start_idx + idx*local_width+local_width, num_frames)
             samples.append(cur_local)
 
         frames = [*samples]

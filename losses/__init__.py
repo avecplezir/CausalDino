@@ -4,3 +4,4 @@ from .ci_loss import CILoss
 from .mi_loss_minus import MILossMinus
 from .ci_loss_temp import CILossTemp
 from .pred_loss import PredLoss
+from .future_loss import FutureLoss
