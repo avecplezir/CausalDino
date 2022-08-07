@@ -26,13 +26,13 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --use_wandb False \
+  --use_wandb True \
   --loss PredLoss \
   --dataset Kinetics \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \
   --predictor MLPPredictor \
-  --out_dim 1024 \
+  --out_dim 10000 \
   --opts \
   MODEL.TWO_STREAM False \
   MODEL.TWO_TOKEN False \
@@ -40,4 +40,3 @@ python -m torch.distributed.launch \
   DATA.USE_FLOW False \
   DATA.RAND_CONV False \
   DATA.NO_SPATIAL False
-

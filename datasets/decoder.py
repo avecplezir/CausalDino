@@ -23,7 +23,7 @@ def temporal_sampling(frames, start_idx, end_idx, num_samples):
     """
     index = torch.linspace(start_idx, end_idx, num_samples)
     index = torch.clamp(index, 0, frames.shape[0] - 1).long()
-    # print('temporal_sampling index', index)
+    print('temporal_sampling index', index)
     frames = torch.index_select(frames, 0, index)
     return frames
 
@@ -459,7 +459,8 @@ def decode_events(
     temporal_aug=False,
     two_token=False,
     rand_fr=False,
-    local_crops_number=8,
+    num_clips_2=8,
+    random_sample=True,
 ):
     """
     Decode the video and perform temporal sampling.
@@ -529,11 +530,6 @@ def decode_events(
     if frames is None or frames.size(0) == 0:
         return None
 
-    # print('decode decode_all_video', decode_all_video)
-    # print('decode frames', frames.shape)
-    # print('decode clip_idx', clip_idx)
-    # print('decode num_clips', num_clips)
-    # print('decode num_frames', num_frames)
     clip_sz = sampling_rate * num_frames / target_fps * fps
     start_idx, end_idx = get_start_end_idx(
         video_size=frames.shape[0],
@@ -541,24 +537,33 @@ def decode_events(
         clip_idx=clip_idx if decode_all_video else 0,
         num_clips=num_clips if decode_all_video else 1,
     )
-    # print('decode start_idx, end_idx', start_idx, end_idx)
-    # print('decode temporal_aug', temporal_aug)
-    # print('decode rand_fr', rand_fr)
     # Perform temporal sampling from the decoded video.
-    if temporal_aug:
+    if random_sample:
         max_len = frames.shape[0]
 
         samples = []
-        local_width = max_len // (local_crops_number + 1)
-        # print('decode local_width', local_width)
+        local_width = max_len // 9
+        start_idx = random.randint(0, local_width - 1)
+        indices = np.random.choice(np.arange(0, 8), replace=False, size=num_clips_2)
+        indices = sorted(indices)
+        print('indices', indices)
+        for idx in indices:
+            cur_local = temporal_sampling(frames, start_idx+idx*local_width, start_idx + idx*(1+local_width), num_frames)
+            samples.append(cur_local)
+
+        frames = [*samples]
+    elif temporal_aug:
+        max_len = frames.shape[0]
+
+        samples = []
+        local_width = max_len // (num_clips_2 + 1)
         idx = random.randint(0, local_width - 1)
-        for _ in range(local_crops_number):
+        for _ in range(num_clips_2):
             cur_local = temporal_sampling(frames, idx, idx + local_width, num_frames)
             samples.append(cur_local)
             idx += local_width
 
         frames = [*samples]
-
     else:
         frames = temporal_sampling(frames, start_idx, end_idx, num_frames)  # frames.shape = (T, H, W, C)
     return frames
