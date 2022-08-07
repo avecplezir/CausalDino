@@ -41,6 +41,7 @@ from utils.parser import load_config
 from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset
 import losses
 import datasets
+import models
 
 torchvision_archs = sorted(name for name in torchvision_models.__dict__
                            if name.islower() and not name.startswith("__")
@@ -154,6 +155,7 @@ def get_args_parser():
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
+    parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
 
     return parser
 
@@ -244,18 +246,26 @@ def train_svt(args):
     else:
         print(f"Unknow architecture: {args.arch}")
 
+
+    Predictor = models.__dict__[args.predictor] if args.predictor else None
+
     # multi-crop wrapper handles forward with inputs of different resolutions
-    student = utils.MultiCropWrapper(student, DINOHead(
-        embed_dim,
-        args.out_dim,
-        use_bn=args.use_bn_in_head,
-        norm_last_layer=args.norm_last_layer,
-    ), vary_fr=config.DATA.RAND_FR)
+    student = utils.MultiCropWrapper(student,
+                                     DINOHead(
+                                         embed_dim,
+                                         args.out_dim,
+                                         use_bn=args.use_bn_in_head,
+                                         norm_last_layer=args.norm_last_layer,
+                                     ),
+                                     predictor=Predictor(args.out_dim),
+                                     vary_fr=config.DATA.RAND_FR)
     teacher = utils.MultiCropWrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
+        predictor=Predictor(args.out_dim),
         vary_fr=config.DATA.RAND_FR
     )
+
 
     # move networks to gpu
     student, teacher = student.cuda(), teacher.cuda()

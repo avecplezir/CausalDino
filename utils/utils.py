@@ -589,13 +589,14 @@ class MultiCropWrapper(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, vary_fr=False):
+    def __init__(self, backbone, head, predictor, vary_fr=False):
         super(MultiCropWrapper, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
             backbone.fc, backbone.head = nn.Identity(), nn.Identity()
         self.backbone = backbone
         self.head = head
+        self.predictor = predictor
         self.vary_fr = vary_fr
 
     def forward(self, x, **kwargs):
