@@ -41,8 +41,9 @@ class MILossMinus(nn.Module):
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
+        teacher_output = teacher_output - self.center
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
+        teacher_out = F.softmax(teacher_output / temp, dim=-1)
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
