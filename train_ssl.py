@@ -352,6 +352,11 @@ def train_svt(args):
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
+        # ============ training one epoch of DINO ... ============
+        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
+                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
+                                      epoch, fp16_scaler, args, cfg=config)
+
         # TODO: fix online evaluation for multi-gpu training
         if args.do_eval and utils.is_main_process():
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
@@ -359,11 +364,6 @@ def train_svt(args):
             if args.use_wandb:
                 wandb.log(val_stats)
             utils.synchronize()
-
-        # ============ training one epoch of DINO ... ============
-        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
-                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
-                                      epoch, fp16_scaler, args, cfg=config)
 
         # ============ writing logs ... ============
         save_dict = {
