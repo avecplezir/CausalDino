@@ -34,7 +34,7 @@ class CILossTemp(nn.Module):
         n_loss_terms = 0
         CE = 0
 
-        student_out = F.softmax((student_output - self.center) / self.student_temp, dim=-1)
+        student_out = F.softmax(student_output / self.student_temp, dim=-1)
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening

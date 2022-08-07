@@ -4,7 +4,7 @@ PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
 EXP_NAME="svt_ucf101_ci_sim_temp"
-PORT='1028'
+PORT='1029'
 
 cd "$PROJECT_PATH" || exit
 
@@ -25,8 +25,8 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
-  --do_eval False \
-  --use_wandb False \
+  --do_eval True \
+  --use_wandb True \
   --loss CILossTemp \
   --dataset Kinetics \
   --local_crops_number 0 \
