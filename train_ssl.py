@@ -248,6 +248,7 @@ def train_svt(args):
 
 
     Predictor = models.__dict__[args.predictor] if args.predictor else None
+    print('Predictor', Predictor)
 
     # multi-crop wrapper handles forward with inputs of different resolutions
     student = utils.MultiCropWrapper(student,
@@ -421,7 +422,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             student_output = student(images)
             teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
-            loss, dict_losses = dino_loss(student_output, teacher_output, epoch)
+            loss, dict_losses = dino_loss(student_output, teacher_output, epoch, student=student)
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)

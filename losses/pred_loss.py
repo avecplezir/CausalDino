@@ -40,16 +40,14 @@ class PredLoss(nn.Module):
         teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
+        pred = student.module.predictor.get_all()
         for iq, q in enumerate(teacher_out):
-            for v in range(len(student_out)):
+            for v, s in enumerate(student_out):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                print('student.predictor.get_all()', student.predictor.get_all().shape)
-                p_vq = v.unsqueeze(1)*q.unsqueeze(2)
-                print('p_vq', p_vq.shape)
-                loss = -torch.sum(torch.sum(p_vq * F.log_softmax(student.predictor.get_all(), dim=-1), dim=-1), dim=-1)
-                print('loss', loss.shape)
+                p_sq = s.unsqueeze(1)*q.unsqueeze(2)
+                loss = -torch.sum(torch.sum(p_sq * F.log_softmax(pred, dim=-1), dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

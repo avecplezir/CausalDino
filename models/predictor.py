@@ -47,6 +47,7 @@ class MLPPredictor(nn.Module):
         self.out_dim = out_dim
         self.wte = nn.Embedding(out_dim, emb_dim)
         self.mlp = DINOHead(emb_dim, out_dim)
+        self.register_buffer('indices', torch.arange(0, self.out_dim).unsqueeze(0))
 
     def forward(self, x):
         x = self.wte(x)
@@ -54,5 +55,4 @@ class MLPPredictor(nn.Module):
         return x
 
     def get_all(self, ):
-        indices = torch.arange(0, self.out_dim).unsqueeze(0)
-        return self.forward(indices)
+        return self.forward(self.indices)

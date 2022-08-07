@@ -26,7 +26,7 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --use_wandb True \
+  --use_wandb False \
   --loss PredLoss \
   --dataset Kinetics \
   --local_crops_number 0 \
