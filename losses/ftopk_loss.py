@@ -32,11 +32,11 @@ class FtopkLoss(nn.Module):
         """
         total_loss = 0
         n_loss_terms = 0
-        student_out = F.softmax(student_output / self.student_temp, dim=-1)
+        temp = self.teacher_temp_schedule[epoch]
+        student_out = F.softmax(student_output / temp, dim=-1)
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
-        temp = self.teacher_temp_schedule[epoch]
         teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
         # teacher_out = teacher_out.detach().chunk(self.global_crops)
         teacher_out = teacher_out.chunk(self.global_crops)
@@ -48,7 +48,7 @@ class FtopkLoss(nn.Module):
                     continue
                 p, indices = s.topk(k=8, dim=-1)
                 p = p / p.sum(-1, keepdims=True)
-                pred = student.module.predictor(indices)
+                pred = student.module.predictor(indices) / self.student_temp
                 pf = p.unsqueeze(2)*f.unsqueeze(1)
 
                 loss = -torch.sum(torch.sum(pf * F.log_softmax(pred, dim=-1), dim=-1), dim=-1)
