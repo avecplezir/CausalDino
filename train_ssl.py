@@ -159,6 +159,8 @@ def get_args_parser():
     parser.add_argument('--skip_last', type=utils.bool_flag, default=False,
                         help="""Whether to skip last layer in dino head.""")
     parser.add_argument("--n_parts", type=int, default=9, help="Log loss every")
+    parser.add_argument("--n_global_views", type=int, default=2, help="Number of global views to sample")
+
 
 
     return parser
@@ -180,6 +182,7 @@ def train_svt(args):
     config.DATA.PATH_TO_DATA_DIR = args.data_path
     config.local_crops_number = args.local_crops_number
     config.n_parts = args.n_parts
+    config.n_global_views = args.n_global_views
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
@@ -298,7 +301,7 @@ def train_svt(args):
     Loss = losses.__dict__[args.loss]
     dino_loss = Loss(
         args.out_dim,
-        args.local_crops_number + 2,  # total number of crops = 2 global crops + local_crops_number
+        args.local_crops_number + args.n_global_views,  # total number of crops = 2 global crops + local_crops_number
         args.warmup_teacher_temp,
         args.teacher_temp,
         args.warmup_teacher_temp_epochs,
@@ -427,7 +430,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             student_output = student(images)
-            teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
+            teacher_output = teacher(images[:args.n_global_views])  # only the 2 global views pass through the teacher
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch, student=student, teacher=teacher)
 
         if not math.isfinite(loss.item()):

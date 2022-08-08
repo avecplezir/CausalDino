@@ -194,7 +194,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
                 two_token=self.cfg.MODEL.TWO_TOKEN,
                 rand_fr=self.cfg.DATA.RAND_FR,
-                num_clips_2=self.cfg.local_crops_number + 2,
+                num_clips_2=self.cfg.local_crops_number + self.cfg.n_global_views,
                 n_parts=self.cfg.n_parts,
             )
 

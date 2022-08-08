@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from gpt_utils import CfgNode as CN
+from .gpt_utils import CfgNode as CN
 
 
 # -----------------------------------------------------------------------------
@@ -174,6 +174,7 @@ class GPT(nn.Module):
 
     def forward(self, x,):
         device = x.device
+        print('x', x.size(), x.shape)
         b, t, emb_dim = x.size()
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
@@ -185,6 +186,6 @@ class GPT(nn.Module):
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
-        # logits = self.lm_head(x)
+        logits = self.last_layer(x)
 
-        return x
+        return logits

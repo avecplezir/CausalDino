@@ -33,7 +33,7 @@ class GPTLoss(nn.Module):
         student_out = student_output.chunk(self.n_crops)
         student_out = torch.stack(student_out, 1)
         print('student_out', student_out.shape)
-        student_out = student.module.predictor(student_output) / self.student_temp
+        student_out = student.module.predictor(student_out) / self.student_temp
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
