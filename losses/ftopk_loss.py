@@ -41,14 +41,14 @@ class FtopkLoss(nn.Module):
         # teacher_out = teacher_out.detach().chunk(self.global_crops)
         teacher_out = teacher_out.chunk(self.global_crops)
 
-        pred = student.module.predictor.get_all() / self.student_temp
         for iq, f in enumerate(teacher_out): #future
-            for v, p in enumerate(student_out): #past
+            for v, s in enumerate(student_out): #past
                 if v <= iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                p, indices = v.topk(k=8, dim=-1)
-                p = p / p.sum(-1)
+                p, indices = s.topk(k=8, dim=-1)
+                print('p', p.shape)
+                p = p / p.sum(-1, keepdims=True)
                 pred = student.module.predictor(indices)
                 pf = p.unsqueeze(2)*f.unsqueeze(1)
                 print('p, pred', p.shape, pred.shape)
