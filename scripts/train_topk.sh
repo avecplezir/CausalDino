@@ -32,7 +32,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \
   --predictor MLPPredictor \
-  --out_dim 10000 \
+  --out_dim 32000 \
   --opts \
   MODEL.TWO_STREAM False \
   MODEL.TWO_TOKEN False \
