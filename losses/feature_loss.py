@@ -37,7 +37,7 @@ class FeatureLoss(nn.Module):
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_output = teacher.module.predictor.mlp.last_layer(teacher_output)
+        teacher_output = teacher.predictor.mlp.last_layer(teacher_output)
         teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
