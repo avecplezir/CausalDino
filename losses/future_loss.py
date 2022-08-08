@@ -38,9 +38,10 @@ class FutureLoss(nn.Module):
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
         teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
-        teacher_out = teacher_out.detach().chunk(self.global_crops)
+        # teacher_out = teacher_out.detach().chunk(self.global_crops)
+        teacher_out = teacher_out.chunk(self.global_crops)
 
-        pred = student.module.predictor.get_all()
+        pred = student.module.predictor.get_all() / self.student_temp
         for iq, q in enumerate(teacher_out): #future
             for v, s in enumerate(student_out): #past
                 if v <= iq:
@@ -50,7 +51,6 @@ class FutureLoss(nn.Module):
                 loss = -torch.sum(torch.sum(p_sq * F.log_softmax(pred, dim=-1), dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
-        print('n_loss_terms', n_loss_terms)
         total_loss /= n_loss_terms
         batch_center = self.update_center(teacher_output)
 
