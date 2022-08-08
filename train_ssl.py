@@ -36,7 +36,7 @@ from vision_transformer import DINOHead, MultiDINOHead
 
 from datasets import Kinetics
 from datasets.rand_conv import RandConv
-from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D, S3D
+from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D, S3D, get_deit_tiny_patch16_224, get_deit_small_patch16_224
 from utils.parser import load_config
 from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset
 import losses
@@ -220,8 +220,10 @@ def train_svt(args):
     args.arch = args.arch.replace("deit", "vit")
     # if the network is a vision transformer (i.e. vit_tiny, vit_small, vit_base)
     if args.arch == "timesformer":
-        student = get_vit_base_patch16_224(cfg=config, no_head=True)
-        teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
+        # student = get_vit_base_patch16_224(cfg=config, no_head=True)
+        # teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
+        student = get_deit_tiny_patch16_224(cfg=config, no_head=True)
+        teacher = get_deit_tiny_patch16_224(cfg=config, no_head=True)
         embed_dim = student.embed_dim
 
         if args.pretrained_rgb is not None:

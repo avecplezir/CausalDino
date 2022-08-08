@@ -32,7 +32,7 @@ class GPTLoss(nn.Module):
         """
         student_out = student_output.chunk(self.n_crops)
         student_out = torch.stack(student_out, 1)
-        print('student_out', student_out.shape)
+        # print('student_out', student_out.shape)
         student_out = student.module.predictor(student_out) / self.student_temp
 
         # teacher centering and sharpening
@@ -41,10 +41,10 @@ class GPTLoss(nn.Module):
         teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
         teacher_out = teacher_out.detach().chunk(self.n_crops)
         teacher_out = torch.stack(teacher_out, 1)
-        print('teacher_out', teacher_out.shape)
+        # print('teacher_out', teacher_out.shape)
 
         loss = torch.sum(-teacher_out[:, 1:] * F.log_softmax(student_out[:, :-1], dim=-1), dim=-1)
-        print('loss', loss.shape)
+        # print('loss', loss.shape)
         total_loss = loss.mean()
 
         batch_center = self.update_center(teacher_output)

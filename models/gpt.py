@@ -142,7 +142,7 @@ class GPT(nn.Module):
             wpe=nn.Embedding(config.block_size, config.n_embd),
             drop=nn.Dropout(config.embd_pdrop),
             h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-            ln_f=nn.LayerNorm(config.n_embd),
+            # ln_f=nn.LayerNorm(config.n_embd),
         ))
         # self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.last_layer = nn.utils.weight_norm(nn.Linear(config.n_embd, out_dim, bias=False))
@@ -174,7 +174,6 @@ class GPT(nn.Module):
 
     def forward(self, x,):
         device = x.device
-        print('x', x.size(), x.shape)
         b, t, emb_dim = x.size()
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
@@ -185,7 +184,8 @@ class GPT(nn.Module):
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
             x = block(x)
-        x = self.transformer.ln_f(x)
+        # x = self.transformer.ln_f(x)
+        x = nn.functional.normalize(x, dim=-1, p=2)
         logits = self.last_layer(x)
 
         return logits

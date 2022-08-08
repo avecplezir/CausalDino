@@ -609,6 +609,46 @@ def get_vit_base_patch16_224(cfg, no_head=False, **kwargs):
     return vit
 
 
+def get_deit_tiny_patch16_224(cfg, no_head=False, **kwargs):
+    patch_size = 16
+    vit = VisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES,
+                            patch_size=patch_size, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4,
+                            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0.,
+                            attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES,
+                            attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
+    vit.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
+    vit.default_cfg = default_cfgs['vit_base_patch16_224']
+    vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
+    pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
+    if pretrained_model:
+        load_pretrained(vit, num_classes=vit.num_classes, in_chans=kwargs.get('in_chans', 3),
+                        filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=vit.num_patches,
+                        attention_type=vit.attention_type, pretrained_model=pretrained_model)
+    if no_head:
+        vit.head = None
+    return vit
+
+
+def get_deit_small_patch16_224(cfg, no_head=False, **kwargs):
+    patch_size = 16
+    vit = VisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES,
+                            patch_size=patch_size, embed_dim=384, depth=12, num_heads=6, mlp_ratio=4,
+                            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0.,
+                            attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES,
+                            attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
+    vit.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
+    vit.default_cfg = default_cfgs['vit_base_patch16_224']
+    vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
+    pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
+    if pretrained_model:
+        load_pretrained(vit, num_classes=vit.num_classes, in_chans=kwargs.get('in_chans', 3),
+                        filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=vit.num_patches,
+                        attention_type=vit.attention_type, pretrained_model=pretrained_model)
+    if no_head:
+        vit.head = None
+    return vit
+
+
 def get_aux_token_vit(cfg, no_head=False, **kwargs):
     patch_size = 16
     vit = AuxTokenVisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES,
