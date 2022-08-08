@@ -3,7 +3,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_topk"
+EXP_NAME="svt_ucf101_feature"
 PORT='1025'
 
 cd "$PROJECT_PATH" || exit
@@ -27,11 +27,11 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --use_wandb True \
-  --loss FtopkLoss \
+  --loss FeatureLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \
-  --predictor MLPPredictor \
+  --predictor MLPfeaturePredictor \
   --opts \
   MODEL.TWO_STREAM False \
   MODEL.TWO_TOKEN False \

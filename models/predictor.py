@@ -85,8 +85,20 @@ class LinearPredictor(nn.Module):
 
     def forward(self, x):
         x = self.wte(x)
+        x = nn.functional.normalize(x, dim=-1, p=2)
         x = self.last_layer(x)
         return x
 
     def get_all(self, ):
         return self.forward(self.indices)
+
+
+class MLPfeaturePredictor(nn.Module):
+    def __init__(self, out_dim, emb_dim=256):
+        super().__init__()
+        self.out_dim = out_dim
+        self.mlp = DINOHead(emb_dim, out_dim)
+
+    def forward(self, x):
+        x = self.mlp(x)
+        return x

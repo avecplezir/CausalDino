@@ -156,6 +156,7 @@ def get_args_parser():
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
     parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
+    parser.add_argument('--skip_last', type=utils.bool_flag, default=False, help="""Whether to skip last layer in dino head.""")
 
     return parser
 
@@ -257,12 +258,13 @@ def train_svt(args):
                                          args.out_dim,
                                          use_bn=args.use_bn_in_head,
                                          norm_last_layer=args.norm_last_layer,
+                                         skip_last=args.skip_last,
                                      ),
                                      predictor=Predictor(args.out_dim) if Predictor else None,
                                      vary_fr=config.DATA.RAND_FR)
     teacher = utils.MultiCropWrapper(
         teacher,
-        DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
+        DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
         predictor=Predictor(args.out_dim) if Predictor else None,
         vary_fr=config.DATA.RAND_FR
     )
@@ -422,7 +424,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             student_output = student(images)
             teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
-            loss, dict_losses = dino_loss(student_output, teacher_output, epoch, student=student)
+            loss, dict_losses = dino_loss(student_output, teacher_output, epoch, student=student, teacher=teacher)
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)

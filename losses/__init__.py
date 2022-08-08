@@ -6,3 +6,4 @@ from .ci_loss_temp import CILossTemp
 from .pred_loss import PredLoss
 from .future_loss import FutureLoss
 from .ftopk_loss import FtopkLoss
+from .feature_loss import FeatureLoss
