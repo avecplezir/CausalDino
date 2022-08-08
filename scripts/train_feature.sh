@@ -26,10 +26,11 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --use_wandb False \
+  --use_wandb True \
   --loss FeatureLoss \
   --dataset KineticsEvents \
-  --local_crops_number 0 \
+  --local_crops_number 1 \
+  --freeze_last_layer 10 \
   --global_crops_scale 0.14 1 \
   --predictor MLPfeaturePredictor \
   --skip_last True \

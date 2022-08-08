@@ -31,7 +31,7 @@ class MILossMinus(nn.Module):
             np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
         ))
 
-    def forward(self, student_output, teacher_output, epoch):
+    def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
