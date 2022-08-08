@@ -195,6 +195,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                 two_token=self.cfg.MODEL.TWO_TOKEN,
                 rand_fr=self.cfg.DATA.RAND_FR,
                 num_clips_2=self.cfg.local_crops_number + 2,
+                n_parts=self.cfg.n_parts,
             )
 
             # If decoding failed (wrong format, video is too short, and etc),

@@ -460,7 +460,7 @@ def decode_events(
     rand_fr=False,
     num_clips_2=2,
     random_sample=True,
-    local_crops_number=8,
+    n_parts=9,
 ):
     """
     Decode the video and perform temporal sampling.
@@ -541,9 +541,9 @@ def decode_events(
     if random_sample:
         max_len = frames.shape[0]
         samples = []
-        local_width = max_len // 9
+        local_width = max_len // n_parts
         start_idx = random.randint(0, local_width - 1)
-        indices = np.random.choice(np.arange(0, 8), replace=False, size=num_clips_2)
+        indices = np.random.choice(np.arange(0, n_parts-1), replace=False, size=num_clips_2)
         indices = sorted(indices)
         for idx in indices:
             cur_local = temporal_sampling(frames, start_idx+idx*local_width, start_idx + idx*local_width+local_width, num_frames)

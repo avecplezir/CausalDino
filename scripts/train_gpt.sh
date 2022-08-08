@@ -21,18 +21,19 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 4 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --use_wandb True \
-  --loss FeatureLoss \
+  --use_wandb False \
+  --loss GPTLoss \
   --dataset KineticsEvents \
-  --local_crops_number 1 \
+  --local_crops_number 2 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
-  --predictor MLPfeaturePredictor \
+  --predictor GPT \
+  --n_parts 9 \
   --skip_last True \
   --opts \
   MODEL.TWO_STREAM False \

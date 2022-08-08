@@ -156,7 +156,10 @@ def get_args_parser():
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
     parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
-    parser.add_argument('--skip_last', type=utils.bool_flag, default=False, help="""Whether to skip last layer in dino head.""")
+    parser.add_argument('--skip_last', type=utils.bool_flag, default=False,
+                        help="""Whether to skip last layer in dino head.""")
+    parser.add_argument("--n_parts", type=int, default=9, help="Log loss every")
+
 
     return parser
 
@@ -176,6 +179,7 @@ def train_svt(args):
         json.dump(vars(args), open(Path(args.output_dir) / "config.txt", "w"), indent=4)
     config.DATA.PATH_TO_DATA_DIR = args.data_path
     config.local_crops_number = args.local_crops_number
+    config.n_parts = args.n_parts
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
