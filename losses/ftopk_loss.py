@@ -47,12 +47,9 @@ class FtopkLoss(nn.Module):
                     # we skip cases where student and teacher operate on the same view
                     continue
                 p, indices = s.topk(k=8, dim=-1)
-                print('p', p.shape)
                 p = p / p.sum(-1, keepdims=True)
                 pred = student.module.predictor(indices)
                 pf = p.unsqueeze(2)*f.unsqueeze(1)
-                print('p, pred', p.shape, pred.shape)
-                print('f, pf', f.shape, pf.shape)
 
                 loss = -torch.sum(torch.sum(pf * F.log_softmax(pred, dim=-1), dim=-1), dim=-1)
                 total_loss += loss.mean()

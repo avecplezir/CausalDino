@@ -665,7 +665,7 @@ class VideoDataAugmentationDINO(object):
         self.local_crops_number = local_crops_number
 
         self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
-        self.size = 128
+        self.size = 224
 
     @staticmethod
     def flip_and_color_jitter(frames):
@@ -755,7 +755,7 @@ class VideoDataAugmentationEvents(object):
         self.global_crops_scale = global_crops_scale
         self.local_crops_scale = local_crops_scale
         self.local_crops_number = local_crops_number
-        self.size = 128
+        self.size = 224
 
         self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
 

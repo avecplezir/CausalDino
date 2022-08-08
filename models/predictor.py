@@ -63,7 +63,7 @@ class OneLayerPredictor(nn.Module):
         super().__init__()
         self.out_dim = out_dim
         self.wte = nn.Embedding(out_dim, emb_dim)
-        self.mlp = DINOHead(emb_dim, out_dim, nlayers=1, bottleneck_dim=emb_dim)
+        self.mlp = DINOHead(emb_dim, out_dim, nlayers=1, bottleneck_dim=emb_dim, norm_last_layer=False)
         self.register_buffer('indices', torch.arange(0, self.out_dim).unsqueeze(0))
 
     def forward(self, x):
@@ -85,8 +85,8 @@ class LinearPredictor(nn.Module):
 
     def forward(self, x):
         x = self.wte(x)
-        x = self.mlp(x)
+        x = self.last_layer(x)
         return x
 
     def get_all(self, ):
-        return self.last_layer(self.indices)
+        return self.forward(self.indices)
