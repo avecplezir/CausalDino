@@ -277,16 +277,18 @@ def train_svt(args):
              skip_last=args.skip_last,
          ),
          predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
-         predictor_inv=Predictor_past(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor_past else None,
+         predictor_past=Predictor_past(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
+         n_crops=args.local_crops_number + args.n_global_views,
          )
     teacher = Wrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
         predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
-        predictor_inv=Predictor_past(args.out_dim,
+        predictor_past=Predictor_past(args.out_dim,
                                     args.local_crops_number + args.n_global_views) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
+        n_crops=args.local_crops_number + args.n_global_views,
     )
 
 

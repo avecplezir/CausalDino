@@ -10,12 +10,11 @@ import numpy as np
 class GPTCausalLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, global_crops=2, **kwargs):
+                 center_momentum=0.9, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
-        self.global_crops = global_crops
         self.register_buffer("center", torch.zeros(1, out_dim))
         self.register_buffer("predict_future_center", torch.zeros(1, out_dim))
         self.register_buffer("predict_past_center", torch.zeros(1, out_dim))
@@ -27,7 +26,7 @@ class GPTCausalLoss(nn.Module):
             np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
         ))
 
-    def forward(self, student_output, teacher_output, epoch, student=None, teacher=None):
+    def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
@@ -47,18 +46,25 @@ class GPTCausalLoss(nn.Module):
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-2]
         t_pred_past_proba = F.softmax((t_pred_past_logits - self.predict_past_center) / temp, dim=-1)[:, 2:]
 
+        max_index = s_enc_proba.argmax(dim=-1)
+        print('max_index', max_index.shape)
+        t_pred_past_proba_weight = t_pred_past_proba[:, :, max_index]
+        t_pred_future_proba_weight = t_pred_future_proba[:, :, max_index]
+        print('t_pred_past_proba_weight', t_pred_past_proba_weight.shape)
+        print('t_pred_future_proba_weight', t_pred_future_proba_weight.shape)
+
         # Losses
         # allign future student prediction with teacher encoding (weighted with past teacher prediction)
-        CE_ef = self.compute_loss(s_pred_future_proba, t_enc_proba, t_pred_past_proba)
+        CE_ef = self.compute_loss(s_pred_future_proba, t_enc_proba, t_pred_past_proba_weight)
         # allign future teacher prediction with student encoding (weighted with past teacher prediction)
-        CE_fe = self.compute_loss(s_enc_proba, t_pred_future_proba, t_pred_past_proba)
+        CE_fe = self.compute_loss(s_enc_proba, t_pred_future_proba, t_pred_past_proba_weight)
         # allign past student prediction with teacher encoding (weighted with future teacher prediction)
-        CE_ep = self.compute_loss(s_pred_past_proba, t_enc_proba, t_pred_future_proba)
+        CE_ep = self.compute_loss(s_pred_past_proba, t_enc_proba, t_pred_future_proba_weight)
         # allign past teacher prediction with student encoding (weighted with future teacher prediction)
-        CE_pe = self.compute_loss(s_enc_proba, t_pred_past_proba, t_pred_future_proba)
+        CE_pe = self.compute_loss(s_enc_proba, t_pred_past_proba, t_pred_future_proba_weight)
 
         total_loss = 0.45*CE_ef + 0.05*CE_fe + 0.45*CE_ep + 0.05*CE_pe
-        entropies = self.update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits)
+        entropies = self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
 
         return total_loss, {'CE': total_loss, 'CE_ef': CE_ef, 'CE_fe': CE_fe,
                             'CE_ep': CE_ep, 'CE_pe': CE_pe, **entropies}
@@ -66,9 +72,9 @@ class GPTCausalLoss(nn.Module):
     def compute_loss(self, prediction, labels, inverse):
         total_loss = 0
         n_loss_terms = 0
-        for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)): # past
-            for il in range(ip + 1, len(labels)): #future
-                loss = -torch.sum(torch.sum(labels[:, il] * torch.log(p/(1 - inverse[:, ip] + 1e-4)), dim=-1), dim=-1)
+        for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)): #past
+            for il in range(ip + 1, self.n_crops-2): #future
+                loss = -torch.sum(torch.sum(labels[:, il] * torch.log(p/(1 - inverse[:, il] + 1e-4)), dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
