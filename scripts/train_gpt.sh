@@ -31,7 +31,7 @@ python -m torch.distributed.launch \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 4 \
-  --freeze_last_layer 1 \
+  --freeze_last_layer 30 \
   --global_crops_scale 0.14 1 \
   --predictor GPT \
   --n_parts 9 \

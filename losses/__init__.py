@@ -8,3 +8,4 @@ from .future_loss import FutureLoss
 from .ftopk_loss import FtopkLoss
 from .feature_loss import FeatureLoss
 from .gpt_loss import GPTLoss
+from .gptsim_loss import GPTSimLoss
