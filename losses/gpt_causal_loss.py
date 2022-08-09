@@ -72,6 +72,7 @@ class GPTCausalLoss(nn.Module):
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
+
         return total_loss.mean()
 
     @torch.no_grad()
