@@ -30,11 +30,11 @@ python -m torch.distributed.launch \
   --loss GPTLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 8 \
+  --n_global_views 4 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --predictor GPT \
-  --n_parts 16 \
+  --n_parts 8 \
   --skip_last True \
   --opts \
   MODEL.TWO_STREAM False \
