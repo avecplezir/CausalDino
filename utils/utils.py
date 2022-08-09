@@ -600,15 +600,6 @@ class MultiCropWrapper(nn.Module):
         self.predictor_inv = predictor_inv
         self.headprob = headprob
 
-    def predict_logits(self, x):
-        return self.headprob(x)
-
-    def predict_future(self, x):
-        return self.predictor(x)
-
-    def perdict_past(self, x):
-        return self.predictor_inv(x)
-
     def forward(self, x, **kwargs):
         # convert to list
         if not isinstance(x, list):
@@ -632,6 +623,63 @@ class MultiCropWrapper(nn.Module):
             start_idx = end_idx
         # Run the head forward on the concatenated features.
         return self.head(output)
+
+
+class MultiCropWrapperGPT(nn.Module):
+    """
+    Perform forward pass separately on each resolution input.
+    The inputs corresponding to a single resolution are clubbed and single
+    forward is run on the same resolution inputs. Hence we do several
+    forward passes = number of different resolutions used. We then
+    concatenate all the output features and run the head forward on these
+    concatenated features.
+    """
+    def __init__(self, backbone, head, predictor, predictor_inv=None, headprob=None, teacher=True, n_crops=2):
+        super(MultiCropWrapperGPT, self).__init__()
+        # disable layers dedicated to ImageNet labels classification
+        if hasattr(backbone, 'fc'):
+            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
+        self.backbone = backbone
+        self.head = head
+        self.predictor = predictor
+        self.predictor_inv = predictor_inv
+        self.headprob = headprob
+        self.teacher = teacher
+        self.n_crops = n_crops
+
+    def forward(self, x, **kwargs):
+        # convert to list
+        if not isinstance(x, list):
+            x = [x]
+        idx_crops = torch.cumsum(torch.unique_consecutive(
+            torch.tensor([inp.shape[-1] for inp in x]),
+            return_counts=True,
+        )[1], 0)
+        start_idx = 0
+        for end_idx in idx_crops:
+            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
+            if start_idx == 0:
+                output = _out
+            else:
+                if isinstance(_out, tuple):
+                    output1 = torch.cat((output[0], _out[0]))
+                    output2 = torch.cat((output[1], _out[1]))
+                    output = (output1, output2)
+                else:
+                    output = torch.cat((output, _out))
+            start_idx = end_idx
+        # Run the head forward on the concatenated features.
+        # Encoding
+        x_enc = self.head(output)
+        enc_list = x_enc.chunk(self.n_crops)
+        x_enc = torch.stack(enc_list, 1)
+        # Predict future
+        pred_future = self.predict_future(x_enc)
+        # Predict past
+        x_enc_inv = torch.stack(enc_list[::-1], 1)
+        pred_past = self.predictor_past(x_enc_inv)
+        pred_past = torch.flip(pred_past, dims=(1,))
+        return self.headprob(x_enc), self.headprob(pred_future), self.headprob(pred_past)
 
 
 def get_params_groups(model):

@@ -63,8 +63,8 @@ class GPTSimLoss(nn.Module):
 
         batch_center_prediction = self.get_batch_center(teacher_logits_predictions)
         self.update_prediction_center(batch_center_prediction)
-        true_entropy_prediction = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        entropy_prediction = torch.sum(F.softmax(batch_center_prediction, dim=-1) * F.log_softmax(self.center), dim=-1)
+        true_entropy_prediction = torch.sum(F.softmax(self.prediction_center, dim=-1) * F.log_softmax(self.prediction_center), dim=-1)
+        entropy_prediction = torch.sum(F.softmax(batch_center_prediction, dim=-1) * F.log_softmax(self.prediction_center), dim=-1)
 
         return total_loss, {'CE': total_loss, 'CE_fp': CE_fp, 'CE_pf': CE_pf,
                             'entropy': entropy, 'true_entropy': true_entropy,

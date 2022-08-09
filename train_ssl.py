@@ -32,7 +32,7 @@ from torchvision import models as torchvision_models
 
 from utils import utils
 import vision_transformer as vits
-from vision_transformer import DINOHead, MultiDINOHead
+from vision_transformer import DINOHead
 
 from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D, S3D, get_deit_tiny_patch16_224, get_deit_small_patch16_224
 from utils.parser import load_config
@@ -159,8 +159,9 @@ def get_args_parser():
     parser.add_argument("--n_global_views", type=int, default=2, help="Number of global views to sample")
     parser.add_argument('--random_sampling', type=utils.bool_flag, default=True, help="""Whether random sampling video chunks.""")
     parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
-    parser.add_argument('--predictor_inv', default=None, type=str, help="""Name of predictor Inverse to train with.""")
+    parser.add_argument('--predictor_past', default=None, type=str, help="""Name of predictor Inverse to train with.""")
     parser.add_argument('--headproba', default=None, type=str, help="""Name of probability head to train with.""")
+    parser.add_argument('--wrapper', default='MultiCropWrapper', type=str, help="""Name of wrapper to train with.""")
 
     return parser
 
@@ -258,14 +259,16 @@ def train_svt(args):
 
 
     Predictor = models.__dict__[args.predictor] if args.predictor else None
-    Predictor_inv = models.__dict__[args.predictor_inv] if args.predictor_inv else None
+    Predictor_past = models.__dict__[args.predictor_past] if args.predictor_past else None
     HeadProba = models.__dict__[args.headproba] if args.headproba else None
     print('Predictor', Predictor)
-    print('Predictor_inv', Predictor_inv)
+    print('Predictor_past', Predictor_past)
     print('HeadProba', HeadProba)
 
     # multi-crop wrapper handles forward with inputs of different resolutions
-    student = utils.MultiCropWrapper(student,
+    Wrapper = getattr(utils, args.wrapper)
+    print('Wrapper', Wrapper)
+    student = Wrapper(student,
          DINOHead(
              embed_dim,
              args.out_dim,
@@ -274,15 +277,15 @@ def train_svt(args):
              skip_last=args.skip_last,
          ),
          predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
-         predictor_inv=Predictor_inv(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor_inv else None,
+         predictor_inv=Predictor_past(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          )
-    teacher = utils.MultiCropWrapper(
+    teacher = Wrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
         predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
-        predictor_inv=Predictor_inv(args.out_dim,
-                                    args.local_crops_number + args.n_global_views) if Predictor_inv else None,
+        predictor_inv=Predictor_past(args.out_dim,
+                                    args.local_crops_number + args.n_global_views) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
     )
 
@@ -434,8 +437,6 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        # for idx, im in enumerate(images):
-        #     print('idx, im', idx, im.shape)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
