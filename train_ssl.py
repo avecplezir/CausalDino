@@ -160,6 +160,8 @@ def get_args_parser():
                         help="""Whether to skip last layer in dino head.""")
     parser.add_argument("--n_parts", type=int, default=9, help="Log loss every")
     parser.add_argument("--n_global_views", type=int, default=2, help="Number of global views to sample")
+    parser.add_argument('--random_sampling', type=utils.bool_flag, default=True, help="""Whether random sampling video chunks.""")
+
 
 
 
@@ -183,6 +185,7 @@ def train_svt(args):
     config.local_crops_number = args.local_crops_number
     config.n_parts = args.n_parts
     config.n_global_views = args.n_global_views
+    config.random_sampling = args.random_sampling
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]

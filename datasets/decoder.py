@@ -456,10 +456,8 @@ def decode_events(
     duration=None,
     frames_length=None,
     temporal_aug=False,
-    two_token=False,
-    rand_fr=False,
     num_clips_2=2,
-    random_sample=True,
+    random_sampling=True,
     n_parts=9,
 ):
     """
@@ -538,7 +536,7 @@ def decode_events(
         num_clips=num_clips if decode_all_video else 1,
     )
     # Perform temporal sampling from the decoded video.
-    if random_sample:
+    if random_sampling:
         max_len = frames.shape[0]
         samples = []
         local_width = max_len // n_parts
@@ -550,7 +548,7 @@ def decode_events(
             samples.append(cur_local)
 
         frames = [*samples]
-    elif temporal_aug:
+    else:
         max_len = frames.shape[0]
 
         samples = []
@@ -562,6 +560,6 @@ def decode_events(
             idx += local_width
 
         frames = [*samples]
-    else:
-        frames = temporal_sampling(frames, start_idx, end_idx, num_frames)  # frames.shape = (T, H, W, C)
+    # else:
+    #     frames = temporal_sampling(frames, start_idx, end_idx, num_frames)  # frames.shape = (T, H, W, C)
     return frames

@@ -39,28 +39,30 @@ class GPTSimLoss(nn.Module):
         temp = self.teacher_temp_schedule[epoch]
 
         # First direction
-        predictions = student.module.predictor(student_out) / self.student_temp
+        student_logits_predictions = student.module.predictor(student_out) / self.student_temp
         # teacher centering and sharpening
-        labels = teacher.predictor.last_layer(teacher_out)
-        labels = F.softmax((labels - self.center) / temp, dim=-1)
-        CE_fp = torch.sum(-labels[:, 1:] * F.log_softmax(predictions[:, :-1], dim=-1), dim=-1)
+        teacher_logits = teacher.predictor.last_layer(teacher_out)
+        labels = F.softmax((teacher_logits - self.center) / temp, dim=-1)
+        CE_fp = torch.sum(-labels[:, 1:] * F.log_softmax(student_logits_predictions[:, :-1], dim=-1), dim=-1)
 
         # Second direction
-        predictions = student.module.predictor.last_layer(student_out) / self.student_temp
+        student_logits = student.module.predictor.last_layer(student_out) / self.student_temp
         # teacher centering and sharpening
-        teacher_output_prediction = teacher.predictor(teacher_out)
-        labels = F.softmax((teacher_output_prediction - self.prediction_center) / temp, dim=-1)
-        CE_pf = torch.sum(-labels[:, 1:] * F.log_softmax(predictions[:, :-1], dim=-1), dim=-1)
+        teacher_logits_predictions = teacher.predictor(teacher_out)
+        labels_predictions = F.softmax((teacher_logits_predictions - self.prediction_center) / temp, dim=-1)
+        CE_pf = torch.sum(-labels_predictions[:, 1:] * F.log_softmax(student_logits[:, :-1], dim=-1), dim=-1)
 
         CE_fp = CE_fp.mean()
         CE_pf = CE_pf.mean()
         total_loss = (CE_fp + CE_pf) / 2
 
-        batch_center = self.update_center(teacher_output)
+        batch_center = self.get_batch_center(teacher_logits)
+        self.update_center(batch_center)
         true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
         entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
 
-        batch_center_prediction = self.update_center(teacher_output_prediction)
+        batch_center_prediction = self.get_batch_center(teacher_logits_predictions)
+        self.update_prediction_center(batch_center_prediction)
         true_entropy_prediction = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
         entropy_prediction = torch.sum(F.softmax(batch_center_prediction, dim=-1) * F.log_softmax(self.center), dim=-1)
 
@@ -70,32 +72,27 @@ class GPTSimLoss(nn.Module):
                             'entropy_prediction': entropy_prediction}
 
     @torch.no_grad()
-    def update_center(self, teacher_output):
+    def get_batch_center(self, teacher_output):
         """
         Update center used for teacher output.
         """
-        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
+        b, t, *_ = teacher_output.shape
+        batch_center = torch.sum(torch.sum(teacher_output, dim=0, keepdim=True), dim=1)
         dist.all_reduce(batch_center)
-        batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
+        batch_center = batch_center / (b * t * dist.get_world_size())
+        return batch_center
 
+    @torch.no_grad()
+    def update_center(self, batch_center):
         # ema update
         self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
         return batch_center
 
     @torch.no_grad()
-    def update_prediction_center(self, prediction_teacher_output):
+    def update_prediction_center(self, batch_center):
         """
         Update center used for teacher output.
         """
-        print('prediction_teacher_output', prediction_teacher_output.shape)
-        b, t, *_ = prediction_teacher_output.shape
-        batch_center = torch.sum(torch.sum(prediction_teacher_output, dim=0, keepdim=True), dim=1)
-        dist.all_reduce(batch_center)
-        batch_center = batch_center / (b * t * dist.get_world_size())
-
         # ema update
         self.prediction_center = self.prediction_center * self.center_momentum + batch_center * (1 - self.center_momentum)
-        print('self.prediction_center', self.prediction_center)
-
-        return batch_center

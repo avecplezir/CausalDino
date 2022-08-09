@@ -192,10 +192,9 @@ class KineticsEvents(torch.utils.data.Dataset):
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
-                two_token=self.cfg.MODEL.TWO_TOKEN,
-                rand_fr=self.cfg.DATA.RAND_FR,
                 num_clips_2=self.cfg.local_crops_number + self.cfg.n_global_views,
                 n_parts=self.cfg.n_parts,
+                random_sampling=self.cfg.random_sampling
             )
 
             # If decoding failed (wrong format, video is too short, and etc),
