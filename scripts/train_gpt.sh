@@ -3,8 +3,8 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_gpt"
-PORT='1026'
+EXP_NAME="svt_ucf101_gpt_check"
+PORT='1027'
 
 cd "$PROJECT_PATH" || exit
 
@@ -12,7 +12,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=2
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -27,7 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --use_wandb True \
-  --loss GPTSim2Loss \
+  --loss GPTLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 4 \

@@ -26,8 +26,8 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --use_wandb False \
-  --loss GPTLoss \
+  --use_wandb True \
+  --loss GPTSim2Loss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 4 \

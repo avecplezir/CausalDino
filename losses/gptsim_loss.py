@@ -54,7 +54,7 @@ class GPTSimLoss(nn.Module):
 
         CE_fp = CE_fp.mean()
         CE_pf = CE_pf.mean()
-        total_loss = (CE_fp + CE_pf) / 2
+        total_loss = 0.8*CE_fp + 0.2*CE_pf
 
         batch_center = self.get_batch_center(teacher_logits)
         self.update_center(batch_center)
