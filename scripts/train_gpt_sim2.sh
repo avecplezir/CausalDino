@@ -3,7 +3,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_gpt"
+EXP_NAME="svt_ucf101_gpt_sim2"
 PORT='1026'
 
 cd "$PROJECT_PATH" || exit
@@ -26,8 +26,8 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --use_wandb True \
-  --loss GPTSim2Loss \
+  --use_wandb False \
+  --loss GPTLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 4 \
