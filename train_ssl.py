@@ -34,8 +34,6 @@ from utils import utils
 import vision_transformer as vits
 from vision_transformer import DINOHead, MultiDINOHead
 
-from datasets import Kinetics
-from datasets.rand_conv import RandConv
 from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D, S3D, get_deit_tiny_patch16_224, get_deit_small_patch16_224
 from utils.parser import load_config
 from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset
@@ -155,15 +153,14 @@ def get_args_parser():
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
-    parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
     parser.add_argument('--skip_last', type=utils.bool_flag, default=False,
                         help="""Whether to skip last layer in dino head.""")
     parser.add_argument("--n_parts", type=int, default=9, help="Log loss every")
     parser.add_argument("--n_global_views", type=int, default=2, help="Number of global views to sample")
     parser.add_argument('--random_sampling', type=utils.bool_flag, default=True, help="""Whether random sampling video chunks.""")
-
-
-
+    parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
+    parser.add_argument('--predictor_inv', default=None, type=str, help="""Name of predictor Inverse to train with.""")
+    parser.add_argument('--headproba', default=None, type=str, help="""Name of probability head to train with.""")
 
     return parser
 
@@ -261,24 +258,32 @@ def train_svt(args):
 
 
     Predictor = models.__dict__[args.predictor] if args.predictor else None
+    Predictor_inv = models.__dict__[args.predictor_inv] if args.predictor_inv else None
+    HeadProba = models.__dict__[args.headproba] if args.headproba else None
     print('Predictor', Predictor)
+    print('Predictor_inv', Predictor_inv)
+    print('HeadProba', HeadProba)
 
     # multi-crop wrapper handles forward with inputs of different resolutions
     student = utils.MultiCropWrapper(student,
-                                     DINOHead(
-                                         embed_dim,
-                                         args.out_dim,
-                                         use_bn=args.use_bn_in_head,
-                                         norm_last_layer=args.norm_last_layer,
-                                         skip_last=args.skip_last,
-                                     ),
-                                     predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
-                                     vary_fr=config.DATA.RAND_FR)
+         DINOHead(
+             embed_dim,
+             args.out_dim,
+             use_bn=args.use_bn_in_head,
+             norm_last_layer=args.norm_last_layer,
+             skip_last=args.skip_last,
+         ),
+         predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
+         predictor_inv=Predictor_inv(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor_inv else None,
+         headprob=HeadProba(args.out_dim) if HeadProba else None,
+         )
     teacher = utils.MultiCropWrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
         predictor=Predictor(args.out_dim, args.local_crops_number + args.n_global_views) if Predictor else None,
-        vary_fr=config.DATA.RAND_FR
+        predictor_inv=Predictor_inv(args.out_dim,
+                                    args.local_crops_number + args.n_global_views) if Predictor_inv else None,
+        headprob=HeadProba(args.out_dim) if HeadProba else None,
     )
 
 

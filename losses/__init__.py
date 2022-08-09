@@ -10,3 +10,4 @@ from .feature_loss import FeatureLoss
 from .gpt_loss import GPTLoss
 from .gptsim_loss import GPTSimLoss
 from .gptsim2_loss import GPTSim2Loss
+from .gpt_causal_loss import GPTCausalLoss

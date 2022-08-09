@@ -145,11 +145,11 @@ class GPT(nn.Module):
             # ln_f=nn.LayerNorm(config.n_embd),
         ))
         # self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        self.last_layer = nn.utils.weight_norm(nn.Linear(config.n_embd, out_dim, bias=False))
-        self.last_layer.weight_g.data.fill_(1)
-        norm_last_layer = True
-        if norm_last_layer:
-            self.last_layer.weight_g.requires_grad = False
+        # self.last_layer = nn.utils.weight_norm(nn.Linear(config.n_embd, out_dim, bias=False))
+        # self.last_layer.weight_g.data.fill_(1)
+        # norm_last_layer = True
+        # if norm_last_layer:
+        #     self.last_layer.weight_g.requires_grad = False
 
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
@@ -186,6 +186,6 @@ class GPT(nn.Module):
             x = block(x)
         # x = self.transformer.ln_f(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
-        logits = self.last_layer(x)
+        # logits = self.last_layer(x)
 
-        return logits
+        return x

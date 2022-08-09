@@ -589,7 +589,7 @@ class MultiCropWrapper(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, predictor, vary_fr=False):
+    def __init__(self, backbone, head, predictor, predictor_inv=None, headprob=None):
         super(MultiCropWrapper, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -597,7 +597,17 @@ class MultiCropWrapper(nn.Module):
         self.backbone = backbone
         self.head = head
         self.predictor = predictor
-        self.vary_fr = vary_fr
+        self.predictor_inv = predictor_inv
+        self.headprob = headprob
+
+    def predict_logits(self, x):
+        return self.headprob(x)
+
+    def predict_future(self, x):
+        return self.predictor(x)
+
+    def perdict_past(self, x):
+        return self.predictor_inv(x)
 
     def forward(self, x, **kwargs):
         # convert to list
@@ -607,11 +617,6 @@ class MultiCropWrapper(nn.Module):
             torch.tensor([inp.shape[-1] for inp in x]),
             return_counts=True,
         )[1], 0)
-        if self.vary_fr:
-            if len(x) == 10:
-                idx_crops = [1, 2, 4, 6, 8, 10]
-            elif len(x) == 2:
-                idx_crops = [1, 2]
         start_idx = 0
         for end_idx in idx_crops:
             _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
