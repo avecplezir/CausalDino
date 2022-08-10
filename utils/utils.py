@@ -634,7 +634,7 @@ class MultiCropWrapperGPT(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, teacher=True, n_crops=2):
+    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, n_crops=2):
         super(MultiCropWrapperGPT, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -643,8 +643,6 @@ class MultiCropWrapperGPT(nn.Module):
         self.head = head
         self.predictor = predictor
         self.predictor_past = predictor_past
-        self.headprob = headprob
-        self.teacher = teacher
         self.n_crops = n_crops
 
     def forward(self, x, **kwargs):
@@ -679,7 +677,7 @@ class MultiCropWrapperGPT(nn.Module):
         x_enc_inv = torch.stack(enc_list[::-1], 1)
         pred_past = self.predictor_past(x_enc_inv)
         pred_past = torch.flip(pred_past, dims=(1,))
-        return self.headprob(x_enc), self.headprob(pred_future), self.headprob(pred_past)
+        return self.predictor.last_layer(x_enc), self.predictor.last_layer(pred_future), self.predictor.last_layer(pred_past)
 
 
 def get_params_groups(model):

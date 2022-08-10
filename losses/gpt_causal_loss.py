@@ -46,12 +46,17 @@ class GPTCausalLoss(nn.Module):
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-2]
         t_pred_past_proba = F.softmax((t_pred_past_logits - self.predict_past_center) / temp, dim=-1)[:, 2:]
 
-        max_index = s_enc_proba.argmax(dim=-1)
-        print('max_index', max_index.shape)
-        t_pred_past_proba_weight = t_pred_past_proba[:, :, max_index]
-        t_pred_future_proba_weight = t_pred_future_proba[:, :, max_index]
-        print('t_pred_past_proba_weight', t_pred_past_proba_weight.shape)
-        print('t_pred_future_proba_weight', t_pred_future_proba_weight.shape)
+        # max_index = t_enc_proba.argmax(dim=-1)
+        # b, t, emb = t_pred_past_proba.shape
+        # max_index = max_index.reshape(b*t)
+        # t_pred_past_proba_weight = t_pred_past_proba.reshape(b*t, emb)
+        # t_pred_past_proba_weight = t_pred_past_proba_weight[torch.arange(b*t), max_index]
+        # t_pred_past_proba_weight = t_pred_past_proba_weight.reshape(b, t, 1)
+        # t_pred_future_proba_weight = t_pred_future_proba.reshape(b*t, emb)
+        # t_pred_future_proba_weight = t_pred_future_proba_weight[torch.arange(b * t), max_index]
+        # t_pred_future_proba_weight = t_pred_future_proba_weight.reshape(b, t, 1)
+        t_pred_past_proba_weight = torch.sum(t_enc_proba * t_pred_past_proba, dim=-1, keepdim=True)
+        t_pred_future_proba_weight = torch.sum(t_enc_proba * t_pred_future_proba, dim=-1, keepdim=True)
 
         # Losses
         # allign future student prediction with teacher encoding (weighted with past teacher prediction)
@@ -72,14 +77,14 @@ class GPTCausalLoss(nn.Module):
     def compute_loss(self, prediction, labels, inverse):
         total_loss = 0
         n_loss_terms = 0
-        for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)): #past
-            for il in range(ip + 1, self.n_crops-2): #future
-                loss = -torch.sum(torch.sum(labels[:, il] * torch.log(p/(1 - inverse[:, il] + 1e-4)), dim=-1), dim=-1)
+        for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)):
+            for il in range(ip + 1, self.n_crops-2):
+                loss = -torch.sum(torch.sum(labels[:, il] * torch.log(p), dim=-1), dim=-1) #/(1 - inverse[:, il])
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
 
-        return total_loss.mean()
+        return total_loss
 
     @torch.no_grad()
     def entropy(self, x):
