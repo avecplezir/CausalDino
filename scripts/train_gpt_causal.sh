@@ -34,6 +34,7 @@ python -m torch.distributed.launch \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
+  --headproba HeadProba \
   --predictor GPT \
   --predictor_past GPT \
   --n_parts 8 \

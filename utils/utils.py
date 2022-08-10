@@ -643,6 +643,7 @@ class MultiCropWrapperGPT(nn.Module):
         self.head = head
         self.predictor = predictor
         self.predictor_past = predictor_past
+        self.headprob = headprob
         self.n_crops = n_crops
 
     def forward(self, x, **kwargs):
@@ -677,7 +678,7 @@ class MultiCropWrapperGPT(nn.Module):
         x_enc_inv = torch.stack(enc_list[::-1], 1)
         pred_past = self.predictor_past(x_enc_inv)
         pred_past = torch.flip(pred_past, dims=(1,))
-        return self.predictor.last_layer(x_enc), self.predictor.last_layer(pred_future), self.predictor.last_layer(pred_past)
+        return self.headprob(x_enc), self.headprob(pred_future), self.headprob(pred_past)
 
 
 def get_params_groups(model):

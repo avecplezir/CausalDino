@@ -77,13 +77,14 @@ class GPTCausalLoss(nn.Module):
     def compute_loss(self, prediction, labels, inverse):
         total_loss = 0
         n_loss_terms = 0
+        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
         for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)):
             for il in range(ip + 1, self.n_crops-2):
-                loss = -torch.sum(labels[:, il] * torch.log(p), dim=-1) #/(1 - inverse[:, il])
+                inv = torch.max(minimum, 1 - inverse[:, il])
+                loss = -torch.sum(labels[:, il] * torch.log(p) / inv, dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
-        print('total_loss', total_loss)
 
         return total_loss
 

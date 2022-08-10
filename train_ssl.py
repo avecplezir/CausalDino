@@ -167,7 +167,7 @@ def get_args_parser():
 
 
 def train_svt(args):
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
 
     utils.init_distributed_mode(args)
     utils.fix_random_seeds(args.seed)
