@@ -589,7 +589,7 @@ class MultiCropWrapper(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, predictor, predictor_inv=None, headprob=None):
+    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, **kwargs):
         super(MultiCropWrapper, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -597,7 +597,7 @@ class MultiCropWrapper(nn.Module):
         self.backbone = backbone
         self.head = head
         self.predictor = predictor
-        self.predictor_inv = predictor_inv
+        self.predictor_past = predictor_past
         self.headprob = headprob
 
     def forward(self, x, **kwargs):
@@ -669,16 +669,19 @@ class MultiCropWrapperGPT(nn.Module):
             start_idx = end_idx
         # Run the head forward on the concatenated features.
         # Encoding
-        x_enc = self.head(output)
-        enc_list = x_enc.chunk(self.n_crops)
-        x_enc = torch.stack(enc_list, 1)
-        # Predict future
-        pred_future = self.predictor(x_enc)
-        # Predict past
-        x_enc_inv = torch.stack(enc_list[::-1], 1)
-        pred_past = self.predictor_past(x_enc_inv)
-        pred_past = torch.flip(pred_past, dims=(1,))
-        return self.headprob(x_enc), self.headprob(pred_future), self.headprob(pred_past)
+        x_enc_b = self.head(output)
+        if self.training:
+            enc_list = x_enc_b.chunk(self.n_crops)
+            x_enc = torch.stack(enc_list, 1)
+            # Predict future
+            pred_future = self.predictor(x_enc)
+            # Predict past
+            x_enc_inv = torch.stack(enc_list[::-1], 1)
+            pred_past = self.predictor_past(x_enc_inv)
+            pred_past = torch.flip(pred_past, dims=(1,))
+            return self.headprob(x_enc), self.headprob(pred_future), self.headprob(pred_past)
+        else:
+            return self.headprob(x_enc_b)
 
 
 def get_params_groups(model):

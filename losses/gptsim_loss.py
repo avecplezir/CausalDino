@@ -10,13 +10,11 @@ import numpy as np
 class GPTSimLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, global_crops=2, two_token=False):
+                 center_momentum=0.9, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
-        self.global_crops = global_crops
-        self.two_token = two_token
         self.register_buffer("center", torch.zeros(1, out_dim))
         self.register_buffer("prediction_center", torch.zeros(1, out_dim))
         # we apply a warm up for the teacher temperature because

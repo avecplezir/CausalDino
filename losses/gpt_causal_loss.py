@@ -48,8 +48,6 @@ class GPTCausalLoss(nn.Module):
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-2]
         t_pred_past_proba = F.softmax((t_pred_past_logits - self.predict_past_center) / temp, dim=-1)[:, 2:]
 
-        print('self.argmax', self.argmax)
-        print('self.weight_inv', self.weight_inv)
         if self.argmax:
             max_index = t_enc_proba.argmax(dim=-1)
             b, t, emb = t_pred_past_proba.shape

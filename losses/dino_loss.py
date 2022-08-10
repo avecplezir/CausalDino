@@ -10,13 +10,11 @@ import numpy as np
 class DINOLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, global_crops=2, two_token=False):
+                 center_momentum=0.9, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
-        self.global_crops = global_crops
-        self.two_token = two_token
         self.register_buffer("center", torch.zeros(1, out_dim))
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
@@ -61,19 +59,11 @@ class DINOLoss(nn.Module):
         """
         Update center used for teacher output.
         """
-        if isinstance(teacher_output, (tuple, list)):
-            batch_center = [torch.sum(x, dim=0, keepdim=True) for x in teacher_output]
-            dist.all_reduce(batch_center[0])
-            dist.all_reduce(batch_center[1])
-            batch_center = [x / (len(teacher_output[0]) * dist.get_world_size()) for x in batch_center]
-            self.center[0, :] = self.center[0, :] * self.center_momentum + batch_center[0] * (1 - self.center_momentum)
-            self.center[1, :] = self.center[1, :] * self.center_momentum + batch_center[1] * (1 - self.center_momentum)
-        else:
-            batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
-            dist.all_reduce(batch_center)
-            batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
+        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
+        dist.all_reduce(batch_center)
+        batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
 
-            # ema update
-            self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+        # ema update
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
         return batch_center
