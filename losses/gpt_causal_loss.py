@@ -52,25 +52,25 @@ class GPTCausalLoss(nn.Module):
             max_index = t_enc_proba.argmax(dim=-1)
             b, t, emb = t_pred_past_proba.shape
             max_index = max_index.reshape(b*t)
-            t_pred_past_proba_weight = t_pred_past_proba.reshape(b*t, emb)
-            t_pred_past_proba_weight = t_pred_past_proba_weight[torch.arange(b*t), max_index]
-            t_pred_past_proba_weight = t_pred_past_proba_weight.reshape(b, t, 1)
-            t_pred_future_proba_weight = t_pred_future_proba.reshape(b*t, emb)
-            t_pred_future_proba_weight = t_pred_future_proba_weight[torch.arange(b * t), max_index]
-            t_pred_future_proba_weight = t_pred_future_proba_weight.reshape(b, t, 1)
+            past_prediction_sampled = t_pred_past_proba.reshape(b*t, emb)
+            past_prediction_sampled = past_prediction_sampled[torch.arange(b*t), max_index]
+            past_prediction_sampled = past_prediction_sampled.reshape(b, t, 1)
+            future_prediction_sampled = t_pred_future_proba.reshape(b*t, emb)
+            future_prediction_sampled = future_prediction_sampled[torch.arange(b * t), max_index]
+            future_prediction_sampled = future_prediction_sampled.reshape(b, t, 1)
         else:
-            t_pred_past_proba_weight = torch.sum(t_enc_proba * t_pred_past_proba, dim=-1, keepdim=True)
-            t_pred_future_proba_weight = torch.sum(t_enc_proba * t_pred_future_proba, dim=-1, keepdim=True)
+            past_prediction_sampled = torch.sum(t_enc_proba * t_pred_past_proba, dim=-1, keepdim=True)
+            future_prediction_sampled = torch.sum(t_enc_proba * t_pred_future_proba, dim=-1, keepdim=True)
 
         # Losses
         # allign future student prediction with teacher encoding (weighted with past teacher prediction)
-        CE_fe = self.compute_loss_ef(s_pred_future_proba, t_enc_proba, t_pred_past_proba_weight)
+        CE_fe = self.compute_loss_ef(s_pred_future_proba, t_enc_proba, past_prediction_sampled)
         # allign future teacher prediction with student encoding (weighted with past teacher prediction)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba, t_pred_past_proba_weight)
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba, past_prediction_sampled)
         # allign past student prediction with teacher encoding (weighted with future teacher prediction)
-        CE_pe = self.compute_loss_pe(s_pred_past_proba, t_enc_proba, t_pred_future_proba_weight)
+        CE_pe = self.compute_loss_pe(s_pred_past_proba, t_enc_proba, future_prediction_sampled)
         # allign past teacher prediction with student encoding (weighted with future teacher prediction)
-        CE_ep = self.compute_loss_ep(s_enc_proba, t_pred_past_proba, t_pred_future_proba_weight)
+        CE_ep = self.compute_loss_ep(s_enc_proba, t_pred_past_proba, future_prediction_sampled)
 
         total_loss = 0.45*CE_fe + 0.05*CE_ef + 0.45*CE_pe + 0.05*CE_ep
         entropies = self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
@@ -78,15 +78,15 @@ class GPTCausalLoss(nn.Module):
         return total_loss, {'CE': total_loss, 'CE_ef': CE_ef, 'CE_fe': CE_fe,
                             'CE_ep': CE_ep, 'CE_pe': CE_pe, **entropies}
 
-    def compute_loss_fe(self, future_prediction, encoding, inverse):
+    def compute_loss_fe(self, future_prediction, encoding, past_prediction_sampled):
         total_loss = 0
         n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
+        minimum = 1e-4 * torch.ones_like(past_prediction_sampled[:, 0])
         # ip < ie
-        for ip in range(0, self.n_crops-2): # future_prediction
+        for ip in range(0, self.n_crops-2): #future_prediction from past
             for ie in range(ip + 1, self.n_crops-2): #future encoding
                 if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ip])
+                    inv = torch.max(minimum, 1 - past_prediction_sampled[:, ie])
                 else:
                     inv = 1
                 loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]) / inv, dim=-1)
@@ -95,15 +95,15 @@ class GPTCausalLoss(nn.Module):
         total_loss /= n_loss_terms
         return total_loss
 
-    def compute_loss_ef(self, encoding, future_prediction, inverse):
+    def compute_loss_ef(self, encoding, future_prediction, past_prediction_sampled):
         total_loss = 0
         n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
+        minimum = 1e-4 * torch.ones_like(past_prediction_sampled[:, 0])
         # ip < ie
         for ip in range(0, self.n_crops-2): #future_prediction from past
             for ie in range(ip + 1, self.n_crops-2): #future encoding
                 if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ie])
+                    inv = torch.max(minimum, 1 - past_prediction_sampled[:, ie])
                 else:
                     inv = 1
                 loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]) / inv, dim=-1)
@@ -112,15 +112,15 @@ class GPTCausalLoss(nn.Module):
         total_loss /= n_loss_terms
         return total_loss
 
-    def compute_loss_pe(self, past_prediction, encoding, inverse):
+    def compute_loss_pe(self, past_prediction, encoding, future_prediction_sampled):
         total_loss = 0
         n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
+        minimum = 1e-4 * torch.ones_like(future_prediction_sampled[:, 0])
         # ip > ie
         for ie in range(0, self.n_crops-2): #past encoding
-            for ip in range(ie + 1, self.n_crops-2): #past_prediction from future from past
+            for ip in range(ie + 1, self.n_crops-2): #past_prediction from future
                 if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ip])
+                    inv = torch.max(minimum, 1 - future_prediction_sampled[:, ie])
                 else:
                     inv = 1
                 loss = -torch.sum(encoding[:, ie] * torch.log(past_prediction[:, ip]) / inv, dim=-1)
@@ -129,15 +129,15 @@ class GPTCausalLoss(nn.Module):
         total_loss /= n_loss_terms
         return total_loss
 
-    def compute_loss_ep(self, encoding, past_prediction, inverse):
+    def compute_loss_ep(self, encoding, past_prediction, future_prediction_sampled):
         total_loss = 0
         n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
+        minimum = 1e-4 * torch.ones_like(future_prediction_sampled[:, 0])
         # ip > ie
         for ie in range(0, self.n_crops-2): #past encoding
             for ip in range(ie + 1, self.n_crops-2): #past_prediction from future
                 if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ie])
+                    inv = torch.max(minimum, 1 - future_prediction_sampled[:, ie])
                 else:
                     inv = 1
                 loss = -torch.sum(past_prediction[:, ip] * torch.log(encoding[:, ie]) / inv, dim=-1)
