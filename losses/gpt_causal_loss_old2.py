@@ -1,4 +1,4 @@
-__all__ = ['GPTCausalLoss']
+__all__ = ['GPTCausalLossOld2']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class GPTCausalLoss(nn.Module):
+class GPTCausalLossOld2(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, argmax=False, weight_inv=True, **kwargs):
@@ -65,11 +65,10 @@ class GPTCausalLoss(nn.Module):
         # Losses
         # allign future student prediction with teacher encoding (weighted with past teacher prediction)
         CE_fe = self.compute_loss_ef(s_pred_future_proba, t_enc_proba, past_prediction_sampled)
-        # allign past student prediction with teacher encoding (weighted with future teacher prediction)
-        CE_pe = self.compute_loss_pe(s_pred_past_proba, t_enc_proba, future_prediction_sampled)
-
         # allign future teacher prediction with student encoding (weighted with past teacher prediction)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba, past_prediction_sampled)
+        # allign past student prediction with teacher encoding (weighted with future teacher prediction)
+        CE_pe = self.compute_loss_pe(s_pred_past_proba, t_enc_proba, future_prediction_sampled)
         # allign past teacher prediction with student encoding (weighted with future teacher prediction)
         CE_ep = self.compute_loss_ep(s_enc_proba, t_pred_past_proba, future_prediction_sampled)
 
@@ -90,24 +89,7 @@ class GPTCausalLoss(nn.Module):
                     inv = torch.max(minimum, 1 - past_prediction_sampled[:, ie])
                 else:
                     inv = 1
-                loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip] / inv), dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
-        total_loss /= n_loss_terms
-        return total_loss
-
-    def compute_loss_pe(self, past_prediction, encoding, future_prediction_sampled):
-        total_loss = 0
-        n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(future_prediction_sampled[:, 0])
-        # ip > ie
-        for ie in range(0, self.n_crops-2): #past encoding
-            for ip in range(ie + 1, self.n_crops-2): #past_prediction from future
-                if self.weight_inv:
-                    inv = torch.max(minimum, 1 - future_prediction_sampled[:, ie])
-                else:
-                    inv = 1
-                loss = -torch.sum(encoding[:, ie] * torch.log(past_prediction[:, ip] / inv), dim=-1)
+                loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]) / inv, dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
@@ -124,7 +106,24 @@ class GPTCausalLoss(nn.Module):
                     inv = torch.max(minimum, 1 - past_prediction_sampled[:, ie])
                 else:
                     inv = 1
-                loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie] / inv), dim=-1)
+                loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]) / inv, dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        return total_loss
+
+    def compute_loss_pe(self, past_prediction, encoding, future_prediction_sampled):
+        total_loss = 0
+        n_loss_terms = 0
+        minimum = 1e-4 * torch.ones_like(future_prediction_sampled[:, 0])
+        # ip > ie
+        for ie in range(0, self.n_crops-2): #past encoding
+            for ip in range(ie + 1, self.n_crops-2): #past_prediction from future
+                if self.weight_inv:
+                    inv = torch.max(minimum, 1 - future_prediction_sampled[:, ie])
+                else:
+                    inv = 1
+                loss = -torch.sum(encoding[:, ie] * torch.log(past_prediction[:, ip]) / inv, dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
@@ -141,7 +140,7 @@ class GPTCausalLoss(nn.Module):
                     inv = torch.max(minimum, 1 - future_prediction_sampled[:, ie])
                 else:
                     inv = 1
-                loss = -torch.sum(past_prediction[:, ip] * torch.log(encoding[:, ie] / inv), dim=-1)
+                loss = -torch.sum(past_prediction[:, ip] * torch.log(encoding[:, ie]) / inv, dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
