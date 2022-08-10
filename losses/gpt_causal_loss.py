@@ -10,11 +10,13 @@ import numpy as np
 class GPTCausalLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, **kwargs):
+                 center_momentum=0.9, argmax=False, weight_inv=True, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
+        self.argmax = argmax
+        self.weight_inv = weight_inv
         self.register_buffer("center", torch.zeros(1, out_dim))
         self.register_buffer("predict_future_center", torch.zeros(1, out_dim))
         self.register_buffer("predict_past_center", torch.zeros(1, out_dim))
@@ -46,17 +48,21 @@ class GPTCausalLoss(nn.Module):
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-2]
         t_pred_past_proba = F.softmax((t_pred_past_logits - self.predict_past_center) / temp, dim=-1)[:, 2:]
 
-        # max_index = t_enc_proba.argmax(dim=-1)
-        # b, t, emb = t_pred_past_proba.shape
-        # max_index = max_index.reshape(b*t)
-        # t_pred_past_proba_weight = t_pred_past_proba.reshape(b*t, emb)
-        # t_pred_past_proba_weight = t_pred_past_proba_weight[torch.arange(b*t), max_index]
-        # t_pred_past_proba_weight = t_pred_past_proba_weight.reshape(b, t, 1)
-        # t_pred_future_proba_weight = t_pred_future_proba.reshape(b*t, emb)
-        # t_pred_future_proba_weight = t_pred_future_proba_weight[torch.arange(b * t), max_index]
-        # t_pred_future_proba_weight = t_pred_future_proba_weight.reshape(b, t, 1)
-        t_pred_past_proba_weight = torch.sum(t_enc_proba * t_pred_past_proba, dim=-1, keepdim=True)
-        t_pred_future_proba_weight = torch.sum(t_enc_proba * t_pred_future_proba, dim=-1, keepdim=True)
+        print('self.argmax', self.argmax)
+        print('self.weight_inv', self.weight_inv)
+        if self.argmax:
+            max_index = t_enc_proba.argmax(dim=-1)
+            b, t, emb = t_pred_past_proba.shape
+            max_index = max_index.reshape(b*t)
+            t_pred_past_proba_weight = t_pred_past_proba.reshape(b*t, emb)
+            t_pred_past_proba_weight = t_pred_past_proba_weight[torch.arange(b*t), max_index]
+            t_pred_past_proba_weight = t_pred_past_proba_weight.reshape(b, t, 1)
+            t_pred_future_proba_weight = t_pred_future_proba.reshape(b*t, emb)
+            t_pred_future_proba_weight = t_pred_future_proba_weight[torch.arange(b * t), max_index]
+            t_pred_future_proba_weight = t_pred_future_proba_weight.reshape(b, t, 1)
+        else:
+            t_pred_past_proba_weight = torch.sum(t_enc_proba * t_pred_past_proba, dim=-1, keepdim=True)
+            t_pred_future_proba_weight = torch.sum(t_enc_proba * t_pred_future_proba, dim=-1, keepdim=True)
 
         # Losses
         # allign future student prediction with teacher encoding (weighted with past teacher prediction)
@@ -80,7 +86,10 @@ class GPTCausalLoss(nn.Module):
         minimum = 1e-4 * torch.ones_like(inverse[:, 0])
         for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)):
             for il in range(ip + 1, self.n_crops-2):
-                inv = torch.max(minimum, 1 - inverse[:, il])
+                if self.weight_inv:
+                    inv = torch.max(minimum, 1 - inverse[:, il])
+                else:
+                    inv = 1
                 loss = -torch.sum(labels[:, il] * torch.log(p) / inv, dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1

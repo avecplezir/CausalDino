@@ -162,6 +162,11 @@ def get_args_parser():
     parser.add_argument('--predictor_past', default=None, type=str, help="""Name of predictor Inverse to train with.""")
     parser.add_argument('--headproba', default=None, type=str, help="""Name of probability head to train with.""")
     parser.add_argument('--wrapper', default='MultiCropWrapper', type=str, help="""Name of wrapper to train with.""")
+    parser.add_argument('--argmax', type=utils.bool_flag, default=False,
+                        help="""Whether to find inv with argmax.""")
+    parser.add_argument('--weight_inv', type=utils.bool_flag, default=True,
+                        help="""Whether to use inv in loss.""")
+
 
     return parser
 
@@ -321,8 +326,8 @@ def train_svt(args):
         args.teacher_temp,
         args.warmup_teacher_temp_epochs,
         args.epochs,
-        global_crops=2,
-        two_token=config.MODEL.TWO_TOKEN
+        weight_inv=args.weight_inv,
+        argmax=args.argmax,
     ).cuda()
 
     # ============ preparing optimizer ... ============
