@@ -36,7 +36,6 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperGPT \
   --predictor GPT \
   --predictor_past GPT \
-  --headproba HeadProba \
   --n_parts 8 \
   --skip_last True \
   --opts \
@@ -48,3 +47,4 @@ python -m torch.distributed.launch \
   DATA.NO_SPATIAL False
 
 #  --out_dim 32000 \
+#  --headproba HeadProba \
