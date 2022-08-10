@@ -1,4 +1,4 @@
-__all__ = ['GPTCausalLoss']
+__all__ = ['GPTCausalLossOld']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class GPTCausalLoss(nn.Module):
+class GPTCausalLossOld(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, argmax=False, weight_inv=True, **kwargs):
@@ -64,86 +64,35 @@ class GPTCausalLoss(nn.Module):
 
         # Losses
         # allign future student prediction with teacher encoding (weighted with past teacher prediction)
-        CE_fe = self.compute_loss_ef(s_pred_future_proba, t_enc_proba, t_pred_past_proba_weight)
+        CE_ef = self.compute_loss(s_pred_future_proba, t_enc_proba, t_pred_past_proba_weight)
         # allign future teacher prediction with student encoding (weighted with past teacher prediction)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba, t_pred_past_proba_weight)
+        CE_fe = self.compute_loss(s_enc_proba, t_pred_future_proba, t_pred_past_proba_weight)
         # allign past student prediction with teacher encoding (weighted with future teacher prediction)
-        CE_pe = self.compute_loss_pe(s_pred_past_proba, t_enc_proba, t_pred_future_proba_weight)
+        CE_ep = self.compute_loss(s_pred_past_proba, t_enc_proba, t_pred_future_proba_weight)
         # allign past teacher prediction with student encoding (weighted with future teacher prediction)
-        CE_ep = self.compute_loss_ep(s_enc_proba, t_pred_past_proba, t_pred_future_proba_weight)
+        CE_pe = self.compute_loss(s_enc_proba, t_pred_past_proba, t_pred_future_proba_weight)
 
-        total_loss = 0.45*CE_fe + 0.05*CE_ef + 0.45*CE_pe + 0.05*CE_ep
+        total_loss = 0.45*CE_ef + 0.05*CE_fe + 0.45*CE_ep + 0.05*CE_pe
         entropies = self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
 
         return total_loss, {'CE': total_loss, 'CE_ef': CE_ef, 'CE_fe': CE_fe,
                             'CE_ep': CE_ep, 'CE_pe': CE_pe, **entropies}
 
-    def compute_loss_fe(self, future_prediction, encoding, inverse):
+    def compute_loss(self, prediction, labels, inverse):
         total_loss = 0
         n_loss_terms = 0
         minimum = 1e-4 * torch.ones_like(inverse[:, 0])
-        # ip < ie
-        for ip in range(0, self.n_crops-2): # future_prediction
-            for ie in range(ip + 1, self.n_crops-2): #future encoding
+        for ip, p in enumerate(prediction.chunk(self.n_crops-2, dim=1)):
+            for il in range(ip + 1, self.n_crops-2):
                 if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ip])
+                    inv = torch.max(minimum, 1 - inverse[:, il])
                 else:
                     inv = 1
-                loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]) / inv, dim=-1)
+                loss = -torch.sum(labels[:, il] * torch.log(p) / inv, dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
-        return total_loss
 
-    def compute_loss_ef(self, encoding, future_prediction, inverse):
-        total_loss = 0
-        n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
-        # ip < ie
-        for ip in range(0, self.n_crops-2): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops-2): #future encoding
-                if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ie])
-                else:
-                    inv = 1
-                loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]) / inv, dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
-        total_loss /= n_loss_terms
-        return total_loss
-
-    def compute_loss_pe(self, past_prediction, encoding, inverse):
-        total_loss = 0
-        n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
-        # ip > ie
-        for ie in range(0, self.n_crops-2): #past encoding
-            for ip in range(ie + 1, self.n_crops-2): #past_prediction from future from past
-                if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ip])
-                else:
-                    inv = 1
-                loss = -torch.sum(encoding[:, ie] * torch.log(past_prediction[:, ip]) / inv, dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
-        total_loss /= n_loss_terms
-        return total_loss
-
-    def compute_loss_ep(self, encoding, past_prediction, inverse):
-        total_loss = 0
-        n_loss_terms = 0
-        minimum = 1e-4 * torch.ones_like(inverse[:, 0])
-        # ip > ie
-        for ie in range(0, self.n_crops-2): #past encoding
-            for ip in range(ie + 1, self.n_crops-2): #past_prediction from future
-                if self.weight_inv:
-                    inv = torch.max(minimum, 1 - inverse[:, ie])
-                else:
-                    inv = 1
-                loss = -torch.sum(past_prediction[:, ip] * torch.log(encoding[:, ie]) / inv, dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
-        total_loss /= n_loss_terms
         return total_loss
 
     @torch.no_grad()
