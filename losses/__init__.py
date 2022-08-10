@@ -11,4 +11,5 @@ from .gpt_loss import GPTLoss
 from .gptsim_loss import GPTSimLoss
 from .gptsim2_loss import GPTSim2Loss
 from .gpt_causal_loss_old import GPTCausalLossOld
-from .gpt_causal_loss_old2 import GPTCausalLoss
+from .gpt_causal_loss_old2 import GPTCausalLossOld2
+from .gpt_causal_loss import GPTCausalLoss
