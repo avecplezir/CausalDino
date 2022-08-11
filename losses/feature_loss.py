@@ -30,51 +30,73 @@ class FeatureLoss(nn.Module):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
+        s_enc_logits, s_pred_future_logits, s_pred_past_logits = student_output
+        t_enc_logits, t_pred_future_logits, t_pred_past_logits = teacher_output
+
+        temp = self.teacher_temp_schedule[epoch]
+
+        # Student # Encoding # Future Prediction # Past Prediction
+        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, -1]
+
+        # Teacher # Encoding # Future Prediction # Past Prediction
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
+
+        marginal = F.softmax(self.center, dim=-1)
+        CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
+        CE_ef = self.compute_loss_ef(t_pred_future_proba, s_enc_proba)
+        KL_cm = self.compute_kl(s_enc_proba, marginal)
+
+        total_loss = 0.9 * CE_fe + 0.1 * (CE_ef - KL_cm)
+
+        batch_center = self.update_center(t_enc_logits)
+        entropy = -torch.sum(marginal * torch.log(marginal), dim=-1)
+        batch_entropy = -torch.sum(F.softmax(batch_center, dim=-1) * torch.log(marginal), dim=-1)
+        time_events_proba = t_enc_proba.mean(1)
+        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
+
+        return total_loss, {'CE': total_loss, 'CE_ef': CE_ef, 'CE_fe': CE_fe, 'batch_entropy': batch_entropy, 'entropy': entropy,
+                            'batch_time_entropy': time_entropy}
+
+    def compute_kl(self, conditional, marginal):
+        kl = conditional * (torch.log(conditional) - torch.log(marginal))
+        return kl
+
+    def compute_loss_fe(self, future_prediction, encoding):
         total_loss = 0
         n_loss_terms = 0
-        student_out = student.module.predictor(student_output) / self.student_temp
-        student_out = student_out.chunk(self.n_crops)
-
-        # teacher centering and sharpening
-        temp = self.teacher_temp_schedule[epoch]
-        teacher_output = teacher.predictor.mlp.last_layer(teacher_output)
-        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
-        teacher_out = teacher_out.detach().chunk(self.global_crops)
-
-        for iq, q in enumerate(teacher_out):
-            for v in range(len(student_out)):
-                if v == iq:
-                    # we skip cases where student and teacher operate on the same view
-                    continue
-                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
+        # ip < ie
+        for ip in range(0, self.n_crops-2): #future_prediction from past
+            for ie in range(ip + 1, self.n_crops-2): #future encoding
+                loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
-        batch_center = self.update_center(teacher_output)
+        return total_loss
 
-        true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
-
-        return total_loss, {'CE': total_loss, 'entropy': entropy, 'true_entropy': true_entropy}
+    def compute_loss_ef(self, encoding, future_prediction, past_prediction_sampled):
+        total_loss = 0
+        n_loss_terms = 0
+        # ip < ie
+        for ip in range(0, self.n_crops-2): #future_prediction from past
+            for ie in range(ip + 1, self.n_crops-2): #future encoding
+                loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]), dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        return total_loss
 
     @torch.no_grad()
     def update_center(self, teacher_output):
         """
         Update center used for teacher output.
         """
-        if isinstance(teacher_output, (tuple, list)):
-            batch_center = [torch.sum(x, dim=0, keepdim=True) for x in teacher_output]
-            dist.all_reduce(batch_center[0])
-            dist.all_reduce(batch_center[1])
-            batch_center = [x / (len(teacher_output[0]) * dist.get_world_size()) for x in batch_center]
-            self.center[0, :] = self.center[0, :] * self.center_momentum + batch_center[0] * (1 - self.center_momentum)
-            self.center[1, :] = self.center[1, :] * self.center_momentum + batch_center[1] * (1 - self.center_momentum)
-        else:
-            batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
-            dist.all_reduce(batch_center)
-            batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
+        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
+        dist.all_reduce(batch_center)
+        batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
 
-            # ema update
-            self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+        # ema update
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
         return batch_center

@@ -673,13 +673,18 @@ class MultiCropWrapperGPT(nn.Module):
         if self.training:
             enc_list = x_enc_b.chunk(self.n_crops)
             x_enc = torch.stack(enc_list, 1)
+            x_enc_logits = self.headprob(x_enc)
             # Predict future
-            pred_future = self.predictor(x_enc)
+            pred_future_logits = self.headprob(self.predictor(x_enc)) if self.predictor is not None else None
             # Predict past
-            x_enc_inv = torch.stack(enc_list[::-1], 1)
-            pred_past = self.predictor_past(x_enc_inv)
-            pred_past = torch.flip(pred_past, dims=(1,))
-            return self.headprob(x_enc), self.headprob(pred_future), self.headprob(pred_past)
+            if self.predictor_past is not None:
+                x_enc_inv = torch.stack(enc_list[::-1], 1)
+                pred_past = self.predictor_past(x_enc_inv)
+                pred_past = torch.flip(pred_past, dims=(1,))
+                pred_past_logits = self.headprob(pred_past)
+            else:
+                pred_past_logits = None
+            return x_enc_logits, pred_future_logits, pred_past_logits
         else:
             return self.headprob(x_enc_b)
 
