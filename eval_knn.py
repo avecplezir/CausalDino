@@ -149,7 +149,8 @@ def extract_features(model, data_loader, kl):
 @torch.no_grad()
 def knn_classifier(train_features, train_labels, test_features, test_labels, k, T, num_classes=1000, kl=False):
     top1, top5, total = 0.0, 0.0, 0
-    train_features = train_features.t()
+    if not kl:
+        train_features = train_features.t()
     num_test_images, num_chunks = test_labels.shape[0], 100
     imgs_per_chunk = num_test_images // num_chunks
     retrieval_one_hot = torch.zeros(k, num_classes).cuda()
@@ -167,7 +168,8 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k, 
             distances, indices = similarity.topk(k, largest=True, sorted=True)
             distances_transform = distances.clone().div_(T).exp_()
         else:
-            similarity = F.kl_div(features, train_features, log_target=True)
+            similarity = torch.exp(features.unsqueeze(1)) * (train_features.unsqueeze(0) - train_features.unsqueeze(1))
+            print('similarity', similarity.shape)
             distances, indices = similarity.topk(k, largest=False, sorted=True)
             distances_transform = 1 / (distances.clone() + 1e-4)
         print('features', features.shape, 'train_features', train_features.shape)

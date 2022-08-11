@@ -27,7 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
-  --eval_dataset UCFEventsReturnIndexDataset \
+  --eval_dataset UCFReturnIndexDataset \
   --use_wandb False \
   --loss GPTSparseLoss \
   --argmax True \
