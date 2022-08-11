@@ -345,7 +345,6 @@ def decode(
     """
     # Currently support two decoders: 1) PyAV, and 2) TorchVision.
     assert clip_idx >= -1, "Not valied clip_idx {}".format(clip_idx)
-    print('backend', backend)
     try:
         if backend == "pyav":
             frames, fps, decode_all_video = pyav_decode(
@@ -500,12 +499,6 @@ def decode_events(
         return None
 
     clip_sz = sampling_rate * num_frames / target_fps * fps
-    start_idx, end_idx = get_start_end_idx(
-        video_size=frames.shape[0],
-        clip_size=clip_sz,
-        clip_idx=clip_idx if decode_all_video else 0,
-        num_clips=num_clips if decode_all_video else 1,
-    )
     # Perform temporal sampling from the decoded video.
     if random_sampling:
         max_len = frames.shape[0]
@@ -531,6 +524,5 @@ def decode_events(
             idx += local_width
 
         frames = [*samples]
-    # else:
-    #     frames = temporal_sampling(frames, start_idx, end_idx, num_frames)  # frames.shape = (T, H, W, C)
+
     return frames

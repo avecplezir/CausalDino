@@ -820,7 +820,7 @@ class VideoDataAugmentationEvents(object):
 
         return frames
 
-    def __call__(self, image, from_list=False, no_aug=False, two_token=False):
+    def __call__(self, image, from_list=False, no_aug=False):
         if no_aug:
             image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
             crops = [self.no_aug(x) for x in image]

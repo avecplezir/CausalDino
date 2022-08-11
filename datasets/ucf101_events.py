@@ -5,8 +5,11 @@ import warnings
 import torch.utils.data
 
 from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
-from datasets.decoder import decode
+from datasets.decoder import decode, decode_events
 from datasets.video_container import get_video_container
+from datasets.transform import VideoDataAugmentationEvents
+
+from einops import rearrange
 
 
 class UCF101Events(torch.utils.data.Dataset):
@@ -20,7 +23,7 @@ class UCF101Events(torch.utils.data.Dataset):
     bottom crop if the height is larger than the width.
     """
 
-    def __init__(self, cfg, split, num_retries=10):
+    def __init__(self, cfg, mode, num_retries=10):
         """
         Construct the UCF101 video loader with a given csv file. The format of
         the csv file is:
@@ -40,18 +43,18 @@ class UCF101Events(torch.utils.data.Dataset):
             num_retries (int): number of retries.
         """
         # Only support train, val, and test mode.
-        assert split in ["train", "val", "test"], "Split '{}' not supported for UCF101".format(split)
-        self.split = split
+        assert mode in ["train", "val", "test"], "Split '{}' not supported for UCF101".format(mode)
+        self.mode = mode
         self.cfg = cfg
 
         self._video_meta = {}
         self._num_retries = num_retries
-        self._split_idx = split
+        self._split_idx = mode
         # For training mode, one single clip is sampled from every video. For validation or testing, NUM_ENSEMBLE_VIEWS
         # clips are sampled from every video. For every clip, NUM_SPATIAL_CROPS is cropped spatially from the frames.
         self._num_clips = 1
 
-        print("Constructing UCF101 {}...".format(split))
+        print("Constructing UCF101 {}...".format(mode))
         self._construct_loader()
 
     def _construct_loader(self):
@@ -59,7 +62,7 @@ class UCF101Events(torch.utils.data.Dataset):
         Construct the video loader.
         """
         path_to_file = os.path.join(
-            self.cfg.DATA.PATH_TO_DATA_DIR, "ucf101_{}_split_1_videos.txt".format(self.split)
+            self.cfg.DATA.PATH_TO_DATA_DIR, "ucf101_{}_split_1_videos.txt".format(self.mode)
         )
         assert os.path.exists(path_to_file), "{} dir not found".format(
             path_to_file
@@ -144,7 +147,7 @@ class UCF101Events(torch.utils.data.Dataset):
                 )
 
             # Decode video. Meta info is used to perform selective decoding.
-            frames = decode(
+            frames = decode_events(
                 container=video_container,
                 sampling_rate=sampling_rate,
                 num_frames=self.cfg.DATA.NUM_FRAMES,
@@ -154,6 +157,9 @@ class UCF101Events(torch.utils.data.Dataset):
                 target_fps=self.cfg.DATA.TARGET_FPS,
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
+                num_clips_2=self.cfg.local_crops_number + self.cfg.n_global_views,
+                n_parts=self.cfg.n_parts,
+                random_sampling=self.cfg.random_sampling
             )
 
             # If decoding failed (wrong format, video is too short, and etc),
@@ -171,22 +177,25 @@ class UCF101Events(torch.utils.data.Dataset):
 
             label = self._labels[index]
 
-            # Perform color normalization.
-            frames = tensor_normalize(
-                frames, self.cfg.DATA.MEAN, self.cfg.DATA.STD
-            )
-            frames = frames.permute(3, 0, 1, 2)
+            # T H W C -> T C H W.
+            frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
 
             # Perform data augmentation.
-            frames = spatial_sampling(
-                frames,
-                spatial_idx=-1,
-                min_scale=min_scale,
-                max_scale=max_scale,
-                crop_size=crop_size,
-                random_horizontal_flip=self.cfg.DATA.RANDOM_FLIP,
-                inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
-            )
+            augmentation = VideoDataAugmentationEvents()
+            frames = augmentation(frames, from_list=True, no_aug=True)
+
+            # T C H W -> C T H W.
+            frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+
+            # Perform temporal sampling from the fast pathway.
+            frames = [torch.index_select(
+                x,
+                1,
+                torch.linspace(
+                    0, x.shape[1] - 1, x.shape[1] if self.cfg.DATA.RAND_FR else self.cfg.DATA.NUM_FRAMES
+
+                ).long(),
+            ) for x in frames]
 
             return frames, label, index, {}
         else:

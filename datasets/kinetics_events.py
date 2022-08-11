@@ -64,18 +64,10 @@ class KineticsEvents(torch.utils.data.Dataset):
         # video. For testing, NUM_ENSEMBLE_VIEWS clips are sampled from every
         # video. For every clip, NUM_SPATIAL_CROPS is cropped spatially from
         # the frames.
-        if self.mode in ["train", "val"]:
-            self._num_clips = 1
-        elif self.mode in ["test"]:
-            self._num_clips = (
-                    cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
-            )
+        self._num_clips = 1
 
         print("Constructing KineticsEvents {}...".format(mode))
-        # self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' + '.mp4')
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' + '.avi')
-        # print('self.cfg.DATA.PATH_TO_DATA_DIR', self.cfg.DATA.PATH_TO_DATA_DIR)
-        # print('self._path_to_videos', len(self._path_to_videos))
 
     def __getitem__(self, index):
         """
@@ -249,8 +241,7 @@ class KineticsEvents(torch.utils.data.Dataset):
 
                 # Perform data augmentation.
                 augmentation = VideoDataAugmentationEvents()
-                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL,
-                                      two_token=self.cfg.MODEL.TWO_TOKEN)
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
 
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
