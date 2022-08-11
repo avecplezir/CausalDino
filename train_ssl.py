@@ -230,10 +230,10 @@ def train_svt(args):
     args.arch = args.arch.replace("deit", "vit")
     # if the network is a vision transformer (i.e. vit_tiny, vit_small, vit_base)
     if args.arch == "timesformer":
-        # student = get_vit_base_patch16_224(cfg=config, no_head=True)
-        # teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
-        student = get_deit_tiny_patch16_224(cfg=config, no_head=True)
-        teacher = get_deit_tiny_patch16_224(cfg=config, no_head=True)
+        student = get_vit_base_patch16_224(cfg=config, no_head=True)
+        teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
+        # student = get_deit_tiny_patch16_224(cfg=config, no_head=True)
+        # teacher = get_deit_tiny_patch16_224(cfg=config, no_head=True)
         embed_dim = student.embed_dim
 
         if args.pretrained_rgb is not None:
