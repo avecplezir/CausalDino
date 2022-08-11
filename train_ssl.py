@@ -232,6 +232,7 @@ def train_svt(args):
     # if the network is a vision transformer (i.e. vit_tiny, vit_small, vit_base)
     if args.arch == "timesformer":
         Model = models.__dict__[args.model_name]
+        print('Model', Model)
         student = Model(cfg=config, no_head=True)
         teacher = Model(cfg=config, no_head=True)
         # student = get_vit_base_patch16_224(cfg=config, no_head=True)
@@ -247,7 +248,6 @@ def train_svt(args):
             print(f"Loaded pretrained rgb student: {msg}")
             msg = teacher.load_state_dict(state_dict)
             print(f"Loaded pretrained rgb teacher: {msg}")
-
     if args.arch == "swin":
         student = SwinTransformer3D(depths=[2, 2, 18, 2], embed_dim=128, num_heads=[4, 8, 16, 32])
         teacher = SwinTransformer3D(depths=[2, 2, 18, 2], embed_dim=128, num_heads=[4, 8, 16, 32])
@@ -269,7 +269,6 @@ def train_svt(args):
         embed_dim = student.fc.weight.shape[1]
     else:
         print(f"Unknow architecture: {args.arch}")
-
 
     Predictor = models.__dict__[args.predictor] if args.predictor else None
     Predictor_past = models.__dict__[args.predictor_past] if args.predictor_past else None
@@ -511,14 +510,14 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
-def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt):
+def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt, kl=False):
     model.eval()  # teacher model already on eval
     print("Extracting features for train set...")
-    train_features = extract_features(model, train_loader)
+    train_features = extract_features(model, train_loader, kl=kl)
     print("Extracting features for val set...")
-    test_features = extract_features(model, test_loader)
+    test_features = extract_features(model, test_loader, kl=kl)
 
-    if utils.get_rank() == 0:
+    if not kl and utils.get_rank() == 0:
         train_features = nn.functional.normalize(train_features, dim=1, p=2)
         test_features = nn.functional.normalize(test_features, dim=1, p=2)
 
@@ -533,7 +532,7 @@ def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt)
 
     print("Features are ready!\nStart the k-NN classification.")
     top1, top5 = knn_classifier(train_features, train_labels,
-                                test_features, test_labels, opt.nb_knn, opt.temperature)
+                                test_features, test_labels, opt.nb_knn, opt.temperature, kl=kl)
     model.train()
     return {"knn_top1": top1, "knn_top5": top5}
 

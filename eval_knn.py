@@ -19,6 +19,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.utils.data
 from torch import nn
+import torch.nn.functional as F
 
 from datasets.hmdb51 import HMDB51
 from datasets.ucf101 import UCF101
@@ -94,7 +95,7 @@ def extract_feature_pipeline(args):
 
 
 @torch.no_grad()
-def extract_features(model, data_loader):
+def extract_features(model, data_loader, kl):
     metric_logger = utils.MetricLogger(delimiter="  ")
     features = None
     for samples, index in metric_logger.log_every(data_loader, 10):
@@ -107,6 +108,8 @@ def extract_features(model, data_loader):
         feats = torch.stack(feats.chunk(num_views, 0), 1)
         feats = feats.mean(1)
 
+        if kl:
+            feats = F.log_softmax(feats, -1)
 
         # init storage feature matrix
         if dist.get_rank() == 0 and features is None:
@@ -144,7 +147,7 @@ def extract_features(model, data_loader):
 
 
 @torch.no_grad()
-def knn_classifier(train_features, train_labels, test_features, test_labels, k, T, num_classes=1000):
+def knn_classifier(train_features, train_labels, test_features, test_labels, k, T, num_classes=1000, kl=False):
     top1, top5, total = 0.0, 0.0, 0
     train_features = train_features.t()
     num_test_images, num_chunks = test_labels.shape[0], 100
@@ -159,14 +162,21 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k, 
         batch_size = targets.shape[0]
 
         # calculate the dot product and compute top-k neighbors
-        similarity = torch.mm(features, train_features)
-        distances, indices = similarity.topk(k, largest=True, sorted=True)
+        if not kl:
+            similarity = torch.mm(features, train_features)
+            distances, indices = similarity.topk(k, largest=True, sorted=True)
+            distances_transform = distances.clone().div_(T).exp_()
+        else:
+            similarity = F.kl_div(features, train_features, log_target=True)
+            distances, indices = similarity.topk(k, largest=False, sorted=True)
+            distances_transform = 1 / (distances.clone() + 1e-4)
+        print('features', features.shape, 'train_features', train_features.shape)
+
         candidates = train_labels.view(1, -1).expand(batch_size, -1)
         retrieved_neighbors = torch.gather(candidates, 1, indices)
-
         retrieval_one_hot.resize_(batch_size * k, num_classes).zero_()
         retrieval_one_hot.scatter_(1, retrieved_neighbors.view(-1, 1), 1)
-        distances_transform = distances.clone().div_(T).exp_()
+
         probs = torch.sum(
             torch.mul(
                 retrieval_one_hot.view(batch_size, -1, num_classes),
