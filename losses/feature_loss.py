@@ -35,11 +35,9 @@ class FeatureLoss(nn.Module):
 
         temp = self.teacher_temp_schedule[epoch]
 
-        # Student # Encoding # Future Prediction # Past Prediction
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, -1]
 
-        # Teacher # Encoding # Future Prediction # Past Prediction
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
 
