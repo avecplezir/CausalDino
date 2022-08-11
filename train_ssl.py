@@ -36,7 +36,7 @@ from vision_transformer import DINOHead
 
 from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D, S3D, get_deit_tiny_patch16_224, get_deit_small_patch16_224
 from utils.parser import load_config
-from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset
+from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset, UCFEventsReturnIndexDataset
 import losses
 import datasets
 import models
@@ -209,8 +209,11 @@ def train_svt(args):
         config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
         config.DATA.PATH_PREFIX = ""
         config.TEST.NUM_SPATIAL_CROPS = 1
-        eval_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
-        eval_test = UCFReturnIndexDataset(cfg=config, mode="val", num_retries=10)
+        # eval_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
+        # eval_test = UCFReturnIndexDataset(cfg=config, mode="val", num_retries=10)
+        eval_train = UCFEventsReturnIndexDataset(cfg=config, mode="train", num_retries=10)
+        eval_test = UCFEventsReturnIndexDataset(cfg=config, mode="val", num_retries=10)
+
         sampler = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
         eval_loader_train = torch.utils.data.DataLoader(
             eval_train, sampler=sampler, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
@@ -505,7 +508,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt):
     model.eval()  # teacher model already on eval
     print("Extracting features for train set...")
-    train_features = extract_features(model, train_loader)
+    # train_features = extract_features(model, train_loader)
     print("Extracting features for val set...")
     test_features = extract_features(model, test_loader)
 

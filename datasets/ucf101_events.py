@@ -9,7 +9,7 @@ from datasets.decoder import decode
 from datasets.video_container import get_video_container
 
 
-class UCF101(torch.utils.data.Dataset):
+class UCF101Events(torch.utils.data.Dataset):
     """
     UCF101 video loader. Construct the UCF101 video loader, then sample
     clips from the videos. For training and validation, a single clip is
@@ -20,7 +20,7 @@ class UCF101(torch.utils.data.Dataset):
     bottom crop if the height is larger than the width.
     """
 
-    def __init__(self, cfg, mode, num_retries=10):
+    def __init__(self, cfg, mode, num_retries=10, num_ensembles_views=5, num_spatial_crops=1):
         """
         Construct the UCF101 video loader with a given csv file. The format of
         the csv file is:
@@ -49,12 +49,9 @@ class UCF101(torch.utils.data.Dataset):
         self._split_idx = mode
         # For training mode, one single clip is sampled from every video. For validation or testing, NUM_ENSEMBLE_VIEWS
         # clips are sampled from every video. For every clip, NUM_SPATIAL_CROPS is cropped spatially from the frames.
-        if self.mode in ["train"]:
-            self._num_clips = 1
-        elif self.mode in ["val", "test"]:
-            self._num_clips = (
-                    cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
-            )
+        self._num_clips = num_ensembles_views * num_spatial_crops
+        cfg.TEST.NUM_ENSEMBLE_VIEWS = num_ensembles_views
+        cfg.TEST.NUM_SPATIAL_CROPS = num_spatial_crops
 
         print("Constructing UCF101 {}...".format(mode))
         self._construct_loader()
@@ -113,50 +110,22 @@ class UCF101(torch.utils.data.Dataset):
         if isinstance(index, tuple):
             index, short_cycle_idx = index
 
-        if self.mode in ["train"]:
-            # -1 indicates random sampling.
-            temporal_sample_index = -1
-            spatial_sample_index = -1
-            min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
-            max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
-            crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
-            if short_cycle_idx in [0, 1]:
-                crop_size = int(
-                    round(
-                        self.cfg.MULTIGRID.SHORT_CYCLE_FACTORS[short_cycle_idx]
-                        * self.cfg.MULTIGRID.DEFAULT_S
-                    )
-                )
-            if self.cfg.MULTIGRID.DEFAULT_S > 0:
-                # Decreasing the scale is equivalent to using a larger "span"
-                # in a sampling grid.
-                min_scale = int(
-                    round(
-                        float(min_scale)
-                        * crop_size
-                        / self.cfg.MULTIGRID.DEFAULT_S
-                    )
-                )
-        elif self.mode in ["val", "test"]:
-            temporal_sample_index = (self._spatial_temporal_idx[index] // self.cfg.TEST.NUM_SPATIAL_CROPS)
-            # spatial_sample_index is in [0, 1, 2]. Corresponding to left,
-            # center, or right if width is larger than height, and top, middle,
-            # or bottom if height is larger than width.
-            spatial_sample_index = (
-                (self._spatial_temporal_idx[index] % self.cfg.TEST.NUM_SPATIAL_CROPS)
-                if self.cfg.TEST.NUM_SPATIAL_CROPS > 1 else 1
-            )
-            min_scale, max_scale, crop_size = (
-                [self.cfg.DATA.TEST_CROP_SIZE] * 3 if self.cfg.TEST.NUM_SPATIAL_CROPS > 1
-                else [self.cfg.DATA.TRAIN_JITTER_SCALES[0]] * 2 + [self.cfg.DATA.TEST_CROP_SIZE]
-            )
-            # The testing is deterministic and no jitter should be performed.
-            # min_scale, max_scale, and crop_size are expect to be the same.
-            assert len({min_scale, max_scale}) == 1
-        else:
-            raise NotImplementedError(
-                "Does not support {} mode".format(self.mode)
-            )
+        temporal_sample_index = (self._spatial_temporal_idx[index] // self.cfg.TEST.NUM_SPATIAL_CROPS)
+        # spatial_sample_index is in [0, 1, 2]. Corresponding to left,
+        # center, or right if width is larger than height, and top, middle,
+        # or bottom if height is larger than width.
+        spatial_sample_index = (
+            (self._spatial_temporal_idx[index] % self.cfg.TEST.NUM_SPATIAL_CROPS)
+            if self.cfg.TEST.NUM_SPATIAL_CROPS > 1 else 1
+        )
+        min_scale, max_scale, crop_size = (
+            [self.cfg.DATA.TEST_CROP_SIZE] * 3 if self.cfg.TEST.NUM_SPATIAL_CROPS > 1
+            else [self.cfg.DATA.TRAIN_JITTER_SCALES[0]] * 2 + [self.cfg.DATA.TEST_CROP_SIZE]
+        )
+        # The testing is deterministic and no jitter should be performed.
+        # min_scale, max_scale, and crop_size are expect to be the same.
+        assert len({min_scale, max_scale}) == 1
+
         sampling_rate = get_random_sampling_rate(
             self.cfg.MULTIGRID.LONG_CYCLE_SAMPLING_RATE,
             self.cfg.DATA.SAMPLING_RATE,
@@ -184,10 +153,6 @@ class UCF101(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if self.mode not in ["val", "test"] and i_try > self._num_retries // 2:
-                    # let's try another one
-                    index = random.randint(0, len(self._path_to_videos) - 1)
-                continue
 
             # Decode video. Meta info is used to perform selective decoding.
             frames = decode(
@@ -234,17 +199,8 @@ class UCF101(torch.utils.data.Dataset):
                 inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
             )
 
-            # if not self.cfg.MODEL.ARCH in ['vit']:
-            #     frames = pack_pathway_output(self.cfg, frames)
-            # else:
-            # Perform temporal sampling from the fast pathway.
-            # frames = [torch.index_select(
-            #     x,
-            #     1,
-            #     torch.linspace(
-            #         0, x.shape[1] - 1, self.cfg.DATA.NUM_FRAMES
-            #     ).long(),
-            # ) for x in frames]
+            print('self.mode', self.mode)
+            print('frame, label', frames.shape, label)
 
             return frames, label, index, {}
         else:
@@ -260,30 +216,3 @@ class UCF101(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
-
-
-if __name__ == '__main__':
-
-    from utils.parser import parse_args, load_config
-    from tqdm import tqdm
-
-    args = parse_args()
-    args.cfg_file = "models/configs/Kinetics/TimeSformer_divST_8x32_224.yaml"
-    config = load_config(args)
-    config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/repo/mmaction2/data/ucf101/splits"
-    config.DATA.PATH_PREFIX = "/home/kanchanaranasinghe/repo/mmaction2/data/ucf101/videos"
-    dataset = UCF101(cfg=config, mode="train", num_retries=10)
-    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=4)
-    print(f"Loaded train dataset of length: {len(dataset)}")
-    for idx, i in enumerate(dataloader):
-        print(idx, i[0].shape, i[1:])
-        if idx > 2:
-            break
-
-    test_dataset = UCF101(cfg=config, mode="val", num_retries=10)
-    test_dataloader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=4)
-    print(f"Loaded test dataset of length: {len(test_dataset)}")
-    for idx, i in enumerate(test_dataloader):
-        print(idx, i[0].shape, i[1:])
-        if idx > 2:
-            break

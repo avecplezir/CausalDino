@@ -22,6 +22,8 @@ from torch import nn
 
 from datasets.hmdb51 import HMDB51
 from datasets.ucf101 import UCF101
+from datasets.ucf101_events import UCF101Events
+from datasets.kinetics_events import KineticsEvents
 from models import get_vit_base_patch16_224
 from utils import utils
 from utils.parser import load_config
@@ -98,7 +100,14 @@ def extract_features(model, data_loader):
     for samples, index in metric_logger.log_every(data_loader, 10):
         samples = samples.cuda(non_blocking=True)
         index = index.cuda(non_blocking=True)
+        print('samples.shape', samples.shape)
+        if len(samples.shape) == 5:
+            b, nub_views, t, h, w = samples.shape
+            samples.reshape(b*nub_views, t, h, w)
         feats = model(samples).clone()
+        if len(samples.shape) == 5:
+            feats.reshape(b, nub_views, feats.size(-1))
+            feats = feats.mean(1)
 
         # init storage feature matrix
         if dist.get_rank() == 0 and features is None:
@@ -181,6 +190,12 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k, 
 class UCFReturnIndexDataset(UCF101):
     def __getitem__(self, idx):
         img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
+        return img, idx
+
+
+class UCFEventsReturnIndexDataset(UCF101Events):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(UCFEventsReturnIndexDataset, self).__getitem__(idx)
         return img, idx
 
 
