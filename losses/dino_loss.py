@@ -50,10 +50,13 @@ class DINOLoss(nn.Module):
         total_loss /= n_loss_terms
         batch_center = self.update_center(teacher_output)
 
-        true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        true_entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        entropy = -torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        time_events_proba = F.softmax(torch.stack(student_out, 1), dim=-1).mean(1)
+        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba))
 
-        return total_loss, {'CE': total_loss, 'entropy': entropy, 'true_entropy': true_entropy}
+        return total_loss, {'CE': total_loss, 'entropy': entropy, 'true_entropy': true_entropy,
+                            'time_entropy': time_entropy}
 
     @torch.no_grad()
     def update_center(self, teacher_output):

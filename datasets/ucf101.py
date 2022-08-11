@@ -7,6 +7,7 @@ import torch.utils.data
 from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
 from datasets.decoder import decode
 from datasets.video_container import get_video_container
+from datasets.transform import VideoDataAugmentationEvents
 
 
 class UCF101(torch.utils.data.Dataset):
@@ -197,22 +198,8 @@ class UCF101(torch.utils.data.Dataset):
 
             label = self._labels[index]
 
-            # Perform color normalization.
-            frames = tensor_normalize(
-                frames, self.cfg.DATA.MEAN, self.cfg.DATA.STD
-            )
-            frames = frames.permute(3, 0, 1, 2)
-
-            # Perform data augmentation.
-            frames = spatial_sampling(
-                frames,
-                spatial_idx=spatial_sample_index,
-                min_scale=min_scale,
-                max_scale=max_scale,
-                crop_size=crop_size,
-                random_horizontal_flip=self.cfg.DATA.RANDOM_FLIP,
-                inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
-            )
+            augmentation = VideoDataAugmentationEvents()
+            frames = augmentation([frames], from_list=True, no_aug=True)[0] #works with list
 
             return frames, label, index, {}
         else:

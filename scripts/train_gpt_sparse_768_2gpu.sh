@@ -28,7 +28,7 @@ python -m torch.distributed.launch \
   --model_name get_vit_base_patch16_224 \
   --do_eval True \
   --eval_dataset UCFReturnIndexDataset \
-  --use_wandb False \
+  --use_wandb True \
   --loss GPTSparseLoss \
   --argmax True \
   --dataset KineticsEvents \
