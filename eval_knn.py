@@ -98,16 +98,15 @@ def extract_features(model, data_loader):
     metric_logger = utils.MetricLogger(delimiter="  ")
     features = None
     for samples, index in metric_logger.log_every(data_loader, 10):
-        samples = samples.cuda(non_blocking=True)
+        if not isinstance(samples, list):
+            samples = []
+        samples = [im.cuda(non_blocking=True) for im in samples]
         index = index.cuda(non_blocking=True)
-        print('samples.shape', samples.shape)
-        if len(samples.shape) == 6:
-            b, rgb, nub_views, t, h, w = samples.shape
-            samples.reshape(b*nub_views, t, h, w)
+        b, num_views = index.size(0), len(samples)
         feats = model(samples).clone()
-        if len(samples.shape) == 6:
-            feats.reshape(b, nub_views, feats.size(-1))
-            feats = feats.mean(1)
+        feats = torch.stack(feats.chunk(num_views, 0), 1)
+        feats = feats.mean(1)
+
 
         # init storage feature matrix
         if dist.get_rank() == 0 and features is None:

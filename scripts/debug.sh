@@ -27,6 +27,9 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --eval_dataset UCFEventsReturnIndexDataset \
   --do_eval True \
+  --local_crops_number 3 \
+  --n_global_views 2 \
+  --n_parts 8 \
   --use_wandb False \
   --loss DINOLoss \
   --dataset KineticsEvents \
