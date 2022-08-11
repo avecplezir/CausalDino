@@ -169,6 +169,9 @@ def get_args_parser():
                         help="""Whether to use inv in loss.""")
     parser.add_argument('--eval_dataset', default='UCFReturnIndexDataset', type=str, help="""Name of dataset to test knn with.""")
     parser.add_argument('--model_name', default=None, type=str, help="""Name of model""")
+    parser.add_argument("--eval_freq", type=int, default=2, help="eval every")
+    parser.add_argument('--eval_dataset2', default='UCFEventsReturnIndexDataset', type=str,
+                        help="""Name of dataset to test knn with.""")
 
     return parser
 
@@ -206,12 +209,8 @@ def train_svt(args):
     )
     print(f"Train data loaded: there are {len(dataset)} images.")
 
-    if args.do_eval:
-        # validation data
-        config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
-        config.DATA.PATH_PREFIX = ""
-        config.TEST.NUM_SPATIAL_CROPS = 1
-        Eval_Dataset = datasets.__dict__[args.eval_dataset]
+    def get_eval_datasets(eval_dataset, args):
+        Eval_Dataset = datasets.__dict__[eval_dataset]
         print('Eval_Dataset', Eval_Dataset)
         eval_train = Eval_Dataset(cfg=config, mode="train", num_retries=10)
         eval_test = Eval_Dataset(cfg=config, mode="val", num_retries=10)
@@ -227,6 +226,15 @@ def train_svt(args):
             pin_memory=True, drop_last=True,
         )
         print(f"Data loaded with {len(eval_train)} train and {len(eval_test)} val imgs.")
+        return eval_train, eval_test, eval_loader_train, eval_loader_test
+
+    if args.do_eval:
+        # validation data
+        config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
+        config.DATA.PATH_PREFIX = ""
+        config.TEST.NUM_SPATIAL_CROPS = 1
+        eval_train, eval_test, eval_loader_train, eval_loader_test = get_eval_datasets(args.eval_dataset, args)
+        eval_train2, eval_test2, eval_loader_train2, eval_loader_test2 = get_eval_datasets(args.eval_dataset2, args)
 
     # ============ building student and teacher networks ... ============
     # we changed the name DeiT-S for ViT-S to avoid confusions
@@ -401,12 +409,15 @@ def train_svt(args):
                                       data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
                                       epoch, fp16_scaler, args, cfg=config)
 
-        if args.do_eval:
+        if args.do_eval and epoch % args.eval_freq:
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
             if utils.is_main_process():
                 print('val_stats', val_stats)
+                print('val_stats mean', val_stats2)
                 if args.use_wandb:
                     wandb.log(val_stats)
+                    wandb.log({'mean'+key: value for key, value in val_stats2.item()})
             utils.synchronize()
 
         # ============ writing logs ... ============
