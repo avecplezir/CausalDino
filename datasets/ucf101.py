@@ -52,9 +52,12 @@ class UCF101(torch.utils.data.Dataset):
         self._split_idx = mode
         # For training mode, one single clip is sampled from every video. For validation or testing, NUM_ENSEMBLE_VIEWS
         # clips are sampled from every video. For every clip, NUM_SPATIAL_CROPS is cropped spatially from the frames.
+        print('self.mode', self.mode)
         if self.mode in ["train"]:
             self._num_clips = 1
         elif self.mode in ["val", "test"]:
+            print('NUM_ENSEMBLE_VIEWS', cfg.TEST.NUM_ENSEMBLE_VIEWS)
+            print('cfg.TEST.NUM_SPATIAL_CROPS', cfg.TEST.NUM_SPATIAL_CROPS)
             self._num_clips = (
                     cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
             )
@@ -248,6 +251,9 @@ class UCF101(torch.utils.data.Dataset):
             #         0, x.shape[1] - 1, self.cfg.DATA.NUM_FRAMES
             #     ).long(),
             # ) for x in frames]
+
+            print('self.mode', self.mode)
+            print('frame, label', frames.shape, label.shape)
 
             return frames, label, index, {}
         else:
