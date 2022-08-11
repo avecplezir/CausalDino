@@ -3,7 +3,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_gpt_sparse_768_2gpu"
+EXP_NAME="svt_ucf101_2gpu_debug"
 PORT='1030'
 
 cd "$PROJECT_PATH" || exit
