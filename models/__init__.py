@@ -3,4 +3,4 @@ from .swin_transformer import SwinTransformer3D
 from .s3d import S3D
 from .predictor import MLPPredictor, OneLayerPredictor, LinearPredictor, MLPfeaturePredictor, HeadProba
 from .gpt import GPT
-from .mae import m
+# from .mae import m

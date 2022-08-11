@@ -113,50 +113,30 @@ class UCF101(torch.utils.data.Dataset):
         if isinstance(index, tuple):
             index, short_cycle_idx = index
 
-        if self.mode in ["train"]:
-            # -1 indicates random sampling.
-            temporal_sample_index = -1
-            spatial_sample_index = -1
-            min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
-            max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
-            crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
-            if short_cycle_idx in [0, 1]:
-                crop_size = int(
-                    round(
-                        self.cfg.MULTIGRID.SHORT_CYCLE_FACTORS[short_cycle_idx]
-                        * self.cfg.MULTIGRID.DEFAULT_S
-                    )
+        # -1 indicates random sampling.
+        temporal_sample_index = -1
+        spatial_sample_index = -1
+        min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
+        max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
+        crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
+        if short_cycle_idx in [0, 1]:
+            crop_size = int(
+                round(
+                    self.cfg.MULTIGRID.SHORT_CYCLE_FACTORS[short_cycle_idx]
+                    * self.cfg.MULTIGRID.DEFAULT_S
                 )
-            if self.cfg.MULTIGRID.DEFAULT_S > 0:
-                # Decreasing the scale is equivalent to using a larger "span"
-                # in a sampling grid.
-                min_scale = int(
-                    round(
-                        float(min_scale)
-                        * crop_size
-                        / self.cfg.MULTIGRID.DEFAULT_S
-                    )
+            )
+        if self.cfg.MULTIGRID.DEFAULT_S > 0:
+            # Decreasing the scale is equivalent to using a larger "span"
+            # in a sampling grid.
+            min_scale = int(
+                round(
+                    float(min_scale)
+                    * crop_size
+                    / self.cfg.MULTIGRID.DEFAULT_S
                 )
-        elif self.mode in ["val", "test"]:
-            temporal_sample_index = (self._spatial_temporal_idx[index] // self.cfg.TEST.NUM_SPATIAL_CROPS)
-            # spatial_sample_index is in [0, 1, 2]. Corresponding to left,
-            # center, or right if width is larger than height, and top, middle,
-            # or bottom if height is larger than width.
-            spatial_sample_index = (
-                (self._spatial_temporal_idx[index] % self.cfg.TEST.NUM_SPATIAL_CROPS)
-                if self.cfg.TEST.NUM_SPATIAL_CROPS > 1 else 1
             )
-            min_scale, max_scale, crop_size = (
-                [self.cfg.DATA.TEST_CROP_SIZE] * 3 if self.cfg.TEST.NUM_SPATIAL_CROPS > 1
-                else [self.cfg.DATA.TRAIN_JITTER_SCALES[0]] * 2 + [self.cfg.DATA.TEST_CROP_SIZE]
-            )
-            # The testing is deterministic and no jitter should be performed.
-            # min_scale, max_scale, and crop_size are expect to be the same.
-            assert len({min_scale, max_scale}) == 1
-        else:
-            raise NotImplementedError(
-                "Does not support {} mode".format(self.mode)
-            )
+
         sampling_rate = get_random_sampling_rate(
             self.cfg.MULTIGRID.LONG_CYCLE_SAMPLING_RATE,
             self.cfg.DATA.SAMPLING_RATE,
@@ -184,7 +164,7 @@ class UCF101(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if self.mode not in ["val", "test"] and i_try > self._num_retries // 2:
+                if i_try > self._num_retries // 2:
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
@@ -210,7 +190,7 @@ class UCF101(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if self.mode not in ["test"] and i_try > self._num_retries // 2:
+                if i_try > self._num_retries // 2:
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue

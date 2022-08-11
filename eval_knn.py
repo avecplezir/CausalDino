@@ -169,10 +169,8 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k, 
             distances_transform = distances.clone().div_(T).exp_()
         else:
             similarity = torch.exp(features.unsqueeze(1)) * (train_features.unsqueeze(0) - train_features.unsqueeze(1))
-            print('similarity', similarity.shape)
             distances, indices = similarity.topk(k, largest=False, sorted=True)
             distances_transform = 1 / (distances.clone() + 1e-4)
-        print('features', features.shape, 'train_features', train_features.shape)
 
         candidates = train_labels.view(1, -1).expand(batch_size, -1)
         retrieved_neighbors = torch.gather(candidates, 1, indices)

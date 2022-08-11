@@ -216,13 +216,15 @@ def train_svt(args):
         eval_train = Eval_Dataset(cfg=config, mode="train", num_retries=10)
         eval_test = Eval_Dataset(cfg=config, mode="val", num_retries=10)
 
-        sampler = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
+        sampler_train = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
         eval_loader_train = torch.utils.data.DataLoader(
-            eval_train, sampler=sampler, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
-            pin_memory=True, drop_last=False,
+            eval_train, sampler=sampler_train, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
+            pin_memory=True, drop_last=True,
         )
+        sampler_val = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
         eval_loader_test = torch.utils.data.DataLoader(
-            eval_test, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers, pin_memory=True, drop_last=False,
+            eval_test, sampler=sampler_val, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
+            pin_memory=True, drop_last=True,
         )
         print(f"Data loaded with {len(eval_train)} train and {len(eval_test)} val imgs.")
 
@@ -235,10 +237,6 @@ def train_svt(args):
         print('Model', Model)
         student = Model(cfg=config, no_head=True)
         teacher = Model(cfg=config, no_head=True)
-        # student = get_vit_base_patch16_224(cfg=config, no_head=True)
-        # teacher = get_vit_base_patch16_224(cfg=config, no_head=True)
-        # student = get_deit_tiny_patch16_224(cfg=config, no_head=True)
-        # teacher = get_deit_tiny_patch16_224(cfg=config, no_head=True)
         embed_dim = student.embed_dim
 
         if args.pretrained_rgb is not None:
@@ -399,11 +397,13 @@ def train_svt(args):
         data_loader.sampler.set_epoch(epoch)
 
         # TODO: fix online evaluation for multi-gpu training
-        if args.do_eval and utils.is_main_process():
+        if args.do_eval:
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-            print('val_stats', val_stats)
-            if args.use_wandb:
-                wandb.log(val_stats)
+            if utils.is_main_process():
+                print('val_stats', val_stats)
+                if args.use_wandb:
+                    wandb.log(val_stats)
+
             utils.synchronize()
 
         # ============ training one epoch of DINO ... ============
@@ -529,9 +529,9 @@ def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt,
         train_labels = train_labels.cuda()
         test_labels = test_labels.cuda()
 
-    print("Features are ready!\nStart the k-NN classification.")
-    top1, top5 = knn_classifier(train_features, train_labels,
-                                test_features, test_labels, opt.nb_knn, opt.temperature, kl=kl)
+        print("Features are ready!\nStart the k-NN classification.")
+        top1, top5 = knn_classifier(train_features, train_labels,
+                                    test_features, test_labels, opt.nb_knn, opt.temperature, kl=kl)
     model.train()
     return {"knn_top1": top1, "knn_top5": top5}
 

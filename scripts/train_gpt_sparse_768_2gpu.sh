@@ -3,8 +3,8 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_gpt_sparse_768"
-PORT='1029'
+EXP_NAME="svt_ucf101_gpt_sparse_768_2gpu"
+PORT='1030'
 
 cd "$PROJECT_PATH" || exit
 
@@ -12,7 +12,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=4,5
+export CUDA_VISIBLE_DEVICES=3,4
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -21,7 +21,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 8 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
@@ -49,6 +49,3 @@ python -m torch.distributed.launch \
   DATA.USE_FLOW False \
   DATA.RAND_CONV False \
   DATA.NO_SPATIAL False
-
-#  --out_dim 32000 \
-#  --headproba HeadProba \
