@@ -21,14 +21,14 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 8 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \
   --do_eval True \
   --eval_dataset UCFReturnIndexDataset \
-  --use_wandb False \
+  --use_wandb True \
   --loss GPTSparseLoss \
   --argmax True \
   --dataset KineticsEvents \
