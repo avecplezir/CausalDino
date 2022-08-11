@@ -404,7 +404,7 @@ def train_svt(args):
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
-        if args.do_eval and epoch % args.eval_freq:
+        if args.do_eval and epoch % args.eval_freq == 0:
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
             val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
             if utils.is_main_process():

@@ -9,6 +9,8 @@ from datasets.decoder import decode
 from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
 
+from einops import rearrange
+
 
 class UCF101(torch.utils.data.Dataset):
     """
@@ -198,8 +200,14 @@ class UCF101(torch.utils.data.Dataset):
 
             label = self._labels[index]
 
+            # T H W C -> T C H W.
+            frames = rearrange(frames, "t h w c -> t c h w")
+
             augmentation = VideoDataAugmentationEvents()
             frames = augmentation([frames], from_list=True, no_aug=True)[0] #works with list
+
+            # T C H W -> C T H W.
+            frames = rearrange(frames, "t c h w -> c t h w")
 
             return frames, label, index, {}
         else:
