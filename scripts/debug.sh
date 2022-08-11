@@ -21,18 +21,18 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 4 \
+  --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
-  --eval_dataset UCFEventsReturnIndexDataset \
+  --eval_dataset UCFReturnIndexDataset \
   --do_eval True \
   --local_crops_number 3 \
   --n_global_views 2 \
   --n_parts 8 \
   --use_wandb False \
   --loss DINOLoss \
-  --dataset KineticsEvents \
+  --dataset Kinetics \
   --opts \
   MODEL.TWO_STREAM False \
   MODEL.TWO_TOKEN False \
@@ -41,3 +41,5 @@ python -m torch.distributed.launch \
   DATA.RAND_CONV False \
   DATA.NO_SPATIAL False
 
+# --eval_dataset UCFReturnIndexDataset \
+#  --eval_dataset UCFEventsReturnIndexDataset \

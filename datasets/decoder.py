@@ -498,7 +498,6 @@ def decode_events(
     if frames is None or frames.size(0) == 0:
         return None
 
-    clip_sz = sampling_rate * num_frames / target_fps * fps
     # Perform temporal sampling from the decoded video.
     if random_sampling:
         max_len = frames.shape[0]
@@ -514,7 +513,6 @@ def decode_events(
         frames = [*samples]
     else:
         max_len = frames.shape[0]
-
         samples = []
         local_width = max_len // (num_clips_2 + 1)
         idx = random.randint(0, local_width - 1)

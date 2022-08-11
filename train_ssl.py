@@ -210,9 +210,10 @@ def train_svt(args):
         config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
         config.DATA.PATH_PREFIX = ""
         config.TEST.NUM_SPATIAL_CROPS = 1
-        eval_dataset = datasets.__dict__[args.eval_dataset]
-        eval_train = eval_dataset(cfg=config, mode="train", num_retries=10)
-        eval_test = eval_dataset(cfg=config, mode="val", num_retries=10)
+        Eval_Dataset = datasets.__dict__[args.eval_dataset]
+        print('Eval_Dataset', Eval_Dataset)
+        eval_train = Eval_Dataset(cfg=config, mode="train", num_retries=10)
+        eval_test = Eval_Dataset(cfg=config, mode="val", num_retries=10)
 
         sampler = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
         eval_loader_train = torch.utils.data.DataLoader(
@@ -508,7 +509,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt):
     model.eval()  # teacher model already on eval
     print("Extracting features for train set...")
-    # train_features = extract_features(model, train_loader)
+    train_features = extract_features(model, train_loader)
     print("Extracting features for val set...")
     test_features = extract_features(model, test_loader)
 

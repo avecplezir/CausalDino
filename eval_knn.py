@@ -99,7 +99,7 @@ def extract_features(model, data_loader):
     features = None
     for samples, index in metric_logger.log_every(data_loader, 10):
         if not isinstance(samples, list):
-            samples = []
+            samples = [samples]
         samples = [im.cuda(non_blocking=True) for im in samples]
         index = index.cuda(non_blocking=True)
         b, num_views = index.size(0), len(samples)
