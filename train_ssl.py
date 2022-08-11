@@ -221,7 +221,7 @@ def train_svt(args):
             eval_train, sampler=sampler_train, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
             pin_memory=True, drop_last=True,
         )
-        sampler_val = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
+        sampler_val = torch.utils.data.DistributedSampler(eval_test, shuffle=False)
         eval_loader_test = torch.utils.data.DataLoader(
             eval_test, sampler=sampler_val, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
             pin_memory=True, drop_last=True,
@@ -523,6 +523,7 @@ def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt,
     train_labels = torch.tensor([s for s in train_dataset._labels]).long()
     test_labels = torch.tensor([s for s in test_dataset._labels]).long()
 
+    model.train()
     if utils.get_rank() == 0:
         train_features = train_features.cuda()
         test_features = test_features.cuda()
@@ -532,8 +533,7 @@ def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt,
         print("Features are ready!\nStart the k-NN classification.")
         top1, top5 = knn_classifier(train_features, train_labels,
                                     test_features, test_labels, opt.nb_knn, opt.temperature, kl=kl)
-    model.train()
-    return {"knn_top1": top1, "knn_top5": top5}
+        return {"knn_top1": top1, "knn_top5": top5}
 
 
 if __name__ == '__main__':
