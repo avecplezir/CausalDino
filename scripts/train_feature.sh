@@ -20,18 +20,23 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
+  --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
+  --eval_freq 2 \
   --use_wandb True \
   --loss FeatureLoss \
   --dataset KineticsEvents \
-  --local_crops_number 1 \
+  --local_crops_number 0 \
+  --n_global_views 6 \
+  --n_parts 8 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --predictor MLPfeaturePredictor \
+  --headproba HeadProba \
   --skip_last True \
   --opts \
   MODEL.TWO_STREAM False \
