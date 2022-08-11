@@ -262,6 +262,12 @@ class UCF101(torch.utils.data.Dataset):
         return len(self._path_to_videos)
 
 
+class UCFReturnIndexDataset(UCF101):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
+        return img, idx
+
+
 if __name__ == '__main__':
 
     from utils.parser import parse_args, load_config

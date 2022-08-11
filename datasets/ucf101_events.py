@@ -216,3 +216,9 @@ class UCF101Events(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
+
+
+class UCFEventsReturnIndexDataset(UCF101Events):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(UCFEventsReturnIndexDataset, self).__getitem__(idx)
+        return img, idx

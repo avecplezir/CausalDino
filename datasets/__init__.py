@@ -1,8 +1,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
 from .kinetics import Kinetics  # noqa
-from .ucf101 import UCF101
-from .hmdb51 import HMDB51
+from .ucf101 import UCF101, UCFReturnIndexDataset
+from .hmdb51 import HMDB51, HMDBReturnIndexDataset
 from .kinetics_events import KineticsEvents
-from .ucf101_events import UCF101Events
+from .ucf101_events import UCF101Events, UCFEventsReturnIndexDataset
 # from .ssv2 import Ssv2  # noqa

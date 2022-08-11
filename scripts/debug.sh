@@ -25,6 +25,7 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
+  --eval_dataset UCFEventsReturnIndexDataset \
   --do_eval True \
   --use_wandb False \
   --loss DINOLoss \

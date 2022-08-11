@@ -264,6 +264,12 @@ class HMDB51(torch.utils.data.Dataset):
         return len(self._path_to_videos)
 
 
+class HMDBReturnIndexDataset(HMDB51):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(HMDBReturnIndexDataset, self).__getitem__(idx)
+        return img, idx
+
+
 if __name__ == '__main__':
 
     from utils.parser import parse_args, load_config

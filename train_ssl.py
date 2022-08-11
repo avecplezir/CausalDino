@@ -36,7 +36,7 @@ from vision_transformer import DINOHead
 
 from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D, S3D, get_deit_tiny_patch16_224, get_deit_small_patch16_224
 from utils.parser import load_config
-from eval_knn import extract_features, knn_classifier, UCFReturnIndexDataset, HMDBReturnIndexDataset, UCFEventsReturnIndexDataset
+from eval_knn import extract_features, knn_classifier
 import losses
 import datasets
 import models
@@ -166,6 +166,7 @@ def get_args_parser():
                         help="""Whether to find inv with argmax.""")
     parser.add_argument('--weight_inv', type=utils.bool_flag, default=True,
                         help="""Whether to use inv in loss.""")
+    parser.add_argument('--eval_dataset', default='UCFReturnIndexDataset', type=str, help="""Name of dataset to test knn with.""")
 
 
     return parser
@@ -209,10 +210,9 @@ def train_svt(args):
         config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
         config.DATA.PATH_PREFIX = ""
         config.TEST.NUM_SPATIAL_CROPS = 1
-        # eval_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
-        # eval_test = UCFReturnIndexDataset(cfg=config, mode="val", num_retries=10)
-        eval_train = UCFEventsReturnIndexDataset(cfg=config, mode="train", num_retries=10)
-        eval_test = UCFEventsReturnIndexDataset(cfg=config, mode="val", num_retries=10)
+        eval_dataset = args.eval_dataset
+        eval_train = eval_dataset(cfg=config, mode="train", num_retries=10)
+        eval_test = eval_dataset(cfg=config, mode="val", num_retries=10)
 
         sampler = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
         eval_loader_train = torch.utils.data.DataLoader(

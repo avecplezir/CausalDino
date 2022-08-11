@@ -101,11 +101,11 @@ def extract_features(model, data_loader):
         samples = samples.cuda(non_blocking=True)
         index = index.cuda(non_blocking=True)
         print('samples.shape', samples.shape)
-        if len(samples.shape) == 5:
-            b, nub_views, t, h, w = samples.shape
+        if len(samples.shape) == 6:
+            b, rgb, nub_views, t, h, w = samples.shape
             samples.reshape(b*nub_views, t, h, w)
         feats = model(samples).clone()
-        if len(samples.shape) == 5:
+        if len(samples.shape) == 6:
             feats.reshape(b, nub_views, feats.size(-1))
             feats = feats.mean(1)
 
@@ -186,23 +186,6 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k, 
     top5 = top5 * 100.0 / total
     return top1, top5
 
-
-class UCFReturnIndexDataset(UCF101):
-    def __getitem__(self, idx):
-        img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
-        return img, idx
-
-
-class UCFEventsReturnIndexDataset(UCF101Events):
-    def __getitem__(self, idx):
-        img, _, _, _ = super(UCFEventsReturnIndexDataset, self).__getitem__(idx)
-        return img, idx
-
-
-class HMDBReturnIndexDataset(HMDB51):
-    def __getitem__(self, idx):
-        img, _, _, _ = super(HMDBReturnIndexDataset, self).__getitem__(idx)
-        return img, idx
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Evaluation with weighted k-NN on ImageNet')
