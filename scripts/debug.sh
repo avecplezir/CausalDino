@@ -25,7 +25,7 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
-  --eval_dataset UCFReturnIndexDataset \
+  --eval_dataset UCFEventsReturnIndexDataset \
   --do_eval True \
   --local_crops_number 3 \
   --n_global_views 2 \

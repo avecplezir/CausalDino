@@ -403,6 +403,7 @@ def train_svt(args):
                 wandb.log(val_stats)
             utils.synchronize()
 
+        return slcmsdkl
         # ============ training one epoch of DINO ... ============
         train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
                                       data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
