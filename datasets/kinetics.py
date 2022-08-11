@@ -192,8 +192,6 @@ class Kinetics(torch.utils.data.Dataset):
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
-                two_token=self.cfg.MODEL.TWO_TOKEN,
-                rand_fr=self.cfg.DATA.RAND_FR,
                 local_crops_number=self.cfg.local_crops_number,
             )
 

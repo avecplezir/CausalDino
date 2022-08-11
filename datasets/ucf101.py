@@ -234,18 +234,6 @@ class UCF101(torch.utils.data.Dataset):
                 inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
             )
 
-            # if not self.cfg.MODEL.ARCH in ['vit']:
-            #     frames = pack_pathway_output(self.cfg, frames)
-            # else:
-            # Perform temporal sampling from the fast pathway.
-            # frames = [torch.index_select(
-            #     x,
-            #     1,
-            #     torch.linspace(
-            #         0, x.shape[1] - 1, self.cfg.DATA.NUM_FRAMES
-            #     ).long(),
-            # ) for x in frames]
-
             return frames, label, index, {}
         else:
             raise RuntimeError(

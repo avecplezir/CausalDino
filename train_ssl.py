@@ -210,7 +210,7 @@ def train_svt(args):
         config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
         config.DATA.PATH_PREFIX = ""
         config.TEST.NUM_SPATIAL_CROPS = 1
-        eval_dataset = args.eval_dataset
+        eval_dataset = datasets.__dict__[args.eval_dataset]
         eval_train = eval_dataset(cfg=config, mode="train", num_retries=10)
         eval_test = eval_dataset(cfg=config, mode="val", num_retries=10)
 

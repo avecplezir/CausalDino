@@ -345,6 +345,7 @@ def decode(
     """
     # Currently support two decoders: 1) PyAV, and 2) TorchVision.
     assert clip_idx >= -1, "Not valied clip_idx {}".format(clip_idx)
+    print('backend', backend)
     try:
         if backend == "pyav":
             frames, fps, decode_all_video = pyav_decode(
