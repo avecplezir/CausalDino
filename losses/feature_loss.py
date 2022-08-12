@@ -10,12 +10,11 @@ import numpy as np
 class FeatureLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, global_crops=2, **kwargs):
+                 center_momentum=0.9, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
-        self.global_crops = global_crops
         self.register_buffer("center", torch.ones(1, 1, out_dim) / out_dim)
         self.register_buffer("predict_future_center", torch.ones(1, 1, out_dim) / out_dim)
         self.register_buffer("predict_past_center", torch.ones(1, 1, out_dim) / out_dim)
@@ -40,15 +39,14 @@ class FeatureLoss(nn.Module):
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
 
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
-        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)[:, :-1]
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-1]
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
-        # marginal = F.softmax(self.center, dim=-1)
-        # KL_cm = self.compute_kl(s_enc_proba, marginal)
+        KL_cm = self.compute_kl(s_enc_proba)
 
-        total_loss = 0.9*CE_fe + 0.1*CE_ef
+        total_loss = 0.9*CE_fe + 0.1*(CE_ef-KL_cm)
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_events_proba = t_enc_proba.mean(1)
@@ -78,10 +76,12 @@ class FeatureLoss(nn.Module):
     def entropy(self, x):
         return torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x), dim=-1)
 
-    def compute_kl(self, conditional, marginal):
-        minimum = 1e-4 * torch.ones_like(marginal)
-        marginal = torch.max(minimum, marginal)
-        kl = torch.sum(conditional * (torch.log(conditional / marginal)), dim=-1)
+    def compute_kl(self, conditional):
+        marginal_log = F.log_softmax(self.center, dim=-1).repeat(1, conditional.size(1), 1)
+        print('marginal', marginal_log.shape)
+        conditional_log = torch.log(conditional)
+        kl = F.kl_div(conditional_log, marginal_log, log_target=True)
+        print('kl', kl.shape)
         return kl.mean()
 
     def compute_loss_fe(self, future_prediction, encoding):
