@@ -17,6 +17,8 @@ class FeatureLoss(nn.Module):
         self.n_crops = ncrops
         self.global_crops = global_crops
         self.register_buffer("center", torch.ones(1, 1, out_dim) / out_dim)
+        self.register_buffer("predict_future_center", torch.ones(1, 1, out_dim) / out_dim)
+        self.register_buffer("predict_past_center", torch.ones(1, 1, out_dim) / out_dim)
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = np.concatenate((
@@ -40,21 +42,41 @@ class FeatureLoss(nn.Module):
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)[:, :-1]
 
-        marginal = F.softmax(self.center, dim=-1)
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
-        CE_ef = self.compute_loss_ef(t_pred_future_proba, s_enc_proba)
-        KL_cm = self.compute_kl(s_enc_proba, marginal)
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
-        total_loss = 0.9 * CE_fe + 0.1 * (CE_ef - KL_cm)
+        # marginal = F.softmax(self.center, dim=-1)
+        # KL_cm = self.compute_kl(s_enc_proba, marginal)
 
-        batch_center = self.update_center(t_enc_logits)
-        entropy = -torch.sum(marginal * torch.log(marginal), dim=-1)
-        batch_entropy = -torch.sum(F.softmax(batch_center, dim=-1) * torch.log(marginal), dim=-1).mean()
+        total_loss = 0.9*CE_fe + 0.1*CE_ef
+
+        self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_events_proba = t_enc_proba.mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
 
-        return total_loss, {'CE': total_loss, 'CE_ef': CE_ef, 'CE_fe': CE_fe, 'batch_entropy': batch_entropy, 'entropy': entropy,
-                            'batch_time_entropy': time_entropy, 'KL_cm': KL_cm}
+        return total_loss, {'CE': total_loss, 'CE_fe': CE_fe, 'CE_ef': CE_ef,
+                            'entropy': self.entropy(self.center),
+                            'batch_time_entropy': time_entropy}
+
+    @torch.no_grad()
+    def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
+        # update batch centers
+        batch_center = self.get_batch_center(t_enc_logits)
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+
+        if t_pred_future_logits is not None:
+            batch_center_pred_future = self.get_batch_center(t_pred_future_logits)
+            self.predict_future_center = self.predict_future_center * self.center_momentum \
+                                         + batch_center_pred_future * (1 - self.center_momentum)
+
+        if t_pred_past_logits is not None:
+            batch_center_pred_past = self.get_batch_center(t_pred_past_logits)
+            self.predict_past_center = self.predict_past_center * self.center_momentum \
+                                       + batch_center_pred_past * (1 - self.center_momentum)
+
+    @torch.no_grad()
+    def entropy(self, x):
+        return torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x), dim=-1)
 
     def compute_kl(self, conditional, marginal):
         minimum = 1e-4 * torch.ones_like(marginal)
