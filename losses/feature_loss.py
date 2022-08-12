@@ -44,9 +44,9 @@ class FeatureLoss(nn.Module):
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
-        KL_cm = self.compute_kl(s_enc_proba)
+        KL = self.compute_kl(s_enc_proba)
 
-        total_loss = 0.9*CE_fe + 0.1*(CE_ef-KL_cm)
+        total_loss = 0.9*CE_fe + 0.1*(CE_ef-KL)
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_events_proba = t_enc_proba.mean(1)
@@ -54,7 +54,7 @@ class FeatureLoss(nn.Module):
 
         return total_loss, {'CE': total_loss, 'CE_fe': CE_fe, 'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
-                            'batch_time_entropy': time_entropy}
+                            'batch_time_entropy': time_entropy, 'KL': KL}
 
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
