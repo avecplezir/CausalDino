@@ -1,4 +1,4 @@
-__all__ = ['FeatureTimeLoss']
+__all__ = ['FeatureLoss']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class FeatureTimeLoss(nn.Module):
+class FeatureLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, **kwargs):
@@ -34,16 +34,12 @@ class FeatureTimeLoss(nn.Module):
         t_enc_logits, t_pred_future_logits, t_pred_past_logits = teacher_output
 
         temp = self.teacher_temp_schedule[epoch]
-        t_enc_logits_time_center = t_enc_logits.mean(1, keepdims=True)
-        batch_center = self.get_batch_center(t_enc_logits)
-        t_enc_logits_time_center - batch_center + self.center
-        # t_pred_future_logits_time_center = t_pred_future_logits.mean(1, keepdims=True)
 
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
 
-        t_enc_proba = F.softmax((t_enc_logits - t_enc_logits_time_center) / temp, dim=-1)[:, 1:]
-        t_pred_future_proba = F.softmax((t_pred_future_logits - t_enc_logits_time_center) / temp, dim=-1)[:, :-1]
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-1]
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
@@ -51,7 +47,6 @@ class FeatureTimeLoss(nn.Module):
         total_loss = 0.9*CE_fe + 0.1*CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
-
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
@@ -73,6 +68,11 @@ class FeatureTimeLoss(nn.Module):
         dirac_entropy_proportion2max = dirac_entropy / max_entropy
         return dirac_entropy, dirac_entropy_proportion2max
 
+    def time_entropy(self, t_enc_proba):
+        time_events_proba = t_enc_proba.mean(1)
+        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
+        return time_entropy
+
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
         # update batch centers
@@ -92,11 +92,6 @@ class FeatureTimeLoss(nn.Module):
     @torch.no_grad()
     def entropy(self, x):
         return -torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x, dim=-1), dim=-1).mean()
-
-    def time_entropy(self, t_enc_proba):
-        time_events_proba = t_enc_proba.mean(1)
-        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
-        return time_entropy
 
     def compute_kl(self, conditional):
         marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)

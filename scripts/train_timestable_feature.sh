@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_time_feature"
+EXP_NAME="svt_ucf101_timestable_feature"
 PORT='1037'
 
 cd "$PROJECT_PATH" || exit
@@ -28,7 +28,7 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 2 \
   --use_wandb True \
-  --loss FeatureTimeLoss \
+  --loss FeatureTimeStableLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 6 \

@@ -12,3 +12,4 @@ from .gpt_causal_loss import GPTCausalLoss
 from .gpt_sparse_loss import GPTSparseLoss
 from .dino_loss_entropy import DINOLossEntropy
 from .feature_time_loss import FeatureTimeLoss
+from .feature_timestable_loss import FeatureTimeStableLoss
