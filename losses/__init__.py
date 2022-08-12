@@ -10,3 +10,4 @@ from .gptsim_loss import GPTSimLoss
 from .gptsim2_loss import GPTSim2Loss
 from .gpt_causal_loss import GPTCausalLoss
 from .gpt_sparse_loss import GPTSparseLoss
+from .dino_loss_entropy import DINOLossEntropy
