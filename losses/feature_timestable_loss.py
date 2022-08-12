@@ -72,6 +72,11 @@ class FeatureTimeStableLoss(nn.Module):
         dirac_entropy_proportion2max = dirac_entropy / max_entropy
         return dirac_entropy, dirac_entropy_proportion2max
 
+    def time_entropy(self, t_enc_proba):
+        time_events_proba = t_enc_proba.mean(1)
+        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
+        return time_entropy
+
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
         # update batch centers
@@ -91,11 +96,6 @@ class FeatureTimeStableLoss(nn.Module):
     @torch.no_grad()
     def entropy(self, x):
         return -torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x, dim=-1), dim=-1).mean()
-
-    def time_entropy(self, t_enc_proba):
-        time_events_proba = t_enc_proba.mean(1)
-        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
-        return time_entropy
 
     def compute_kl(self, conditional):
         marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)
