@@ -122,14 +122,3 @@ class FeatureLoss(nn.Module):
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
-
-    def get_batch_center(self, teacher_output):
-        """
-        Update center used for teacher output.
-        """
-        b, t, *_ = teacher_output.shape
-        batch_center = torch.sum(torch.sum(teacher_output, dim=0, keepdim=True), dim=1, keepdim=True)
-        dist.all_reduce(batch_center)
-        batch_center = batch_center / (b * t * dist.get_world_size())
-        return batch_center
-

@@ -39,14 +39,14 @@ class FeatureLoss(nn.Module):
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
 
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
-        t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)[:, :-1]
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)[:, :-1]
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
-        KL = self.compute_kl(s_enc_proba)
+        # KL = self.compute_kl(s_enc_proba)
 
-        total_loss = 0.9*CE_fe + 0.1*(CE_ef-KL)
+        total_loss = 0.9*CE_fe + 0.1*CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_events_proba = t_enc_proba.mean(1)
@@ -57,7 +57,8 @@ class FeatureLoss(nn.Module):
                             'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
-                            'KL': KL}
+                            # 'KL': KL
+                            }
 
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
@@ -114,7 +115,7 @@ class FeatureLoss(nn.Module):
         Update center used for teacher output.
         """
         b, t, *_ = teacher_output.shape
-        batch_center = torch.sum(torch.sum(teacher_output, dim=0, keepdim=True), dim=1)
+        batch_center = torch.sum(torch.sum(teacher_output, dim=0, keepdim=True), dim=1,  keepdim=True)
         dist.all_reduce(batch_center)
         batch_center = batch_center / (b * t * dist.get_world_size())
         return batch_center

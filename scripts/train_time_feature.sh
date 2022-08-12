@@ -46,5 +46,3 @@ python -m torch.distributed.launch \
   DATA.USE_FLOW False \
   DATA.RAND_CONV False \
   DATA.NO_SPATIAL False
-
-#  --out_dim 32000 \
