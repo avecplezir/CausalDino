@@ -34,14 +34,14 @@ class FeatureTimeLoss(nn.Module):
         t_enc_logits, t_pred_future_logits, t_pred_past_logits = teacher_output
 
         temp = self.teacher_temp_schedule[epoch]
-        t_enc_logits_time_center = t_enc_logits.mean(1, keep_dim=True)
-        t_pred_future_logits_time_center = t_pred_future_logits.mean(1, keep_dim=True)
+        t_enc_logits_time_center = t_enc_logits.mean(1, keepdims=True)
+        # t_pred_future_logits_time_center = t_pred_future_logits.mean(1, keepdims=True)
 
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
 
         t_enc_proba = F.softmax((t_enc_logits - t_enc_logits_time_center) / temp, dim=-1)[:, 1:]
-        t_pred_future_proba = F.softmax((t_pred_future_logits - t_pred_future_logits_time_center) / temp, dim=-1)[:, :-1]
+        t_pred_future_proba = F.softmax((t_pred_future_logits - t_enc_logits_time_center) / temp, dim=-1)[:, :-1]
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
@@ -49,16 +49,9 @@ class FeatureTimeLoss(nn.Module):
         total_loss = 0.8*CE_fe + 0.2*CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
-        time_events_proba = t_enc_proba.mean(1)
-        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
 
-        labels = torch.argmax(t_enc_logits, dim=-1)
-        print('labels', labels.shape)
-        onehot = F.one_hot(labels)
-        print('onehot', onehot.shape)
-        time_dirac_proba = onehot.mean(1)
-        print('time_dist_dirac', time_dirac_proba.shape)
-        dirac_entropy = -torch.sum(time_dirac_proba * torch.log(time_dirac_proba), dim=-1).mean()
+        time_entropy = self.time_entropy(t_enc_proba)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
@@ -66,7 +59,17 @@ class FeatureTimeLoss(nn.Module):
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
+                            'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
+
+    def dirac_entropy(self, t_enc_logits):
+        labels = torch.argmax(t_enc_logits, dim=-1)
+        onehot = F.one_hot(labels)
+        time_dirac_proba = onehot.float().mean(dim=1)
+        dirac_entropy = -torch.sum(time_dirac_proba * torch.log(time_dirac_proba+1e-8), dim=-1).mean()
+        max_entropy = np.log(onehot.size(1))
+        dirac_entropy_proportion2max = dirac_entropy / max_entropy
+        return dirac_entropy, dirac_entropy_proportion2max
 
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
@@ -87,6 +90,11 @@ class FeatureTimeLoss(nn.Module):
     @torch.no_grad()
     def entropy(self, x):
         return -torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x, dim=-1), dim=-1).mean()
+
+    def time_entropy(self, t_enc_proba):
+        time_events_proba = t_enc_proba.mean(1)
+        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
+        return time_entropy
 
     def compute_kl(self, conditional):
         marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)
