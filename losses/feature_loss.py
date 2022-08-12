@@ -15,9 +15,9 @@ class FeatureLoss(nn.Module):
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
-        self.register_buffer("center", torch.ones(1, 1, out_dim) / out_dim)
-        self.register_buffer("predict_future_center", torch.ones(1, 1, out_dim) / out_dim)
-        self.register_buffer("predict_past_center", torch.ones(1, 1, out_dim) / out_dim)
+        self.register_buffer("center", torch.zeros(1, 1, out_dim))
+        self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
+        self.register_buffer("predict_past_center", torch.zeros(1, 1, out_dim))
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = np.concatenate((
@@ -52,9 +52,12 @@ class FeatureLoss(nn.Module):
         time_events_proba = t_enc_proba.mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
 
-        return total_loss, {'CE': total_loss, 'CE_fe': CE_fe, 'CE_ef': CE_ef,
+        return total_loss, {'CE': total_loss,
+                            'CE_fe': CE_fe,
+                            'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
-                            'batch_time_entropy': time_entropy, 'KL': KL}
+                            'batch_time_entropy': time_entropy,
+                            'KL': KL}
 
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
@@ -74,14 +77,12 @@ class FeatureLoss(nn.Module):
 
     @torch.no_grad()
     def entropy(self, x):
-        return torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x), dim=-1)
+        return -torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x, dim=-1), dim=-1).mean()
 
     def compute_kl(self, conditional):
-        marginal_log = F.log_softmax(self.center, dim=-1).repeat(1, conditional.size(1), 1)
-        print('marginal', marginal_log.shape)
+        marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)
         conditional_log = torch.log(conditional)
         kl = F.kl_div(conditional_log, marginal_log, log_target=True)
-        print('kl', kl.shape)
         return kl.mean()
 
     def compute_loss_fe(self, future_prediction, encoding):

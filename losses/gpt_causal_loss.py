@@ -74,10 +74,16 @@ class GPTCausalLoss(nn.Module):
         CE_ep = self.compute_loss_ep(s_enc_proba, t_pred_past_proba, future_prediction_sampled)
 
         total_loss = 0.45*CE_fe + 0.05*CE_ef + 0.45*CE_pe + 0.05*CE_ep
-        entropies = self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
 
-        return total_loss, {'CE': total_loss, 'CE_ef': CE_ef, 'CE_fe': CE_fe,
-                            'CE_ep': CE_ep, 'CE_pe': CE_pe, **entropies}
+        return total_loss, {'CE': total_loss,
+                            'CE_ef': CE_ef,
+                            'CE_fe': CE_fe,
+                            'CE_ep': CE_ep,
+                            'CE_pe': CE_pe,
+                            'entropy': self.entropy(self.center),
+                            'future_entropy': self.entropy(self.predict_future_center),
+                            'past_entropy': self.entropy(self.predict_past_center)
+                            }
 
     def compute_loss_fe(self, future_prediction, encoding, past_prediction_sampled):
         total_loss = 0
@@ -149,7 +155,7 @@ class GPTCausalLoss(nn.Module):
 
     @torch.no_grad()
     def entropy(self, x):
-        return torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x), dim=-1)
+        return -torch.sum(F.softmax(x, dim=-1) * F.log_softmax(x), dim=-1)
 
     @torch.no_grad()
     def approx_entropy(self, x, p):
@@ -168,10 +174,6 @@ class GPTCausalLoss(nn.Module):
         batch_center_pred_past = self.get_batch_center(t_pred_past_logits)
         self.predict_past_center = self.predict_past_center * self.center_momentum \
                                    + batch_center_pred_past * (1 - self.center_momentum)
-
-        return {'entropy': self.entropy(self.center),
-                'future_entropy': self.entropy(self.predict_future_center),
-                'past_entropy': self.entropy(self.predict_past_center)}
 
     @torch.no_grad()
     def get_batch_center(self, teacher_output):
