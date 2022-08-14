@@ -33,7 +33,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 6 \
   --n_parts 8 \
-  --freeze_last_layer 4 \
+  --freeze_last_layer 0 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
   --predictor MLPfeaturePredictor \
