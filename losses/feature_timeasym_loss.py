@@ -44,7 +44,8 @@ class FeatureAsymLoss(nn.Module):
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_logits[:, :-1], t_enc_logits[:, :-1], temp)
 
         # total_loss = CE_fe
-        total_loss = 0.6*CE_fe + 0.4*CE_ef
+        # total_loss = 0.6*CE_fe + 0.4*CE_ef
+        total_loss = 0.8 * CE_fe + 0.2 * CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
 
@@ -58,6 +59,7 @@ class FeatureAsymLoss(nn.Module):
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
+                            'temp': temp,
                             }
 
     def compute_loss_fe(self, future_prediction, encoding_logits, temp):
@@ -73,14 +75,14 @@ class FeatureAsymLoss(nn.Module):
         total_loss /= n_loss_terms
         return total_loss
 
-    def compute_loss_ef(self, encoding, future_prediction, encoding_logits, temp):
+    def compute_loss_ef(self, encoding, future_prediction_logits, encoding_logits, temp):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
         for ip in range(0, self.n_crops-2): #future_prediction from past
             for ie in range(ip + 1, self.n_crops-2): #future encoding
-                future_prediction = F.softmax((future_prediction[:, ip] - encoding_logits[:, ip]) / temp, dim=-1)
-                loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]), dim=-1)
+                future_prediction = F.softmax((future_prediction_logits[:, ip] - encoding_logits[:, ip]) / temp, dim=-1)
+                loss = -torch.sum(future_prediction * torch.log(encoding[:, ie]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

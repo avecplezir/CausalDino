@@ -64,6 +64,7 @@ class DINOLoss(nn.Module):
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
+                            'temp': temp,
                             }
 
     @torch.no_grad()
