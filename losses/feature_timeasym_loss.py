@@ -1,4 +1,4 @@
-__all__ = ['FeatureLoss']
+__all__ = ['FeatureAsymLoss']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class FeatureLoss(nn.Module):
+class FeatureAsymLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, **kwargs):
