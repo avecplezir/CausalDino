@@ -42,9 +42,10 @@ class FeatureAsymLoss(nn.Module):
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_logits[:, 1:], temp)
         # CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_logits[:, :-1], t_enc_logits[:, :-1], temp)
-        CE_ee = self.compute_loss_ee(s_enc_logits, t_enc_logits)
+        # CE_ee = self.compute_loss_ee(s_enc_logits, t_enc_logits, temp)
 
-        total_loss = CE_fe + CE_ee
+        total_loss = CE_fe
+        # total_loss = 0.5*CE_fe + 0.5*CE_ee
         # total_loss = 0.6*CE_fe + 0.4*CE_ef
         # total_loss = 0.8 * CE_fe + 0.2 * CE_ef
 
@@ -56,7 +57,7 @@ class FeatureAsymLoss(nn.Module):
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
                             # 'CE_ef': CE_ef,
-                            'CE_ee': CE_ee,
+                            # 'CE_ee': CE_ee,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
