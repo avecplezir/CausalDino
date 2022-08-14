@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_timestable_feature_fix"
+EXP_NAME="svt_ucf101_timestable_feature_32"
 PORT='1037'
 
 cd "$PROJECT_PATH" || exit
@@ -21,7 +21,7 @@ python -m torch.distributed.launch \
   train_ssl.py \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
@@ -33,7 +33,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 6 \
   --n_parts 8 \
-  --freeze_last_layer 1 \
+  --freeze_last_layer 10 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
   --predictor MLPfeaturePredictor \
