@@ -108,8 +108,8 @@ class FeatureTimeStableLoss(nn.Module):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ip in range(0, self.n_crops-2): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops-2): #future encoding
+        for ip in range(0, self.n_crops): #future_prediction from past
+            for ie in range(ip + 1, self.n_crops): #future encoding
                 loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
