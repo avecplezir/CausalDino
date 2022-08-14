@@ -35,7 +35,8 @@ class FeatureTimeStableLoss(nn.Module):
 
         temp = self.teacher_temp_schedule[epoch]
         t_enc_logits_time_center = t_enc_logits.mean(1, keepdims=True)
-
+        batch_center = self.get_batch_center(t_enc_logits)
+        t_enc_logits_time_center - batch_center + self.center
         # t_pred_future_logits_time_center = t_pred_future_logits.mean(1, keepdims=True)
 
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]

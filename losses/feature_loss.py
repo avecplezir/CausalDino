@@ -57,7 +57,7 @@ class FeatureLoss(nn.Module):
                             'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
-                            # 'KL': KL
+                            # 'KL': KL,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
