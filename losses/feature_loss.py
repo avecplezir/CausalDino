@@ -35,11 +35,11 @@ class FeatureLoss(nn.Module):
 
         temp = self.teacher_temp_schedule[epoch]
 
-        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]
-        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
+        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
 
-        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)[:, 1:]
-        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)[:, :-1]
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
@@ -106,8 +106,8 @@ class FeatureLoss(nn.Module):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ip in range(0, self.n_crops-2): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops-2): #future encoding
+        for ip in range(0, self.n_crops): #future_prediction from past
+            for ie in range(ip + 1, self.n_crops): #future encoding
                 loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
@@ -118,8 +118,8 @@ class FeatureLoss(nn.Module):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ip in range(0, self.n_crops-2): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops-2): #future encoding
+        for ip in range(0, self.n_crops): #future_prediction from past
+            for ie in range(ip + 1, self.n_crops): #future encoding
                 loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1

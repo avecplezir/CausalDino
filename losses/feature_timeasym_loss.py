@@ -35,12 +35,12 @@ class FeatureAsymLoss(nn.Module):
 
         temp = self.teacher_temp_schedule[epoch]
 
-        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]
-        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
+        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
 
         # t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
 
-        CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_logits[:, 1:], temp)
+        CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_logits, temp)
         # CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_logits[:, :-1], t_enc_logits[:, :-1], temp)
         # CE_ee = self.compute_loss_ee(s_enc_logits, t_enc_logits, temp)
 
@@ -83,7 +83,7 @@ class FeatureAsymLoss(nn.Module):
         n_loss_terms = 0
         # ip < ie
         for ip in range(0, self.n_crops-1): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops-1): #future encoding
+            for ie in range(ip + 1, self.n_crops): #future encoding
                 encoding = F.softmax((encoding_logits[:, ie] - encoding_logits[:, ip]) / temp, dim=-1)
                 loss = -torch.sum(encoding * torch.log(future_prediction[:, ip]), dim=-1)
                 total_loss += loss.mean()

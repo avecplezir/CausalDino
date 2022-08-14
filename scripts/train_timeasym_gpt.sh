@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_timeasym_gpt"
+EXP_NAME="svt_ucf101_timeasym_gpt_fix"
 PORT='1025'
 
 cd "$PROJECT_PATH" || exit
@@ -21,7 +21,7 @@ python -m torch.distributed.launch \
   train_ssl.py \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \

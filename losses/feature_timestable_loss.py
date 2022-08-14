@@ -39,16 +39,16 @@ class FeatureTimeStableLoss(nn.Module):
         t_enc_logits_time_center - batch_center + self.center
         # t_pred_future_logits_time_center = t_pred_future_logits.mean(1, keepdims=True)
 
-        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]
-        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)[:, :-1]
+        # s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)[:, 1:]
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
 
-        t_enc_proba = F.softmax((t_enc_logits - t_enc_logits_time_center) / temp, dim=-1)[:, 1:]
-        t_pred_future_proba = F.softmax((t_pred_future_logits - t_enc_logits_time_center) / temp, dim=-1)[:, :-1]
+        t_enc_proba = F.softmax((t_enc_logits - t_enc_logits_time_center) / temp, dim=-1)
+        # t_pred_future_proba = F.softmax((t_pred_future_logits - t_enc_logits_time_center) / temp, dim=-1)[:, :-1]
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
+        # CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
-        total_loss = 0.9*CE_fe + 0.1*CE_ef
+        total_loss = CE_fe #+ 0.1*CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
 
@@ -57,7 +57,7 @@ class FeatureTimeStableLoss(nn.Module):
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
-                            'CE_ef': CE_ef,
+                            # 'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
@@ -120,8 +120,8 @@ class FeatureTimeStableLoss(nn.Module):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ip in range(0, self.n_crops-2): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops-2): #future encoding
+        for ip in range(0, self.n_crops): #future_prediction from past
+            for ie in range(ip + 1, self.n_crops): #future encoding
                 loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
