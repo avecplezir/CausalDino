@@ -339,6 +339,7 @@ def train_svt(args):
         args.epochs,
         weight_inv=args.weight_inv,
         argmax=args.argmax,
+        n_parts=args.n_parts,
     ).cuda()
 
     # ============ preparing optimizer ... ============

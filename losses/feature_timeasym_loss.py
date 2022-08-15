@@ -10,11 +10,12 @@ import numpy as np
 class FeatureAsymLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, **kwargs):
+                 center_momentum=0.9, n_parts=8, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
+        self.n_parts = n_parts
         self.register_buffer("center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_past_center", torch.zeros(1, 1, out_dim))
@@ -41,13 +42,12 @@ class FeatureAsymLoss(nn.Module):
         # t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_logits, temp)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_logits, t_enc_logits, temp)
+        # CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_logits, t_enc_logits, temp)
         # CE_ee = self.compute_loss_ee(s_enc_logits, t_enc_logits, temp)
 
-        # total_loss = CE_fe
-        # total_loss = 0.5*CE_fe + 0.5*CE_ee
-        # total_loss = 0.6*CE_fe + 0.4*CE_ef
-        total_loss = 0.9 * CE_fe + 0.1 * CE_ef
+        total_loss = CE_fe
+        # total_loss = 0.7*CE_fe + 0.3*CE_ee
+        # total_loss = 0.9 * CE_fe + 0.1 * CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
 
@@ -85,7 +85,7 @@ class FeatureAsymLoss(nn.Module):
         for ip in range(0, self.n_crops): #future_prediction from past
             for ie in range(ip + 1, self.n_crops): #future encoding
                 encoding = F.softmax((encoding_logits[:, ie] - encoding_logits[:, ip]) / temp, dim=-1)
-                loss = -torch.sum(encoding * torch.log(future_prediction[:, ip]), dim=-1)
+                loss = -torch.sum(encoding * torch.log(future_prediction[:, ip] * (self.n_parts-1)), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
