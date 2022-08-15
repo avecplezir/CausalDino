@@ -172,6 +172,8 @@ def get_args_parser():
     parser.add_argument("--eval_freq", type=int, default=2, help="eval every")
     parser.add_argument('--eval_dataset2', default='UCFEventsReturnIndexDataset', type=str,
                         help="""Name of dataset to test knn with.""")
+    parser.add_argument('--indices_input', type=utils.bool_flag, default=False, help="""Whether to use indices as input to gpt.""")
+
 
     return parser
 

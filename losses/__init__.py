@@ -15,3 +15,4 @@ from .feature_time_loss import FeatureTimeLoss
 from .feature_timestable_loss import FeatureTimeStableLoss
 from .feature_timeasym_loss import FeatureAsymLoss
 from .gpt_timeasym_loss import GPTAsymLoss
+from .dino_topk_loss import DINOTopkLoss

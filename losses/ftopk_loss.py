@@ -10,13 +10,12 @@ import numpy as np
 class FtopkLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, global_crops=2, two_token=False):
+                 center_momentum=0.9, global_crops=2, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
         self.global_crops = global_crops
-        self.two_token = two_token
         self.register_buffer("center", torch.zeros(1, out_dim))
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
@@ -26,14 +25,12 @@ class FtopkLoss(nn.Module):
             np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
         ))
 
-    def forward(self, student_output, teacher_output, epoch, student=None, **kwargs):
+    def forward(self, student_output, teacher_output, epoch, student=None, teacher=None, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        total_loss = 0
-        n_loss_terms = 0
         temp = self.teacher_temp_schedule[epoch]
-        student_out = F.softmax(student_output / temp, dim=-1)
+        student_out = F.softmax(student_output / self.student_temp, dim=-1)
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
@@ -41,8 +38,18 @@ class FtopkLoss(nn.Module):
         # teacher_out = teacher_out.detach().chunk(self.global_crops)
         teacher_out = teacher_out.chunk(self.global_crops)
 
-        for iq, f in enumerate(teacher_out): #future
-            for v, s in enumerate(student_out): #past
+        batch_center = self.update_center(teacher_output)
+
+        true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
+
+        return total_loss, {'CE': total_loss, 'entropy': entropy, 'true_entropy': true_entropy}
+
+    def loss(self, teacher_out, student_out, student):
+        total_loss = 0
+        n_loss_terms = 0
+        for iec in range(0, self.n_crops): #current encoding
+            for ief in range(iec + 1, self.n_crops): #future encoding
                 if v <= iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
@@ -55,12 +62,7 @@ class FtopkLoss(nn.Module):
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
-        batch_center = self.update_center(teacher_output)
-
-        true_entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        entropy = torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
-
-        return total_loss, {'CE': total_loss, 'entropy': entropy, 'true_entropy': true_entropy}
+        return total_loss
 
     @torch.no_grad()
     def update_center(self, teacher_output):

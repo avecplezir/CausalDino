@@ -116,7 +116,7 @@ class GPT(nn.Module):
         C.attn_pdrop = 0.1
         return C
 
-    def __init__(self, out_dim=256, block_size=4):
+    def __init__(self, out_dim=256, block_size=4, indices_input=True):
         super().__init__()
         config = self.get_default_config()
         config.vocab_size = out_dim
@@ -145,6 +145,10 @@ class GPT(nn.Module):
             # ln_f=nn.LayerNorm(config.n_embd),
         ))
 
+        self.indices_input = indices_input
+        if indices_input:
+            self.transformer['wte'] = nn.Embedding(65536, config.n_embd)
+
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
         for pn, p in self.named_parameters():
@@ -166,14 +170,17 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
 
-    def forward(self, x,):
+    def forward(self, x):
         device = x.device
         b, t, emb_dim = x.size()
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
         # forward the GPT model itself
-        tok_emb = x  # token embeddings of shape (b, t, n_embd)
+        if self.indices_input:
+            tok_emb = self.transformer.wte(x)  # token embeddings of shape (b, t, n_embd)
+        else:
+            tok_emb = x  # token embeddings of shape (b, t, n_embd)
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:

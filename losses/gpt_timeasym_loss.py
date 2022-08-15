@@ -10,7 +10,7 @@ import numpy as np
 class GPTAsymLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, global_crops=2, two_token=False):
+                 center_momentum=0.9, global_crops=2, two_token=False, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
@@ -41,7 +41,7 @@ class GPTAsymLoss(nn.Module):
         total_loss = loss.mean()
 
         batch_center = self.update_center(t_enc_logits)
-        entropy = torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center, dim=-1), dim=-1).mean()
 
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
