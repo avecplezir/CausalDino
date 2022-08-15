@@ -38,40 +38,45 @@ class DINOTopkLoss(nn.Module):
         teacher_out = torch.stack(teacher_out, 1)
 
         CE_fe = self.loss_fe(teacher_out, student_out, teacher, temp)
-        CE_ef = self.loss_ef(teacher_out, student_out, student, temp)
+        CE_ef = self.loss_ef(teacher_out, student_out, teacher, temp)
+
+        total_loss = 0.5*CE_fe + 0.5*CE_ef
 
         batch_center = self.update_center(teacher_output)
         entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        batch_entropy = -torch.sum(F.softmax(batch_center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        s_enc_logits = torch.stack(student_out, 1)
-        time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
-        time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
-
-        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(s_enc_logits)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(student_out)
 
         return total_loss, {'CE': total_loss,
-                            'batch_entropy': batch_entropy,
+                            'CE_fe': CE_fe,
+                            'CE_ef': CE_ef,
                             'entropy': entropy,
-                            'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
-                            'temp': temp,
                             }
+
+    def dirac_entropy(self, t_enc_logits):
+        labels = torch.argmax(t_enc_logits, dim=-1)
+        onehot = F.one_hot(labels)
+        time_dirac_proba = onehot.float().mean(dim=1)
+        dirac_entropy = -torch.sum(time_dirac_proba * torch.log(time_dirac_proba+1e-8), dim=-1).mean()
+        max_entropy = np.log(onehot.size(1))
+        dirac_entropy_proportion2max = dirac_entropy / max_entropy
+        return dirac_entropy, dirac_entropy_proportion2max
 
     def loss_fe(self, teacher_out, student_out, teacher, temp):
         indices = teacher_out.argmax(dim=-1)
-        print('indices', indices.shape)
+        # print('indices', indices.shape)
         pred = teacher.predictor(indices)
-        print('pred', pred.shape)
+        # print('pred', pred.shape)
         pred = (pred[:, :-1] - teacher_out[:, :-1]) / temp
         loss = torch.sum(-F.softmax(pred, dim=-1) * F.log_softmax(student_out[:, 1:] / self.student_temp, dim=-1), dim=-1)
         return loss.mean()
 
-    def loss_ef(self, teacher_out, student_out, student, temp):
+    def loss_ef(self, teacher_out, student_out, teacher, temp):
         indices = student_out.argmax(dim=-1)
-        print('indices', indices.shape)
-        pred = student.module.predictor(indices)
-        print('pred', pred.shape)
+        # print('indices', indices.shape)
+        pred = teacher.predictor(indices)
+        # print('pred', pred.shape)
         encoding = (teacher_out[:, 1:] - teacher_out[:, :-1]) / temp
         loss = torch.sum(-F.softmax(encoding, dim=-1) * F.log_softmax(pred[:, :-1] / self.student_temp, dim=-1), dim=-1)
         return loss.mean()

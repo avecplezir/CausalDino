@@ -155,6 +155,13 @@ class GPT(nn.Module):
             if pn.endswith('c_proj.weight'):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
 
+        if indices_input:
+            self.last_layer = nn.utils.weight_norm(nn.Linear(config.n_embd, 65536, bias=False))
+            self.last_layer.weight_g.data.fill_(1)
+            norm_last_layer = True
+            if norm_last_layer:
+                self.last_layer.weight_g.requires_grad = False
+
         # report number of parameters (note we don't count the decoder parameters in lm_head)
         n_params = sum(p.numel() for p in self.transformer.parameters())
         print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
@@ -172,7 +179,7 @@ class GPT(nn.Module):
 
     def forward(self, x):
         device = x.device
-        b, t, emb_dim = x.size()
+        b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
@@ -187,6 +194,7 @@ class GPT(nn.Module):
             x = block(x)
         # x = self.transformer.ln_f(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
-        # logits = self.last_layer(x)
+        if self.indices_input:
+            x = self.last_layer(x)
 
         return x

@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_gpt_asym_order_32"
+EXP_NAME="svt_ucf101_dinotopk_order_32"
 PORT='1032'
 
 cd "$PROJECT_PATH" || exit
@@ -35,10 +35,8 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperGPT \
   --predictor GPT \
   --headproba HeadProba \
-  --skip_last True \
   --opts \
   MODEL.TWO_STREAM False \
   MODEL.TWO_TOKEN False \
