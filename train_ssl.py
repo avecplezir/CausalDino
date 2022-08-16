@@ -296,16 +296,20 @@ def train_svt(args):
              norm_last_layer=args.norm_last_layer,
              skip_last=args.skip_last,
          ),
-         predictor=Predictor(block_size=args.local_crops_number + args.n_global_views) if Predictor else None,
-         predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views) if Predictor_past else None,
+         predictor=Predictor(block_size=args.local_crops_number + args.n_global_views,
+                             indices_input=args.indices_input) if Predictor else None,
+         predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views,
+                                       indices_input=args.indices_input) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          n_crops=args.local_crops_number + args.n_global_views,
          )
     teacher = Wrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
-        predictor=Predictor(block_size=args.local_crops_number + args.n_global_views) if Predictor else None,
-        predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views) if Predictor_past else None,
+        predictor=Predictor(block_size=args.local_crops_number + args.n_global_views,
+                            indices_input=args.indices_input) if Predictor else None,
+        predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views,
+                                      indices_input=args.indices_input) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         n_crops=args.local_crops_number + args.n_global_views,
     )
@@ -317,13 +321,13 @@ def train_svt(args):
         student = nn.SyncBatchNorm.convert_sync_batchnorm(student)
         teacher = nn.SyncBatchNorm.convert_sync_batchnorm(teacher)
         # we need DDP wrapper to have synchro batch norms working...
-        teacher = nn.parallel.DistributedDataParallel(teacher, device_ids=[args.gpu], find_unused_parameters=True)
+        teacher = nn.parallel.DistributedDataParallel(teacher, device_ids=[args.gpu], find_unused_parameters=False)
         teacher_without_ddp = teacher.module
     else:
         # teacher_without_ddp and teacher are the same thing
         teacher_without_ddp = teacher
 
-    student = nn.parallel.DistributedDataParallel(student, device_ids=[args.gpu], find_unused_parameters=True)
+    student = nn.parallel.DistributedDataParallel(student, device_ids=[args.gpu], find_unused_parameters=False)
     msg = teacher_without_ddp.load_state_dict(student.module.state_dict(), strict=False)
     print(f"initialized teacher with student msg: {msg}")
     for p in teacher.parameters():

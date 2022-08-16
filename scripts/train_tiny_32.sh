@@ -3,7 +3,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_tiny_32"
+EXP_NAME="svt_ucf101_tiny_32_check_dirac"
 PORT='1032'
 
 cd "$PROJECT_PATH" || exit
@@ -27,17 +27,10 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
-  --eval_freq 2 \
+  --eval_freq 4 \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \
   --loss DINOLoss \
-  --dataset Kinetics \
-  --opts \
-  MODEL.TWO_STREAM False \
-  MODEL.TWO_TOKEN False \
-  DATA.NO_FLOW_AUG False \
-  DATA.USE_FLOW False \
-  DATA.RAND_CONV False \
-  DATA.NO_SPATIAL False
+  --dataset Kinetics
 

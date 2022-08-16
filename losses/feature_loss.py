@@ -39,7 +39,7 @@ class FeatureLoss(nn.Module):
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
 
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
-        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
 
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)

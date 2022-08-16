@@ -1,4 +1,4 @@
-__all__ = ['DINOLoss']
+__all__ = ['DINOLogLoss']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class DINOLoss(nn.Module):
+class DINOLogLoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, global_crops=2, **kwargs):
@@ -31,12 +31,13 @@ class DINOLoss(nn.Module):
         """
         total_loss = 0
         n_loss_terms = 0
-        student_out = student_output / self.student_temp
+        student_out = F.log_softmax(student_output, dim=-1) / self.student_temp
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
+        teacher_output = F.softmax(teacher_output, dim=-1)
+        teacher_out = F.softmax((torch.log(teacher_output) - torch.log(self.center)) / temp, dim=-1)
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
@@ -44,7 +45,7 @@ class DINOLoss(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
+                loss = torch.sum(-q * student_out[v], dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

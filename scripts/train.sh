@@ -32,4 +32,4 @@ python -m torch.distributed.launch \
   --n_parts 11 \
   --use_wandb True \
   --loss DINOLoss \
-  --dataset Kinetics \
+  --dataset Kinetics

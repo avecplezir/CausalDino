@@ -116,7 +116,7 @@ class GPT(nn.Module):
         C.attn_pdrop = 0.1
         return C
 
-    def __init__(self, out_dim=256, block_size=4, indices_input=True):
+    def __init__(self, out_dim=256, block_size=4, indices_input=False):
         super().__init__()
         config = self.get_default_config()
         config.vocab_size = out_dim
