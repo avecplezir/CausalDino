@@ -31,7 +31,7 @@ python -m torch.distributed.launch \
   --loss DINOTopkLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 3 \
+  --n_global_views 8 \
   --random_sampling False \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
