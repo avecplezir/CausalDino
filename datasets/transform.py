@@ -752,12 +752,12 @@ class VideoDataAugmentationDINO(object):
 
 class VideoDataAugmentationEvents(object):
     def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4), local_crops_number=6,
-                 n_global_views=2):
+                 n_global_views=2, size=224):
         self.global_crops_scale = global_crops_scale
         self.local_crops_scale = local_crops_scale
         self.local_crops_number = local_crops_number
         self.n_global_views = n_global_views
-        self.size = 224
+        self.size = size
 
         self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
 

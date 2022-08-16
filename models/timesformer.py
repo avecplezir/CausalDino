@@ -609,8 +609,7 @@ def get_vit_base_patch16_224(cfg, no_head=False, **kwargs):
     return vit
 
 
-def get_deit_tiny_patch16_224(cfg, no_head=False, **kwargs):
-    patch_size = 16
+def get_deit_tiny_patch16_224(cfg, no_head=False, patch_size=16, **kwargs):
     vit = VisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES,
                             patch_size=patch_size, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4,
                             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0.,
@@ -629,8 +628,7 @@ def get_deit_tiny_patch16_224(cfg, no_head=False, **kwargs):
     return vit
 
 
-def get_deit_small_patch16_224(cfg, no_head=False, **kwargs):
-    patch_size = 16
+def get_deit_small_patch16_224(cfg, patch_size=16, no_head=False, **kwargs):
     vit = VisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES,
                             patch_size=patch_size, embed_dim=384, depth=12, num_heads=6, mlp_ratio=4,
                             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0.,

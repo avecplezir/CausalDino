@@ -39,7 +39,7 @@ class DINOTopkLoss(nn.Module):
         teacher_out = teacher_output.detach().chunk(self.n_crops)
         t_enc_logits = torch.stack(teacher_out, 1)
 
-        indices = teacher_out.argmax(dim=-1)
+        indices = t_enc_logits.argmax(dim=-1)
         t_pred_future_logits = teacher.predictor(indices)
         s_pred_future_logits = student.module.predictor(indices)
 
@@ -48,9 +48,9 @@ class DINOTopkLoss(nn.Module):
 
         total_loss = 0.5*CE_fe + 0.5*CE_ef
 
-        self.update_centers(t_enc_logits, t_pred_future_logits)
-        entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(student_out)
+        self.update_centers(t_enc_logits, t_pred_future_logits, None)
+        entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1).mean()
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
@@ -69,13 +69,13 @@ class DINOTopkLoss(nn.Module):
         dirac_entropy_proportion2max = dirac_entropy / max_entropy
         return dirac_entropy, dirac_entropy_proportion2max
 
-    def loss_fe(self, t_pred_future_logits, s_enc_logits, teacher, temp):
-        pred = (t_pred_future_logits[:, :-1] - self.center) / temp
+    def loss_fe(self, t_pred_future_logits, s_enc_logits, temp):
+        pred = (t_pred_future_logits[:, :-1] - self.predict_future_center) / temp
         loss = torch.sum(-F.softmax(pred, dim=-1) * F.log_softmax(s_enc_logits[:, 1:] / self.student_temp, dim=-1), dim=-1)
         return loss.mean()
 
     def loss_ef(self, t_enc_logits, s_pred_future_logits, temp):
-        encoding = (t_enc_logits[:, 1:] - self.predict_future_center) / temp
+        encoding = (t_enc_logits[:, 1:] - self.center) / temp
         loss = torch.sum(-F.softmax(encoding, dim=-1) * F.log_softmax(s_pred_future_logits[:, :-1] / self.student_temp, dim=-1), dim=-1)
         return loss.mean()
 
@@ -85,13 +85,15 @@ class DINOTopkLoss(nn.Module):
         batch_center = self.get_batch_center(t_enc_logits)
         self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
-        batch_center_pred_future = self.get_batch_center(t_pred_future_logits)
-        self.predict_future_center = self.predict_future_center * self.center_momentum \
-                                     + batch_center_pred_future * (1 - self.center_momentum)
+        if t_pred_future_logits is not None:
+            batch_center_pred_future = self.get_batch_center(t_pred_future_logits)
+            self.predict_future_center = self.predict_future_center * self.center_momentum \
+                                         + batch_center_pred_future * (1 - self.center_momentum)
 
-        batch_center_pred_past = self.get_batch_center(t_pred_past_logits)
-        self.predict_past_center = self.predict_past_center * self.center_momentum \
-                                   + batch_center_pred_past * (1 - self.center_momentum)
+        if t_pred_past_logits is not None:
+            batch_center_pred_past = self.get_batch_center(t_pred_past_logits)
+            self.predict_past_center = self.predict_past_center * self.center_momentum \
+                                       + batch_center_pred_past * (1 - self.center_momentum)
 
     @torch.no_grad()
     def get_batch_center(self, teacher_output):
@@ -99,7 +101,7 @@ class DINOTopkLoss(nn.Module):
         Update center used for teacher output.
         """
         b, t, *_ = teacher_output.shape
-        batch_center = torch.sum(torch.sum(teacher_output, dim=0, keepdim=True), dim=1)
+        batch_center = torch.sum(torch.sum(teacher_output, dim=0, keepdim=True), dim=1, keepdim=True)
         dist.all_reduce(batch_center)
         batch_center = batch_center / (b * t * dist.get_world_size())
         return batch_center

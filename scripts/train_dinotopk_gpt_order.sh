@@ -11,6 +11,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
+#export TORCH_DISTRIBUTED_DEBUG=INFO
 export CUDA_VISIBLE_DEVICES=0
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
