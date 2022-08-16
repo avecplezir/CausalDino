@@ -136,14 +136,3 @@ class FeatureLoss(nn.Module):
         batch_center = batch_center / (b * t * dist.get_world_size())
         return batch_center
 
-    @torch.no_grad()
-    def update_center(self, teacher_output):
-        """
-        Update center used for teacher output.
-        """
-        batch_center = self.get_batch_center(teacher_output)
-
-        # ema update
-        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
-
-        return batch_center

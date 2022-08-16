@@ -1,4 +1,6 @@
 import math
+import random
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -758,6 +760,7 @@ class VideoDataAugmentationEvents(object):
         self.local_crops_number = local_crops_number
         self.n_global_views = n_global_views
         self.size = size
+        self.local_size = 96
 
         self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
 
@@ -826,14 +829,12 @@ class VideoDataAugmentationEvents(object):
             crops = [self.no_aug(x) for x in image]
         elif from_list:
             image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
-            crops = [self.global_transform1(image[0]), self.global_transform2(image[1])]
-            for local_image in image[2:]:
-                crops.append(self.local_transform(local_image))
-        else:
-            if image.dtype == torch.uint8:
-                image = image.float()
-                image = image / 255.0
-            crops = [self.global_transform1(image), self.global_transform2(image)]
-            for _ in range(self.local_crops_number + self.n_global_views-2):
-                crops.append(self.local_transform(image))
+            # structer['l']*self.local_crops_number + ['g']*self.n_global_views
+            # crops = [self.global_transform1(image[0]), self.global_transform2(image[1])]
+            crops = []
+            for local_image in image:
+                if random.randint(0, 1):
+                    crops.append(self.global_transform1(local_image))
+                else:
+                    crops.append(self.global_transform2(local_image))
         return crops

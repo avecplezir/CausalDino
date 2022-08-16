@@ -16,7 +16,7 @@ class DINOLogLoss(nn.Module):
         self.center_momentum = center_momentum
         self.n_crops = ncrops
         self.global_crops = global_crops
-        self.register_buffer("center", torch.zeros(1, out_dim))
+        self.register_buffer("center", torch.ones(1, out_dim) / out_dim)
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = np.concatenate((
@@ -31,13 +31,13 @@ class DINOLogLoss(nn.Module):
         """
         total_loss = 0
         n_loss_terms = 0
-        student_out = F.log_softmax(student_output, dim=-1) / self.student_temp
+        student_out = F.log_softmax(student_output, dim=-1) / (self.student_temp * 8)
         student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
         teacher_output = F.softmax(teacher_output, dim=-1)
-        teacher_out = F.softmax((torch.log(teacher_output) - torch.log(self.center)) / temp, dim=-1)
+        teacher_out = F.softmax((torch.log(teacher_output) - torch.log(self.center)) / (temp*8), dim=-1) #
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
@@ -51,7 +51,7 @@ class DINOLogLoss(nn.Module):
         total_loss /= n_loss_terms
         batch_center = self.update_center(teacher_output)
 
-        entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        entropy = -torch.sum(self.center * torch.log(self.center), dim=-1)
         s_enc_logits = torch.stack(student_out, 1)
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
