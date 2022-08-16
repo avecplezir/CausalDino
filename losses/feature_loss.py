@@ -47,6 +47,7 @@ class FeatureLoss(nn.Module):
         # KL = self.compute_kl(s_enc_proba)
 
         total_loss = 0.9*CE_fe + 0.1*CE_ef
+        # total_loss = 0.1 * CE_fe + 0.9 * CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_entropy = self.time_entropy(t_enc_proba)

@@ -2,8 +2,8 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_feature_tiny_32_invkoef"
-PORT='1028'
+EXP_NAME="svt_ucf101_feature_tiny_gpt_32"
+PORT='1029'
 
 cd "$PROJECT_PATH" || exit
 
@@ -11,7 +11,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -36,6 +36,6 @@ python -m torch.distributed.launch \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
-  --predictor MLPfeaturePredictor \
+  --predictor GPT \
   --headproba HeadProba \
   --skip_last True
