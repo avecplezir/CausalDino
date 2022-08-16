@@ -3,7 +3,7 @@ PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
 EXP_NAME="svt_ucf101_feature_tiny_gpt_ind_32"
-PORT='1028'
+PORT='1027'
 
 cd "$PROJECT_PATH" || exit
 
@@ -35,7 +35,7 @@ python -m torch.distributed.launch \
   --n_parts 11 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperGPT \
+  --wrapper MultiCropWrapperGPTInd \
   --predictor GPT \
   --headproba HeadProba \
   --skip_last True \
