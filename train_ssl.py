@@ -412,6 +412,9 @@ def train_svt(args):
                                       epoch, fp16_scaler, args, cfg=config)
 
         # ============ eval ========================
+        print('epoch % args.eval_freq', epoch % args.eval_freq)
+        print('args.do_eval', args.do_eval)
+        print('epoch', epoch)
         if args.do_eval and epoch % args.eval_freq == 0:
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
             val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
@@ -442,6 +445,7 @@ def train_svt(args):
         if utils.is_main_process():
             with (Path(args.output_dir) / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+            wandb.log({'epoch': epoch})
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))

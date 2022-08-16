@@ -68,7 +68,8 @@ class DINOTopkLoss(nn.Module):
         # print('indices', indices.shape)
         pred = teacher.predictor(indices)
         # print('pred', pred.shape)
-        pred = (pred[:, :-1] - teacher_out[:, :-1]) / temp
+        # pred = (pred[:, :-1] - teacher_out[:, :-1]) / temp
+        pred = (pred[:, :-1] - self.center) / temp
         loss = torch.sum(-F.softmax(pred, dim=-1) * F.log_softmax(student_out[:, 1:] / self.student_temp, dim=-1), dim=-1)
         return loss.mean()
 
@@ -77,7 +78,8 @@ class DINOTopkLoss(nn.Module):
         # print('indices', indices.shape)
         pred = teacher.predictor(indices)
         # print('pred', pred.shape)
-        encoding = (teacher_out[:, 1:] - teacher_out[:, :-1]) / temp
+        # encoding = (teacher_out[:, 1:] - teacher_out[:, :-1]) / temp
+        encoding = (teacher_out[:, 1:] - self.center) / temp
         loss = torch.sum(-F.softmax(encoding, dim=-1) * F.log_softmax(pred[:, :-1] / self.student_temp, dim=-1), dim=-1)
         return loss.mean()
 
