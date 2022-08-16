@@ -180,6 +180,8 @@ class GPT(nn.Module):
     def forward(self, x):
         device = x.device
         b, t = x.size()[:2]
+        if self.indices_input:
+            x = x.argmax(dim=-1)
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
