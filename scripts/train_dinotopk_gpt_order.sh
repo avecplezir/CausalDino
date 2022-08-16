@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_dinotopk_order3_32"
+EXP_NAME="svt_ucf101_topk_order_32"
 PORT='1033'
 
 cd "$PROJECT_PATH" || exit
@@ -26,12 +26,12 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --do_eval True \
-  --eval_freq 2 \
+  --eval_freq 4 \
   --use_wandb True \
   --loss DINOTopkLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 8 \
+  --n_global_views 5 \
   --random_sampling False \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
