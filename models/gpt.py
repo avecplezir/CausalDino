@@ -12,6 +12,7 @@ import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from torch.distributions.categorical import Categorical
 
 from .gpt_utils import CfgNode as CN
 
@@ -181,7 +182,10 @@ class GPT(nn.Module):
         device = x.device
         b, t = x.size()[:2]
         if self.indices_input:
-            x = x.argmax(dim=-1)
+            dist = Categorical(x)
+            x = dist.sample()
+            print('dist sample', x.shape)
+            # x = x.argmax(dim=-1)
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
