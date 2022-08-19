@@ -5,7 +5,7 @@ PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="/mnt/data/UCF101"
 #EXP_NAME="svt_ucf101_new_stats"
 DATA_PATH="/mnt/data/Kinetics/videos_val_256p_dense_cache"
-EXP_NAME="svt_k400_tiny"
+EXP_NAME="svt_valk400_tiny"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit

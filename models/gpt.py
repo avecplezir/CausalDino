@@ -117,7 +117,7 @@ class GPT(nn.Module):
         C.attn_pdrop = 0.1
         return C
 
-    def __init__(self, out_dim=256, block_size=4, indices_input=False):
+    def __init__(self, out_dim=256, block_size=4):
         super().__init__()
         config = self.get_default_config()
         config.vocab_size = out_dim
@@ -146,22 +146,11 @@ class GPT(nn.Module):
             # ln_f=nn.LayerNorm(config.n_embd),
         ))
 
-        self.indices_input = indices_input
-        if indices_input:
-            self.transformer['wte'] = nn.Embedding(65536, config.n_embd)
-
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
         for pn, p in self.named_parameters():
             if pn.endswith('c_proj.weight'):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
-
-        if indices_input:
-            self.last_layer = nn.utils.weight_norm(nn.Linear(config.n_embd, 65536, bias=False))
-            self.last_layer.weight_g.data.fill_(1)
-            norm_last_layer = True
-            if norm_last_layer:
-                self.last_layer.weight_g.requires_grad = False
 
         # report number of parameters (note we don't count the decoder parameters in lm_head)
         n_params = sum(p.numel() for p in self.transformer.parameters())
@@ -181,26 +170,119 @@ class GPT(nn.Module):
     def forward(self, x):
         device = x.device
         b, t = x.size()[:2]
-        if self.indices_input:
-            dist = Categorical(x)
-            x = dist.sample()
-            print('dist sample', x.shape)
-            # x = x.argmax(dim=-1)
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
         # forward the GPT model itself
-        if self.indices_input:
-            tok_emb = self.transformer.wte(x)  # token embeddings of shape (b, t, n_embd)
-        else:
-            tok_emb = x  # token embeddings of shape (b, t, n_embd)
+        tok_emb = x  # token embeddings of shape (b, t, n_embd)
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
             x = block(x)
         # x = self.transformer.ln_f(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
-        if self.indices_input:
-            x = self.last_layer(x)
+
+        return x
+
+
+class GPTInd(nn.Module):
+    """ GPT Language Model """
+
+    @staticmethod
+    def get_default_config():
+        C = CN()
+        # either model_type or (n_layer, n_head, n_embd) must be given in the config
+        C.model_type = 'gpt'
+        C.n_layer = None
+        C.n_head = None
+        C.n_embd = None
+        # these options must be filled in externally
+        C.vocab_size = None
+        C.block_size = None
+        # dropout hyperparameters
+        C.embd_pdrop = 0.1
+        C.resid_pdrop = 0.1
+        C.attn_pdrop = 0.1
+        return C
+
+    def __init__(self, out_dim=256, block_size=4):
+        super().__init__()
+        config = self.get_default_config()
+        config.vocab_size = out_dim
+        config.block_size = block_size
+        config.model_type = 'gpt-micro-256'
+        assert config.vocab_size is not None
+        assert config.block_size is not None
+        self.block_size = config.block_size
+
+        type_given = config.model_type is not None
+        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
+        assert type_given ^ params_given  # exactly one of these (XOR)
+        if type_given:
+            # translate from model_type to detailed configuration
+            config.merge_from_dict({
+                                       'gpt-mini': dict(n_layer=6, n_head=6, n_embd=192),
+                                       'gpt-micro': dict(n_layer=4, n_head=4, n_embd=128),
+                                       'gpt-nano': dict(n_layer=3, n_head=3, n_embd=48),
+                                        'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
+                                   }[config.model_type])
+
+        self.transformer = nn.ModuleDict(dict(
+            wpe=nn.Embedding(config.block_size, config.n_embd),
+            drop=nn.Dropout(config.embd_pdrop),
+            h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            # ln_f=nn.LayerNorm(config.n_embd),
+        ))
+
+        self.transformer['wte'] = nn.Embedding(65536, config.n_embd)
+
+        # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
+        self.apply(self._init_weights)
+        for pn, p in self.named_parameters():
+            if pn.endswith('c_proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
+
+        self.last_layer = nn.utils.weight_norm(nn.Linear(config.n_embd, 65536, bias=False))
+        self.last_layer.weight_g.data.fill_(1)
+        norm_last_layer = True
+        if norm_last_layer:
+            self.last_layer.weight_g.requires_grad = False
+
+        # report number of parameters (note we don't count the decoder parameters in lm_head)
+        n_params = sum(p.numel() for p in self.transformer.parameters())
+        print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        elif isinstance(module, nn.LayerNorm):
+            torch.nn.init.zeros_(module.bias)
+            torch.nn.init.ones_(module.weight)
+
+    def forward(self, x):
+        device = x.device
+        b, t = x.size()[:2]
+
+        dist = Categorical(x)
+        x = dist.sample()
+        print('dist sample', x.shape)
+        # x = x.argmax(dim=-1)
+
+        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
+
+        # forward the GPT model itself
+        tok_emb = self.transformer.wte(x)  # token embeddings of shape (b, t, n_embd)
+        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+        for block in self.transformer.h:
+            x = block(x)
+        # x = self.transformer.ln_f(x)
+        x = nn.functional.normalize(x, dim=-1, p=2)
+        x = self.last_layer(x)
 
         return x

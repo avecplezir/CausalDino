@@ -172,7 +172,6 @@ def get_args_parser():
     parser.add_argument("--eval_freq", type=int, default=2, help="eval every")
     parser.add_argument('--eval_dataset2', default='UCFEventsReturnIndexDataset', type=str,
                         help="""Name of dataset to test knn with.""")
-    parser.add_argument('--indices_input', type=utils.bool_flag, default=False, help="""Whether to use indices as input to gpt.""")
     parser.add_argument('--video_extension', default='avi', type=str, help='Video extension.')
 
 
@@ -297,20 +296,16 @@ def train_svt(args):
              norm_last_layer=args.norm_last_layer,
              skip_last=args.skip_last,
          ),
-         predictor=Predictor(block_size=args.local_crops_number + args.n_global_views,
-                             indices_input=args.indices_input) if Predictor else None,
-         predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views,
-                                       indices_input=args.indices_input) if Predictor_past else None,
+         predictor=Predictor(block_size=args.local_crops_number + args.n_global_views) if Predictor else None,
+         predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          n_crops=args.local_crops_number + args.n_global_views,
          )
     teacher = Wrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
-        predictor=Predictor(block_size=args.local_crops_number + args.n_global_views,
-                            indices_input=args.indices_input) if Predictor else None,
-        predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views,
-                                      indices_input=args.indices_input) if Predictor_past else None,
+        predictor=Predictor(block_size=args.local_crops_number + args.n_global_views) if Predictor else None,
+        predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         n_crops=args.local_crops_number + args.n_global_views,
     )
