@@ -174,7 +174,6 @@ def get_args_parser():
                         help="""Name of dataset to test knn with.""")
     parser.add_argument('--video_extension', default='avi', type=str, help='Video extension.')
 
-
     return parser
 
 
