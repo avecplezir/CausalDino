@@ -173,6 +173,7 @@ def get_args_parser():
     parser.add_argument('--eval_dataset2', default='UCFEventsReturnIndexDataset', type=str,
                         help="""Name of dataset to test knn with.""")
     parser.add_argument('--indices_input', type=utils.bool_flag, default=False, help="""Whether to use indices as input to gpt.""")
+    parser.add_argument('--video_extension', default='avi', type=str, help='Video extension.')
 
 
     return parser
@@ -199,7 +200,7 @@ def train_svt(args):
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
-    dataset = Dataset(cfg=config, mode="train", num_retries=10, get_flow=config.DATA.USE_FLOW)
+    dataset = Dataset(cfg=config, mode="train", num_retries=10, extension=args.video_extension)
     sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
         dataset,
