@@ -27,7 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 4 \
-  --use_wandb True \
+  --use_wandb False \
   --loss TimeEmbLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \

@@ -173,6 +173,8 @@ def get_args_parser():
     parser.add_argument('--eval_dataset2', default='UCFEventsReturnIndexDataset', type=str,
                         help="""Name of dataset to test knn with.""")
     parser.add_argument('--video_extension', default='avi', type=str, help='Video extension.')
+    parser.add_argument('--CE_fe_c', default=0.5, type=float, help='loss coefficient')
+    parser.add_argument('--CE_ef_c', default=0.5, type=float, help='loss coefficient')
 
     return parser
 
@@ -341,6 +343,7 @@ def train_svt(args):
         weight_inv=args.weight_inv,
         argmax=args.argmax,
         n_parts=args.n_parts,
+        args=args,
     ).cuda()
 
     # ============ preparing optimizer ... ============
@@ -462,7 +465,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        indices = [idx.cuda(non_blocking=True) for idx in indices]
+        indices = torch.stack([idx.cuda(non_blocking=True) for idx in indices], 1)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
