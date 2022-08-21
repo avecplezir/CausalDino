@@ -156,7 +156,7 @@ def get_args_parser():
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
     parser.add_argument('--skip_last', type=utils.bool_flag, default=False,
                         help="""Whether to skip last layer in dino head.""")
-    parser.add_argument("--n_parts", type=int, default=9, help="Log loss every")
+    parser.add_argument("--n_parts", type=int, default=9, help="For how many parts initial video is divided")
     parser.add_argument("--n_global_views", type=int, default=2, help="Number of global views to sample")
     parser.add_argument('--random_sampling', type=utils.bool_flag, default=True, help="""Whether random sampling video chunks.""")
     parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
@@ -295,16 +295,16 @@ def train_svt(args):
              norm_last_layer=args.norm_last_layer,
              skip_last=args.skip_last,
          ),
-         predictor=Predictor(block_size=args.local_crops_number + args.n_global_views) if Predictor else None,
-         predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views) if Predictor_past else None,
+         predictor=Predictor(block_size=args.n_parts) if Predictor else None,
+         predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          n_crops=args.local_crops_number + args.n_global_views,
          )
     teacher = Wrapper(
         teacher,
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
-        predictor=Predictor(block_size=args.local_crops_number + args.n_global_views) if Predictor else None,
-        predictor_past=Predictor_past(block_size=args.local_crops_number + args.n_global_views) if Predictor_past else None,
+        predictor=Predictor(block_size=args.n_parts) if Predictor else None,
+        predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         n_crops=args.local_crops_number + args.n_global_views,
     )
@@ -452,7 +452,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                     fp16_scaler, args, cfg=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
-    for it, (images, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+    for it, (images, indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         # update weight decay and learning rate according to their schedule
         it = len(data_loader) * epoch + it  # global training iteration
         for i, param_group in enumerate(optimizer.param_groups):
@@ -462,11 +462,12 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
+        indices = [idx.cuda(non_blocking=True) for idx in indices]
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
-            student_output = student(images)
-            teacher_output = teacher(images[:args.n_global_views])  # only the 2 global views pass through the teacher
+            student_output = student(images, indices=indices)
+            teacher_output = teacher(images[:args.n_global_views], indices=indices)  # only the 2 global views pass through the teacher
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch, student=student, teacher=teacher)
 
         if not math.isfinite(loss.item()):

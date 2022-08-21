@@ -95,7 +95,7 @@ def extract_feature_pipeline(args):
 
 
 @torch.no_grad()
-def extract_features(model, data_loader, kl):
+def extract_features(model, data_loader):
     metric_logger = utils.MetricLogger(delimiter="  ")
     features = None
     for samples, index in metric_logger.log_every(data_loader, 10):
@@ -107,9 +107,6 @@ def extract_features(model, data_loader, kl):
         feats = model(samples).clone()
         feats = torch.stack(feats.chunk(num_views, 0), 1)
         feats = feats.mean(1)
-
-        if kl:
-            feats = F.log_softmax(feats, -1)
 
         # init storage feature matrix
         if dist.get_rank() == 0 and features is None:
@@ -147,10 +144,9 @@ def extract_features(model, data_loader, kl):
 
 
 @torch.no_grad()
-def knn_classifier(train_features, train_labels, test_features, test_labels, k, T, num_classes=1000, kl=False):
+def knn_classifier(train_features, train_labels, test_features, test_labels, k, T, num_classes=1000):
     top1, top5, total = 0.0, 0.0, 0
-    if not kl:
-        train_features = train_features.t()
+    train_features = train_features.t()
     num_test_images, num_chunks = test_labels.shape[0], 100
     imgs_per_chunk = num_test_images // num_chunks
     retrieval_one_hot = torch.zeros(k, num_classes).cuda()
@@ -163,14 +159,9 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k, 
         batch_size = targets.shape[0]
 
         # calculate the dot product and compute top-k neighbors
-        if not kl:
-            similarity = torch.mm(features, train_features)
-            distances, indices = similarity.topk(k, largest=True, sorted=True)
-            distances_transform = distances.clone().div_(T).exp_()
-        else:
-            similarity = torch.exp(features.unsqueeze(1)) * (train_features.unsqueeze(0) - train_features.unsqueeze(1))
-            distances, indices = similarity.topk(k, largest=False, sorted=True)
-            distances_transform = 1 / (distances.clone() + 1e-4)
+        similarity = torch.mm(features, train_features)
+        distances, indices = similarity.topk(k, largest=True, sorted=True)
+        distances_transform = distances.clone().div_(T).exp_()
 
         candidates = train_labels.view(1, -1).expand(batch_size, -1)
         retrieved_neighbors = torch.gather(candidates, 1, indices)

@@ -174,7 +174,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                 continue
 
             # Decode video. Meta info is used to perform selective decoding.
-            frames = decode_events(
+            frames, indices = decode_events(
                 container=video_container,
                 sampling_rate=sampling_rate,
                 num_frames=self.cfg.DATA.NUM_FRAMES,
@@ -255,7 +255,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                     ).long(),
                 ) for x in frames]
 
-            return frames, index
+            return frames, indices
 
         else:
             raise RuntimeError(
