@@ -692,6 +692,7 @@ class MultiCropWrapperGPT(nn.Module):
         else:
             return self.headprob(x_enc_b)
 
+
 class MultiCropWrapperTimeEmb(nn.Module):
     """
     Perform forward pass separately on each resolution input.
@@ -742,10 +743,7 @@ class MultiCropWrapperTimeEmb(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(x_enc)
             # Predict future
-            if self.predictor is not None:
-                pred_future = self.predictor(x_enc, indices=indices)
-            else:
-                pred_future_logits = None
+            pred_future = self.predictor(x_enc, indices=indices)
             return x_enc_logits, pred_future, None, indices
         else:
             return self.headprob(x_enc_b)
