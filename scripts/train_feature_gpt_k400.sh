@@ -37,4 +37,5 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperGPT \
   --predictor GPT \
   --headproba HeadProba \
-  --skip_last True
+  --skip_last True \
+  --video_extension mp4
