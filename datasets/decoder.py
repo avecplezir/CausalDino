@@ -521,7 +521,7 @@ def decode_events(
             samples.append(cur_local)
             idx += local_width
 
-        indices = np.arange(0, num_clips_2)
+        indices = tuple(np.arange(0, num_clips_2))
         frames = [*samples]
 
     return frames, indices

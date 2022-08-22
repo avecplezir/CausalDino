@@ -41,3 +41,6 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5
+
+#
+#  --n_parts 6 \
