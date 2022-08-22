@@ -35,13 +35,4 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --predictor GPT \
   --random_sampling False \
-  --skip_last True \
-  --opts \
-  MODEL.TWO_STREAM False \
-  MODEL.TWO_TOKEN False \
-  DATA.NO_FLOW_AUG False \
-  DATA.USE_FLOW False \
-  DATA.RAND_CONV False \
-  DATA.NO_SPATIAL False
-
-#  --out_dim 32000 \
+  --skip_last True

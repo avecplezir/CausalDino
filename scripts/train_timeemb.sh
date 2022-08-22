@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_timeemb_tiny"
+EXP_NAME="svt_ucf101_timeemb_order_tiny"
 PORT='1029'
 
 cd "$PROJECT_PATH" || exit
@@ -31,13 +31,13 @@ python -m torch.distributed.launch \
   --loss TimeEmbLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 6 \
-  --n_parts 11 \
+  --n_global_views 5 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperTimeEmb \
   --predictor GPT2FoldPredictor \
   --headproba HeadProba \
   --skip_last True \
+  --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5
