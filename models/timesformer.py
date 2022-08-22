@@ -215,7 +215,7 @@ class VisionTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
                  drop_path_rate=0.1, hybrid_backbone=None, norm_layer=nn.LayerNorm, num_frames=8,
-                 attention_type='divided_space_time', dropout=0.):
+                 attention_type='divided_space_time', dropout=0., **kwargs):
         super().__init__()
         self.attention_type = attention_type
         self.depth = depth
@@ -344,7 +344,7 @@ class VisionTransformer(nn.Module):
             return x
         return x[:, 0]
 
-    def forward(self, x, use_head=False):
+    def forward(self, x, use_head=False, **kwargs):
         x = self.forward_features(x)
         if use_head:
             x = self.head(x)
@@ -618,6 +618,7 @@ def get_deit_tiny_patch16_224(cfg, no_head=False, patch_size=16, **kwargs):
     vit.default_cfg = default_cfgs['vit_base_patch16_224']
     vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
     pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
+    print('pretrained_model', pretrained_model)
     if pretrained_model:
         load_pretrained(vit, num_classes=vit.num_classes, in_chans=kwargs.get('in_chans', 3),
                         filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=vit.num_patches,

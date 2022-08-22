@@ -27,12 +27,12 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
-  --model_name get_vit_base_patch16_224 \
+  --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
   --eval_freq 2 \
   --n_global_views 2 \
   --n_parts 11 \
-  --use_wandb True \
+  --use_wandb False \
   --loss DINOLoss \
   --dataset Kinetics \
   --video_extension avi
