@@ -36,12 +36,6 @@ class TimeEmbLoss(nn.Module):
 
         temp = self.teacher_temp_schedule[epoch]
 
-        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
-        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
-
-        # s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
-        # t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
-
         CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, indices)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, indices, temp)
 
@@ -101,45 +95,45 @@ class TimeEmbLoss(nn.Module):
         kl = F.kl_div(conditional_log, marginal_log, log_target=True)
         return kl.mean()
 
-    def compute_loss_fe(self, s_pred, t_enc_proba, student, indices):
+    def compute_loss_fe(self, s_pred, t_enc_logits, student, indices, temp):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        # print('s_pred_future', s_pred.shape)
-        # print('t_enc_proba', t_enc_proba.shape)
         for ie in range(1, self.n_crops):  # future encoding
-            future_index = indices[:, ie].unsqueeze(1)
-            # print('s future_index', future_index.shape)
+            future_index_b = indices[:, ie].unsqueeze(1)
+            furure_index_e = indices[:, self.n_crops-1].unsqueeze(1)
+            future_index = torch.cat([future_index_b, furure_index_e], 1)
             s_pred_future = student.module.predictor.future_embgpt(s_pred[:, :ie], future_index=future_index)
-            # print('s s_pred_future', s_pred_future.shape)
             s_pred_future_logits = student.module.headprob(s_pred_future)
-            # print('s s_pred_future_logits', s_pred_future_logits.shape)
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
-            for ip in range(0, ie): #future_prediction from past
-                loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
+
+            t_enc_proba = F.softmax((t_enc_logits[:, ie:].mean(1, keepdim=True) - self.center) / temp, dim=-1)
+            print('t_enc_proba', t_enc_proba.shape)
+            print('s_pred_future_proba[:, ie:]', s_pred_future_proba[:, ie:].shape)
+            loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba[:, ie:]), dim=-1)
+            total_loss += loss.mean()
+            n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
 
-    def compute_loss_ef(self, s_enc_proba, t_pred, teacher, indices, temp):
+    def compute_loss_ef(self, s_enc_logits, t_pred, teacher, indices, temp):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        # print('s_enc_proba', s_enc_proba.shape)
-        # print('t_pred_future', t_pred.shape)
         for ie in range(1, self.n_crops):  # future encoding
-            future_index = indices[:, ie].unsqueeze(1)
-            # print('t future_index', future_index.shape)
+            future_index_b = indices[:, ie].unsqueeze(1)
+            furure_index_e = indices[:, self.n_crops-1].unsqueeze(1)
+            future_index = torch.cat([future_index_b, furure_index_e], 1)
             t_pred_future = teacher.predictor.future_embgpt(t_pred[:, :ie], future_index=future_index)
-            # print('t_pred_future', t_pred_future.shape)
             t_pred_future_logits = teacher.headprob(t_pred_future)
-            # print('t_pred_future_logits', t_pred_future_logits.shape)
             t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
-            for ip in range(0, ie): #future_prediction from past
-                loss = -torch.sum(t_pred_future_proba[:, ip] * torch.log(s_enc_proba[:, ie]), dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
+
+            s_enc_proba = F.softmax(s_enc_logits[:, ie:].mean(1, keepdim=True) / self.student_temp, dim=-1)
+            print('s_enc_proba', s_enc_proba.shape)
+            print('t_pred_future_proba[:, :ie]', t_pred_future_proba[:, :ie].shape)
+            loss = -torch.sum(t_pred_future_proba[:, :ie] * torch.log(s_enc_proba), dim=-1)
+            total_loss += loss.mean()
+            n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
 

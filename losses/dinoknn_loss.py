@@ -24,7 +24,7 @@ class DINOKNNLoss(nn.Module):
                         teacher_temp, warmup_teacher_temp_epochs),
             np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
         ))
-        self.T = 0.07
+        self.T = 1
 
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
@@ -32,11 +32,11 @@ class DINOKNNLoss(nn.Module):
         """
         total_loss = 0
         n_loss_terms = 0
-        student_out = student_output / self.student_temp
+        student_out = student_output #self.student_temp
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = (teacher_output - self.center) / temp
+        teacher_out = (teacher_output - self.center) #temp
 
         student_out = nn.functional.normalize(student_out, dim=1, p=2)
         teacher_out = nn.functional.normalize(teacher_out, dim=1, p=2)
@@ -49,7 +49,7 @@ class DINOKNNLoss(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                similarity = torch.mm(student_out[v], q)
+                similarity = torch.mm(student_out[v], q.T)
                 similarity = -similarity.div_(self.T).exp_()
                 total_loss += similarity.mean()
                 n_loss_terms += 1

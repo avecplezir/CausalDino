@@ -444,17 +444,18 @@ class GPTFutureTimeEmb(nn.Module):
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
 
+        t_f = future_index.size(1)
         # forward the GPT model itself
         tok_emb = x  # token embeddings of shape (b, t, n_embd)
         future_pos_emb = self.transformer.wpe(future_index)  # position embeddings of shape (1, t, n_embd)
-        x = torch.cat([future_pos_emb.unsqueeze(1), tok_emb], 1)
+        x = torch.cat([future_pos_emb, tok_emb], 1)
         for block in self.transformer.h:
             x = block(x)
         # x = self.transformer.ln_f(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
 
         # return all tokens except the conditioning
-        return x[:, 1:]
+        return x[:, t_f:]
 
 
 class GPT2FoldPredictor(nn.Module):
