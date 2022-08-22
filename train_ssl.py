@@ -143,7 +143,7 @@ def get_args_parser():
     parser.add_argument("--opts", help="See utils/defaults.py for all options", default=None, nargs=argparse.REMAINDER)
 
     # online knn eval
-    parser.add_argument('--eval_batch_size_per_gpu', default=128, type=int, help='Per-GPU batch-size')
+    parser.add_argument('--eval_batch_size_per_gpu', default=32, type=int, help='Per-GPU batch-size')
     parser.add_argument('--nb_knn', default=5, type=int, help='Number of NN to use. We use 5 for online.')
     parser.add_argument('--temperature', default=0.07, type=float,
                         help='Temperature used in the voting coefficient')

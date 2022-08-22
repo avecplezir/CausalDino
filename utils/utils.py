@@ -753,6 +753,64 @@ class MultiCropWrapperTimeEmb(nn.Module):
             return self.headprob(x_enc_b)
 
 
+class MultiCropWrapperPrior(nn.Module):
+    """
+    Perform forward pass separately on each resolution input.
+    The inputs corresponding to a single resolution are clubbed and single
+    forward is run on the same resolution inputs. Hence we do several
+    forward passes = number of different resolutions used. We then
+    concatenate all the output features and run the head forward on these
+    concatenated features.
+    """
+    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, **kwargs):
+        super(MultiCropWrapperPrior, self).__init__()
+        # disable layers dedicated to ImageNet labels classification
+        if hasattr(backbone, 'fc'):
+            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
+        self.backbone = backbone
+        self.head = head
+        self.predictor = predictor
+        self.predictor_past = predictor_past
+        self.headprob = headprob
+
+    def forward(self, x, indices=None, **kwargs):
+        # convert to list
+        if not isinstance(x, list):
+            x = [x]
+        n_crops = len(x)
+        idx_crops = torch.cumsum(torch.unique_consecutive(
+            torch.tensor([inp.shape[-1] for inp in x]),
+            return_counts=True,
+        )[1], 0)
+        start_idx = 0
+        for end_idx in idx_crops:
+            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
+            if start_idx == 0:
+                output = _out
+            else:
+                if isinstance(_out, tuple):
+                    output1 = torch.cat((output[0], _out[0]))
+                    output2 = torch.cat((output[1], _out[1]))
+                    output = (output1, output2)
+                else:
+                    output = torch.cat((output, _out))
+            start_idx = end_idx
+        # Run the head forward on the concatenated features.
+        # Encoding
+        x_enc_b = self.head(output)
+        if self.training:
+            enc_list = x_enc_b.chunk(n_crops)
+            x_enc = torch.stack(enc_list, 1)
+            x_enc_logits = self.headprob(x_enc)
+            # Predict future
+            pred_future = self.predictor(x_enc, indices=indices)
+            future_pos_emb, alpha_pos = self.predictor.predict_future_indices(pred_future)
+            pred_future = self.predictor.future_embgpt(pred_future, future_pos_emb=future_pos_emb)
+            pred_future_logits = self.headprob(pred_future)
+            return x_enc_logits, pred_future_logits, indices, future_pos_emb, alpha_pos
+        else:
+            return self.headprob(x_enc_b)
+
 def get_params_groups(model):
     regularized = []
     not_regularized = []
