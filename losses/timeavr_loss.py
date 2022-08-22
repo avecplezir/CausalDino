@@ -36,20 +36,20 @@ class TimeAvrLoss(nn.Module):
 
         temp = self.teacher_temp_schedule[epoch]
 
-        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, indices)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, indices, temp)
+        CE_fe = self.compute_loss_fe(s_pred, t_enc_logits, student, indices, temp)
+        CE_ef = self.compute_loss_ef(s_enc_logits, t_pred, teacher, indices, temp)
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 
         self.update_centers(t_enc_logits, None, None)
-        time_entropy = self.time_entropy(t_enc_proba)
+        # time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
                             'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
-                            'batch_time_entropy': time_entropy,
+                            # 'batch_time_entropy': time_entropy,
                             # 'KL': KL,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
@@ -108,9 +108,9 @@ class TimeAvrLoss(nn.Module):
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
 
             t_enc_proba = F.softmax((t_enc_logits[:, ie:].mean(1, keepdim=True) - self.center) / temp, dim=-1)
-            print('t_enc_proba', t_enc_proba.shape)
-            print('s_pred_future_proba[:, ie:]', s_pred_future_proba[:, ie:].shape)
-            loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba[:, ie:]), dim=-1)
+            # print('t_enc_proba', t_enc_proba.shape)
+            # print('s_pred_future_proba', s_pred_future_proba.shape)
+            loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
             total_loss += loss.mean()
             n_loss_terms += 1
         total_loss /= n_loss_terms
@@ -129,9 +129,9 @@ class TimeAvrLoss(nn.Module):
             t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
 
             s_enc_proba = F.softmax(s_enc_logits[:, ie:].mean(1, keepdim=True) / self.student_temp, dim=-1)
-            print('s_enc_proba', s_enc_proba.shape)
-            print('t_pred_future_proba[:, :ie]', t_pred_future_proba[:, :ie].shape)
-            loss = -torch.sum(t_pred_future_proba[:, :ie] * torch.log(s_enc_proba), dim=-1)
+            # print('s_enc_proba', s_enc_proba.shape)
+            # print('t_pred_future_proba[:, :ie]', t_pred_future_proba.shape)
+            loss = -torch.sum(t_pred_future_proba * torch.log(s_enc_proba), dim=-1)
             total_loss += loss.mean()
             n_loss_terms += 1
         total_loss /= n_loss_terms
