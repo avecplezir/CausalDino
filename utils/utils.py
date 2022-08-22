@@ -634,7 +634,7 @@ class MultiCropWrapperGPT(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, n_crops=2):
+    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, **kwargs):
         super(MultiCropWrapperGPT, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -644,12 +644,12 @@ class MultiCropWrapperGPT(nn.Module):
         self.predictor = predictor
         self.predictor_past = predictor_past
         self.headprob = headprob
-        self.n_crops = n_crops
 
     def forward(self, x, **kwargs):
         # convert to list
         if not isinstance(x, list):
             x = [x]
+        n_crops = len(x)
         idx_crops = torch.cumsum(torch.unique_consecutive(
             torch.tensor([inp.shape[-1] for inp in x]),
             return_counts=True,
@@ -671,7 +671,7 @@ class MultiCropWrapperGPT(nn.Module):
         # Encoding
         x_enc_b = self.head(output)
         if self.training:
-            enc_list = x_enc_b.chunk(self.n_crops)
+            enc_list = x_enc_b.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(x_enc)
             # Predict future
@@ -690,6 +690,10 @@ class MultiCropWrapperGPT(nn.Module):
                 pred_past_logits = None
             return x_enc_logits, pred_future_logits, pred_past_logits
         else:
+            # enc_list = x_enc_b.chunk(n_crops)
+            # x_enc = torch.stack(enc_list, 1)
+            # pred_future = self.predictor(x_enc)
+            # return self.headprob(pred_future)
             return self.headprob(x_enc_b)
 
 
@@ -702,7 +706,7 @@ class MultiCropWrapperTimeEmb(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, n_crops=2):
+    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, **kwargs):
         super(MultiCropWrapperTimeEmb, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -712,12 +716,12 @@ class MultiCropWrapperTimeEmb(nn.Module):
         self.predictor = predictor
         self.predictor_past = predictor_past
         self.headprob = headprob
-        self.n_crops = n_crops
 
     def forward(self, x, indices=None, **kwargs):
         # convert to list
         if not isinstance(x, list):
             x = [x]
+        n_crops = len(x)
         idx_crops = torch.cumsum(torch.unique_consecutive(
             torch.tensor([inp.shape[-1] for inp in x]),
             return_counts=True,
@@ -739,7 +743,7 @@ class MultiCropWrapperTimeEmb(nn.Module):
         # Encoding
         x_enc_b = self.head(output)
         if self.training:
-            enc_list = x_enc_b.chunk(self.n_crops)
+            enc_list = x_enc_b.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(x_enc)
             # Predict future

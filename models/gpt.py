@@ -136,7 +136,7 @@ class GPT(nn.Module):
                                        'gpt-mini': dict(n_layer=6, n_head=6, n_embd=192),
                                        'gpt-micro': dict(n_layer=4, n_head=4, n_embd=128),
                                        'gpt-nano': dict(n_layer=3, n_head=3, n_embd=48),
-                                        'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
+                                       'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
                                    }[config.model_type])
 
         self.transformer = nn.ModuleDict(dict(

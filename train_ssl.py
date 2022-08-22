@@ -220,12 +220,12 @@ def train_svt(args):
 
         sampler_train = torch.utils.data.DistributedSampler(eval_train, shuffle=False)
         eval_loader_train = torch.utils.data.DataLoader(
-            eval_train, sampler=sampler_train, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
+            eval_train, sampler=sampler_train, batch_size=args.eval_batch_size_per_gpu, num_workers=args.num_workers,
             pin_memory=True, drop_last=True,
         )
         sampler_val = torch.utils.data.DistributedSampler(eval_test, shuffle=False)
         eval_loader_test = torch.utils.data.DataLoader(
-            eval_test, sampler=sampler_val, batch_size=args.batch_size_per_gpu, num_workers=args.num_workers,
+            eval_test, sampler=sampler_val, batch_size=args.eval_batch_size_per_gpu, num_workers=args.num_workers,
             pin_memory=True, drop_last=True,
         )
         print(f"Data loaded with {len(eval_train)} train and {len(eval_test)} val imgs.")
@@ -300,7 +300,6 @@ def train_svt(args):
          predictor=Predictor(block_size=args.n_parts) if Predictor else None,
          predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
-         n_crops=args.local_crops_number + args.n_global_views,
          )
     teacher = Wrapper(
         teacher,
@@ -308,7 +307,6 @@ def train_svt(args):
         predictor=Predictor(block_size=args.n_parts) if Predictor else None,
         predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
-        n_crops=args.local_crops_number + args.n_global_views,
     )
 
     # move networks to gpu
@@ -403,10 +401,21 @@ def train_svt(args):
         )
         wandb.config.update(config, allow_val_change=True)
 
+    # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+    # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+    # if utils.is_main_process():
+    #     print('val_stats', val_stats)
+    #     print('val_stats mean', val_stats2)
+
     start_time = time.time()
     print("Starting DINO training !")
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
+
+        # ============ training one epoch of DINO ... ============
+        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
+                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
+                                      epoch, fp16_scaler, args, cfg=config)
 
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
@@ -419,11 +428,6 @@ def train_svt(args):
                     wandb.log(val_stats)
                     wandb.log({'mean_'+key: value for key, value in val_stats2.items()})
             utils.synchronize()
-
-        # ============ training one epoch of DINO ... ============
-        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
-                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
-                                      epoch, fp16_scaler, args, cfg=config)
 
         # ============ writing logs ... ============
         save_dict = {

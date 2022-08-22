@@ -105,7 +105,8 @@ def extract_features(model, data_loader):
         index = index.cuda(non_blocking=True)
         b, num_views = index.size(0), len(samples)
         feats = model(samples).clone()
-        feats = torch.stack(feats.chunk(num_views, 0), 1)
+        if len(feats.shape) == 2:
+            feats = torch.stack(feats.chunk(num_views, 0), 1)
         feats = feats.mean(1)
 
         # init storage feature matrix
