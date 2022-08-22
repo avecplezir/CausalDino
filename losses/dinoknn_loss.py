@@ -33,11 +33,15 @@ class DINOKNNLoss(nn.Module):
         total_loss = 0
         n_loss_terms = 0
         student_out = student_output / self.student_temp
-        student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
+        teacher_out = (teacher_output - self.center) / temp
+
+        student_out = nn.functional.normalize(student_out, dim=1, p=2)
+        teacher_out = nn.functional.normalize(teacher_out, dim=1, p=2)
+
+        student_out = student_out.chunk(self.n_crops)
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):

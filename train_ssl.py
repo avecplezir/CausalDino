@@ -408,11 +408,6 @@ def train_svt(args):
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
-        # ============ training one epoch of DINO ... ============
-        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
-                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
-                                      epoch, fp16_scaler, args, cfg=config)
-
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
             val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
@@ -424,6 +419,11 @@ def train_svt(args):
                     wandb.log(val_stats)
                     wandb.log({'mean_'+key: value for key, value in val_stats2.items()})
             utils.synchronize()
+
+        # ============ training one epoch of DINO ... ============
+        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
+                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
+                                      epoch, fp16_scaler, args, cfg=config)
 
         # ============ writing logs ... ============
         save_dict = {
@@ -525,16 +525,15 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
-def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt, kl=False):
+def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt):
     model.eval()  # teacher model already on eval
     print("Extracting features for train set...")
-    train_features = extract_features(model, train_loader, kl=kl)
+    train_features = extract_features(model, train_loader)
     print("Extracting features for val set...")
-    test_features = extract_features(model, test_loader, kl=kl)
+    test_features = extract_features(model, test_loader)
 
-    if not kl and utils.get_rank() == 0:
-        train_features = nn.functional.normalize(train_features, dim=1, p=2)
-        test_features = nn.functional.normalize(test_features, dim=1, p=2)
+    train_features = nn.functional.normalize(train_features, dim=1, p=2)
+    test_features = nn.functional.normalize(test_features, dim=1, p=2)
 
     train_labels = torch.tensor([s for s in train_dataset._labels]).long()
     test_labels = torch.tensor([s for s in test_dataset._labels]).long()
@@ -548,7 +547,7 @@ def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt,
 
         print("Features are ready!\nStart the k-NN classification.")
         top1, top5 = knn_classifier(train_features, train_labels,
-                                    test_features, test_labels, opt.nb_knn, opt.temperature, kl=kl)
+                                    test_features, test_labels, opt.nb_knn, opt.temperature)
         return {"knn_top1": top1, "knn_top5": top5}
 
 

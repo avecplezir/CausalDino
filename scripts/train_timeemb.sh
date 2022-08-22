@@ -3,7 +3,7 @@ PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
 EXP_NAME="svt_ucf101_timeemb_tiny"
-PORT='1028'
+PORT='1029'
 
 cd "$PROJECT_PATH" || exit
 
@@ -11,7 +11,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -27,7 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 4 \
-  --use_wandb False \
+  --use_wandb True \
   --loss TimeEmbLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
@@ -38,4 +38,6 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperTimeEmb \
   --predictor GPT2FoldPredictor \
   --headproba HeadProba \
-  --skip_last True
+  --skip_last True \
+  --CE_fe_c 0.5 \
+  --CE_ef_c 0.5
