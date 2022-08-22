@@ -49,8 +49,8 @@ class DINOKNNLoss(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                similarity = torch.mm(student_out[v], q.T)
-                similarity = -similarity.div_(self.T).exp_()
+                similarity = -torch.mm(student_out[v], q.T)
+                # similarity = similarity.div_(self.T).exp_()
                 total_loss += similarity.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

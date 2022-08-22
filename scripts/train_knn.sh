@@ -3,7 +3,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_knn"
+EXP_NAME="svt_ucf101_knn2"
 #DATA_PATH="/mnt/data/Kinetics/videos_val_256p_dense_cache"
 #EXP_NAME="svt_k400"
 PORT='1024'
