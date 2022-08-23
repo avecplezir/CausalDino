@@ -400,6 +400,7 @@ def train_svt(args):
             name=args.exp_name,
         )
         wandb.config.update(config, allow_val_change=True)
+        wandb.run.log_code(".")
 
     # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
     # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
