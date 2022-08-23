@@ -12,17 +12,17 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=1,2
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
 python -m torch.distributed.launch \
-  --nproc_per_node=1 \
+  --nproc_per_node=2 \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
@@ -32,7 +32,7 @@ python -m torch.distributed.launch \
   --loss TimeEmbLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 5 \
+  --n_global_views 4 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperTimeEmb \
