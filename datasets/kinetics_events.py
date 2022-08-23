@@ -168,25 +168,36 @@ class KineticsEvents(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if self.mode not in ["test"] and i_try > self._num_retries // 2:
+                if i_try > self._num_retries // 2:
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
 
             # Decode video. Meta info is used to perform selective decoding.
-            frames, indices = decode_events(
-                container=video_container,
-                sampling_rate=sampling_rate,
-                num_frames=self.cfg.DATA.NUM_FRAMES,
-                clip_idx=temporal_sample_index,
-                num_clips=self.cfg.TEST.NUM_ENSEMBLE_VIEWS,
-                target_fps=self.cfg.DATA.TARGET_FPS,
-                backend=self.cfg.DATA.DECODING_BACKEND,
-                max_spatial_scale=min_scale,
-                num_clips_2=self.cfg.local_crops_number + self.cfg.n_global_views,
-                n_parts=self.cfg.n_parts,
-                random_sampling=self.cfg.random_sampling
-            )
+            try:
+                frames, indices = decode_events(
+                    container=video_container,
+                    sampling_rate=sampling_rate,
+                    num_frames=self.cfg.DATA.NUM_FRAMES,
+                    clip_idx=temporal_sample_index,
+                    num_clips=self.cfg.TEST.NUM_ENSEMBLE_VIEWS,
+                    target_fps=self.cfg.DATA.TARGET_FPS,
+                    backend=self.cfg.DATA.DECODING_BACKEND,
+                    max_spatial_scale=min_scale,
+                    num_clips_2=self.cfg.local_crops_number + self.cfg.n_global_views,
+                    n_parts=self.cfg.n_parts,
+                    random_sampling=self.cfg.random_sampling
+                )
+            except Exception as e:
+                print(
+                    "Failed to decode events from video from {} with error {}".format(
+                        self._path_to_videos[index], e
+                    )
+                )
+                if i_try > self._num_retries // 2:
+                    # let's try another one
+                    index = random.randint(0, len(self._path_to_videos) - 1)
+                continue
 
             # If decoding failed (wrong format, video is too short, and etc),
             # select another video.
@@ -196,64 +207,27 @@ class KineticsEvents(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if self.mode not in ["test"] and i_try > self._num_retries // 2:
+                if i_try > self._num_retries // 2:
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
 
-            if self.mode in ["test", "val"] or self.cfg.DATA.NO_RGB_AUG:
-                # Perform color normalization.
-                frames = tensor_normalize(
-                    frames, self.cfg.DATA.MEAN, self.cfg.DATA.STD
-                )
+            # T H W C -> T C H W.
+            frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+            # Perform data augmentation.
+            augmentation = VideoDataAugmentationEvents()
+            frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+            # T C H W -> C T H W.
+            frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+            # Perform temporal sampling from the fast pathway.
+            frames = [torch.index_select(
+                x,
+                1,
+                torch.linspace(
+                    0, x.shape[1] - 1, x.shape[1] if self.cfg.DATA.RAND_FR else self.cfg.DATA.NUM_FRAMES
 
-                # T H W C -> C T H W.
-                frames = frames.permute(3, 0, 1, 2)
-
-                # Perform data augmentation.
-                frames = spatial_sampling(
-                    frames,
-                    spatial_idx=spatial_sample_index,
-                    min_scale=min_scale,
-                    max_scale=max_scale,
-                    crop_size=crop_size,
-                    random_horizontal_flip=self.cfg.DATA.RANDOM_FLIP,
-                    inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
-                )
-
-                if not self.cfg.MODEL.ARCH in ['vit']:
-                    frames = pack_pathway_output(self.cfg, frames)
-                else:
-                    # Perform temporal sampling from the fast pathway.
-                    frames = torch.index_select(
-                        frames,
-                        1,
-                        torch.linspace(
-                            0, frames.shape[1] - 1, self.cfg.DATA.NUM_FRAMES
-
-                        ).long(),
-                    )
-
-            else:
-                # T H W C -> T C H W.
-                frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-
-                # Perform data augmentation.
-                augmentation = VideoDataAugmentationEvents()
-                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
-
-                # T C H W -> C T H W.
-                frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
-
-                # Perform temporal sampling from the fast pathway.
-                frames = [torch.index_select(
-                    x,
-                    1,
-                    torch.linspace(
-                        0, x.shape[1] - 1, x.shape[1] if self.cfg.DATA.RAND_FR else self.cfg.DATA.NUM_FRAMES
-
-                    ).long(),
-                ) for x in frames]
+                ).long(),
+            ) for x in frames]
 
             return frames, indices
 
