@@ -388,7 +388,7 @@ def train_svt(args):
     )
     start_epoch = to_restore["epoch"]
 
-    if args.use_wandb:
+    if args.use_wandb and utils.is_main_process():
         wandb.init(
             project='causal_video',
             config=config,

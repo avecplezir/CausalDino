@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
 EXP_NAME="svt_k400_feature_tiny_gpt_32"
-PORT='1029'
+PORT='1025'
 
 cd "$PROJECT_PATH" || exit
 
