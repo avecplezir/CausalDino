@@ -20,6 +20,7 @@ import math
 import json
 from pathlib import Path
 import wandb
+import logging
 
 import numpy as np
 from PIL import Image
@@ -41,6 +42,9 @@ from eval_knn import extract_features, knn_classifier
 import losses
 import datasets
 import models
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+logging.getLogger().setLevel('ERROR')
 
 torchvision_archs = sorted(name for name in torchvision_models.__dict__
                            if name.islower() and not name.startswith("__")
@@ -175,6 +179,7 @@ def get_args_parser():
     parser.add_argument('--video_extension', default='avi', type=str, help='Video extension.')
     parser.add_argument('--CE_fe_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument('--CE_ef_c', default=0.5, type=float, help='loss coefficient')
+    parser.add_argument("--bottleneck_dim", type=int, default=256, help="bottleneck dim in Dino Head")
 
     return parser
 
@@ -296,6 +301,7 @@ def train_svt(args):
              use_bn=args.use_bn_in_head,
              norm_last_layer=args.norm_last_layer,
              skip_last=args.skip_last,
+             bottleneck_dim=args.bottleneck_dim,
          ),
          predictor=Predictor(block_size=args.n_parts) if Predictor else None,
          predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
@@ -303,7 +309,9 @@ def train_svt(args):
          )
     teacher = Wrapper(
         teacher,
-        DINOHead(embed_dim, args.out_dim, args.use_bn_in_head, skip_last=args.skip_last),
+        DINOHead(embed_dim, args.out_dim, args.use_bn_in_head,
+                 skip_last=args.skip_last,
+                 bottleneck_dim=args.bottleneck_dim,),
         predictor=Predictor(block_size=args.n_parts) if Predictor else None,
         predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,

@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+import math
 
 from models.helpers import load_pretrained
 from models.vit_utils import DropPath, to_2tuple, trunc_normal_
@@ -31,6 +32,16 @@ default_cfgs = {
         mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
     ),
 }
+
+
+class NewGELU(nn.Module):
+    """
+    Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).
+    Reference: Gaussian Error Linear Units (GELU) paper: https://arxiv.org/abs/1606.08415
+    """
+
+    def forward(self, x):
+        return 0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
 
 
 class Mlp(nn.Module):
@@ -90,7 +101,7 @@ class Attention(nn.Module):
 class Block(nn.Module):
 
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0.1, act_layer=nn.GELU, norm_layer=nn.LayerNorm, attention_type='divided_space_time'):
+                 drop_path=0.1, act_layer=NewGELU, norm_layer=nn.LayerNorm, attention_type='divided_space_time'):
         super().__init__()
         self.attention_type = attention_type
         self.class_tokens = 1
