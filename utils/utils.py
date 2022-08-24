@@ -33,6 +33,8 @@ from torch import nn
 import torch.distributed as dist
 from PIL import ImageFilter, ImageOps
 
+import yt.wrapper as yt
+
 
 class GaussianBlur(object):
     """
@@ -437,6 +439,17 @@ def save_on_master(*args, **kwargs):
     if is_main_process():
         torch.save(*args, **kwargs)
 
+def restore_yt_checkpoint(args):
+    if is_main_process() and args.yt_path is not None:
+        experiment_path = os.path.join(args.yt_path, 'CausalDino', args.exp_name)
+        checkpoint_path = os.path.join(experiment_path, "checkpoint.pt")
+        yt_client = yt.YtClient("hahn")
+        if not yt_client.exists(f"{experiment_path}/tmp"):
+            yt_client.mkdir(f"{experiment_path}/tmp", recursive=True)
+
+        if yt_client.exists(checkpoint_path):
+            checkpoint = load_from_yt(checkpoint_path)
+            torch.save(checkpoint, "checkpoint.pt")
 
 def setup_for_distributed(is_master):
     """

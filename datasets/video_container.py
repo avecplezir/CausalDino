@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
-import av
+# import av
 
 
 def get_video_container(path_to_vid, multi_thread_decode=False, backend="pyav"):
