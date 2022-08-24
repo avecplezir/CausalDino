@@ -34,7 +34,10 @@ from torch import nn
 import torch.distributed as dist
 from PIL import ImageFilter, ImageOps
 
-import yt.wrapper as yt
+try:
+    import yt.wrapper as yt
+except:
+    pass
 
 
 class GaussianBlur(object):
