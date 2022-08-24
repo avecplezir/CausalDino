@@ -21,10 +21,6 @@ import torch.utils.data
 from torch import nn
 import torch.nn.functional as F
 
-from datasets.hmdb51 import HMDB51
-from datasets.ucf101 import UCF101
-from datasets.ucf101_events import UCF101Events
-from datasets.kinetics_events import KineticsEvents
 from models import get_vit_base_patch16_224
 from utils import utils
 from utils.parser import load_config

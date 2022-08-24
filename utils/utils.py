@@ -25,6 +25,7 @@ import random
 import datetime
 import subprocess
 from collections import defaultdict, deque
+import io
 import wandb
 
 import numpy as np
@@ -439,6 +440,15 @@ def save_on_master(*args, **kwargs):
     if is_main_process():
         torch.save(*args, **kwargs)
 
+def load_from_yt(path) -> dict:
+    print(f"Loading checkpoint from {path}")
+    yt_client = yt.YtClient('hahn')
+    stream = yt_client.read_file(path)
+    buf = io.BytesIO(stream.read())
+    checkpoint = torch.load(buf, map_location="cpu")
+    return checkpoint
+
+
 def restore_yt_checkpoint(args):
     if is_main_process() and args.yt_path is not None:
         experiment_path = os.path.join(args.yt_path, 'CausalDino', args.exp_name)
@@ -450,6 +460,7 @@ def restore_yt_checkpoint(args):
         if yt_client.exists(checkpoint_path):
             checkpoint = load_from_yt(checkpoint_path)
             torch.save(checkpoint, "checkpoint.pt")
+
 
 def setup_for_distributed(is_master):
     """
