@@ -45,7 +45,7 @@ class DINOKLLoss(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1) / marginal, dim=-1)
+                loss = torch.sum(-q * (F.log_softmax(student_out[v], dim=-1) - marginal), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

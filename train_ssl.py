@@ -180,6 +180,7 @@ def get_args_parser():
     parser.add_argument('--CE_fe_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument('--CE_ef_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument("--bottleneck_dim", type=int, default=256, help="bottleneck dim in Dino Head")
+    parser.add_argument('--predictor_model_type', default='gpt-micro-256', type=str, help="""Name of model""")
 
     return parser
 
@@ -303,8 +304,8 @@ def train_svt(args):
              skip_last=args.skip_last,
              bottleneck_dim=args.bottleneck_dim,
          ),
-         predictor=Predictor(block_size=args.n_parts) if Predictor else None,
-         predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
+         predictor=Predictor(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor else None,
+         predictor_past=Predictor_past(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          )
     teacher = Wrapper(
@@ -312,8 +313,8 @@ def train_svt(args):
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head,
                  skip_last=args.skip_last,
                  bottleneck_dim=args.bottleneck_dim,),
-        predictor=Predictor(block_size=args.n_parts) if Predictor else None,
-        predictor_past=Predictor_past(block_size=args.n_parts) if Predictor_past else None,
+        predictor=Predictor(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor else None,
+        predictor_past=Predictor_past(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
     )
 

@@ -117,12 +117,12 @@ class GPT(nn.Module):
         C.attn_pdrop = 0.1
         return C
 
-    def __init__(self, out_dim=256, block_size=4):
+    def __init__(self, out_dim=256, block_size=4, model_type='gpt-micro-256-half'): #'gpt-micro-256'
         super().__init__()
         config = self.get_default_config()
         config.vocab_size = out_dim
         config.block_size = block_size
-        config.model_type = 'gpt-micro-256'
+        config.model_type = model_type
         assert config.vocab_size is not None
         assert config.block_size is not None
         self.block_size = config.block_size
@@ -137,6 +137,7 @@ class GPT(nn.Module):
                                        'gpt-micro': dict(n_layer=4, n_head=4, n_embd=128),
                                        'gpt-nano': dict(n_layer=3, n_head=3, n_embd=48),
                                        'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
+                                       'gpt-micro-256-half': dict(n_layer=2, n_head=6, n_embd=256),
                                    }[config.model_type])
 
         self.transformer = nn.ModuleDict(dict(

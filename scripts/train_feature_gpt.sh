@@ -37,5 +37,6 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
   --predictor GPT \
+  --predictor_model_type gpt-micro-256-half \
   --headproba HeadProba \
   --skip_last True

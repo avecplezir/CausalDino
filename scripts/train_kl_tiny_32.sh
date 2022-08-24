@@ -5,7 +5,7 @@ PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
 #DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
 EXP_NAME="svt_ucf101_kl_tiny_32"
-PORT='1024'
+PORT='1026'
 
 cd "$PROJECT_PATH" || exit
 
@@ -13,7 +13,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
