@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 #DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_feature_tiny_gpt_32"
+EXP_NAME="svt_ucf101_feature_tiny_gpt_half_32"
 PORT='1029'
 
 cd "$PROJECT_PATH" || exit
@@ -31,8 +31,8 @@ python -m torch.distributed.launch \
   --loss FeatureLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 6 \
-  --n_parts 11 \
+  --n_global_views 4 \
+  --n_parts 5 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
@@ -40,3 +40,5 @@ python -m torch.distributed.launch \
   --predictor_model_type gpt-micro-256-half \
   --headproba HeadProba \
   --skip_last True
+#  --lr 3e-4 \
+#  --clip_grad 1.0 

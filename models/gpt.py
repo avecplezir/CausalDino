@@ -130,14 +130,16 @@ class GPT(nn.Module):
         type_given = config.model_type is not None
         params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
         assert type_given ^ params_given  # exactly one of these (XOR)
+        print('config.model_type', config.model_type)
         if type_given:
             # translate from model_type to detailed configuration
             config.merge_from_dict({
                                        'gpt-mini': dict(n_layer=6, n_head=6, n_embd=192),
                                        'gpt-micro': dict(n_layer=4, n_head=4, n_embd=128),
                                        'gpt-nano': dict(n_layer=3, n_head=3, n_embd=48),
+                                       'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=256),
                                        'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
-                                       'gpt-micro-256-half': dict(n_layer=2, n_head=6, n_embd=256),
+                                       'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=256),
                                    }[config.model_type])
 
         self.transformer = nn.ModuleDict(dict(

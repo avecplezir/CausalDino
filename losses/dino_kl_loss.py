@@ -36,20 +36,22 @@ class DINOKLLoss(nn.Module):
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = F.softmax((teacher_output - self.center) / temp, dim=-1)
-        teacher_out = teacher_out.detach().chunk(self.global_crops)
+        teacher_out = F.softmax(student_output / temp, dim=-1)
+        teacher_out = teacher_out.chunk(self.global_crops)[:2]
 
-        marginal = F.log_softmax(self.center, dim=-1)
-        for iq, q in enumerate(student_out[:2]):
+        # marginal = F.log_softmax(self.center, dim=-1)
+        batch_center = self.get_batch_center(student_output)
+        marginal = F.log_softmax(batch_center, dim=-1)
+        for iq, q in enumerate(teacher_out):
             for v in range(len(student_out)):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-q * (F.log_softmax(student_out[v], dim=-1) - marginal), dim=-1)
+                s = F.log_softmax(student_out[v], dim=-1)
+                loss = torch.sum(-q * (s - marginal), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
-        batch_center = self.update_center(teacher_output)
 
         entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
         s_enc_logits = torch.stack(student_out, 1)
@@ -64,6 +66,16 @@ class DINOKLLoss(nn.Module):
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
+
+    def get_batch_center(self, teacher_output):
+        """
+        Update center used for teacher output.
+        """
+        b, *_ = teacher_output.shape
+        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
+        dist.all_reduce(batch_center)
+        batch_center = batch_center / (b * dist.get_world_size())
+        return batch_center
 
     def compute_kl(self, conditional):
         marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)
