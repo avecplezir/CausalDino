@@ -181,6 +181,7 @@ def get_args_parser():
     parser.add_argument('--CE_ef_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument("--bottleneck_dim", type=int, default=256, help="bottleneck dim in Dino Head")
     parser.add_argument('--predictor_model_type', default='gpt-micro-256', type=str, help="""Name of model""")
+    parser.add_argument('--yt_path', default="//home/yr/ianokhin", type=str, help="Base path for logs storage in yt")
 
     return parser
 

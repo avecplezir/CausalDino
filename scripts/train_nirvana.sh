@@ -5,6 +5,7 @@ DATA_PATH="$INPUT_PATH/something-something-v2"
 EXP_NAME="svt_ucf101_nirvana"
 PORT='1024'
 
+cd ../ || exit
 
 if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
