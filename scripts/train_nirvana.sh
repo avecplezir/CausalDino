@@ -8,7 +8,7 @@ PORT='1024'
 cd "$PROJECT_PATH" || exit
 
 if [ ! -d "checkpoints/$EXP_NAME" ]; then
-  mkdir "checkpoints/$EXP_NAME"
+  mkdir -p "checkpoints/$EXP_NAME"
 fi
 
 export WANDB_MODE="run"
