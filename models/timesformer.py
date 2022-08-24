@@ -7,7 +7,7 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from einops import rearrange
+from einops import rearrange
 import math
 
 from models.helpers import load_pretrained

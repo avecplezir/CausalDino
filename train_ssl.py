@@ -181,7 +181,7 @@ def get_args_parser():
     parser.add_argument('--CE_ef_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument("--bottleneck_dim", type=int, default=256, help="bottleneck dim in Dino Head")
     parser.add_argument('--predictor_model_type', default='gpt-micro-256', type=str, help="""Name of model""")
-    parser.add_argument('--yt_path', default="//home/yr/ianokhin", type=str, help="Base path for logs storage in yt")
+    parser.add_argument('--yt_path', default=None, type=str, help="Base path for logs storage in yt") #"//home/yr/ianokhin"
 
     return parser
 
@@ -194,6 +194,9 @@ def train_svt(args):
     print("git:\n  {}\n".format(utils.get_sha()))
     print("\n".join("%s: %s" % (k, str(v)) for k, v in sorted(dict(vars(args)).items())))
     cudnn.benchmark = True
+
+    utils.restore_yt_checkpoint(args)
+    utils.synchronize()
 
     # ============ preparing data ... ============
     config = load_config(args)
@@ -452,8 +455,10 @@ def train_svt(args):
         if fp16_scaler is not None:
             save_dict['fp16_scaler'] = fp16_scaler.state_dict()
         utils.save_on_master(save_dict, os.path.join(args.output_dir, 'checkpoint.pth'))
+        utils.save_checkpoint_to_yt(args, save_dict)
         if args.saveckp_freq and epoch % args.saveckp_freq == 0:
             utils.save_on_master(save_dict, os.path.join(args.output_dir, f'checkpoint{epoch:04}.pth'))
+            utils.save_checkpoint_to_yt(args, save_dict, epoch=epoch)
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch}  # **{f'val_{k}': v for k, v in val_stats.items()},
         if utils.is_main_process():

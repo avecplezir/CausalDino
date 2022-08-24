@@ -440,13 +440,36 @@ def save_on_master(*args, **kwargs):
     if is_main_process():
         torch.save(*args, **kwargs)
 
-def load_from_yt(path) -> dict:
+
+def load_checkpoint_from_yt(path) -> dict:
     print(f"Loading checkpoint from {path}")
     yt_client = yt.YtClient('hahn')
     stream = yt_client.read_file(path)
     buf = io.BytesIO(stream.read())
     checkpoint = torch.load(buf, map_location="cpu")
     return checkpoint
+
+
+def save_checkpoint_to_yt(args, state_dict, epoch=None):
+    "Save checkpoint (optionaly write to yt table)"
+    if is_main_process() and args.yt_path is not None:
+        experiment_path = os.path.join(args.yt_path, 'CausalDino', args.exp_name)
+        checkpoint_path = os.path.join(experiment_path, "checkpoint.pt")
+        experiment_path, _ = os.path.split(checkpoint_path)
+        yt_client = yt.YtClient(
+            proxy='hahn',
+            config={
+                "remote_temp_files_directory": f"{experiment_path}/tmp",
+                "remote_temp_tables_directory": f"{experiment_path}/tmp",
+            }
+        )
+        print("Saving checkpoint")
+        buf = io.BytesIO()
+        torch.save(state_dict, buf)
+        data = buf.getvalue()
+        if epoch is not None:
+            checkpoint_path = os.path.join(experiment_path, f"checkpoint_epoch{epoch}.pt")
+        yt_client.write_file(checkpoint_path, data)
 
 
 def restore_yt_checkpoint(args):
@@ -458,7 +481,7 @@ def restore_yt_checkpoint(args):
             yt_client.mkdir(f"{experiment_path}/tmp", recursive=True)
 
         if yt_client.exists(checkpoint_path):
-            checkpoint = load_from_yt(checkpoint_path)
+            checkpoint = load_checkpoint_from_yt(checkpoint_path)
             torch.save(checkpoint, "checkpoint.pt")
 
 
