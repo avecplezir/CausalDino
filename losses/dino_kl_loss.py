@@ -37,7 +37,7 @@ class DINOKLLoss(nn.Module):
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
         teacher_out = F.softmax(student_output / temp, dim=-1)
-        teacher_out = teacher_out.chunk(self.global_crops)[:2]
+        teacher_out = teacher_out.chunk(self.n_crops)[:2]
 
         # marginal = F.log_softmax(self.center, dim=-1)
         batch_center = self.get_batch_center(student_output)

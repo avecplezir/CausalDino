@@ -153,7 +153,7 @@ def get_args_parser():
                         help='Temperature used in the voting coefficient')
 
     parser.add_argument('--exp_name', default='svt', type=str, help='Experiment name.')
-    parser.add_argument("--log_every", type=int, default=100, help="Log loss every")
+    parser.add_argument("--log_every", type=int, default=300, help="Log loss every")
     parser.add_argument('--do_eval', type=utils.bool_flag, default=False, help="""Whether to do knn eval.""")
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
@@ -439,8 +439,9 @@ def train_svt(args):
                 print('val_stats', val_stats)
                 print('val_stats mean', val_stats2)
                 if args.use_wandb:
-                    wandb.log(val_stats)
-                    wandb.log({'mean_'+key: value for key, value in val_stats2.items()})
+                    # wandb.log(val_stats)
+                    wandb.log({'knn/' + key: value for key, value in val_stats.items()})
+                    wandb.log({'knn/mean_'+key: value for key, value in val_stats2.items()})
             utils.synchronize()
 
         # ============ writing logs ... ============
