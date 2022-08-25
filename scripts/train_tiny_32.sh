@@ -29,11 +29,11 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
-  --eval_freq 1 \
+  --eval_freq 4 \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \
   --loss DINOLoss \
   --dataset Kinetics \
-  --video_extension mp4
+  --video_extension avi
 

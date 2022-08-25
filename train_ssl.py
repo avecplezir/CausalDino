@@ -220,6 +220,7 @@ def train_svt(args):
         pin_memory=True,
         drop_last=True,
     )
+    args.batch_size = args.batch_size_per_gpu * args.world_size
     print(f"Train data loaded: there are {len(dataset)} images.")
 
     def get_eval_datasets(eval_dataset, args):
@@ -481,8 +482,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
     for it, (images, indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         # update weight decay and learning rate according to their schedule
         it = len(data_loader) * epoch + it  # global training iteration
-        batch_size = images[0].size(0)
-        step += it*batch_size
+        step += it*args.batch_size
         for i, param_group in enumerate(optimizer.param_groups):
             param_group["lr"] = lr_schedule[it]
             if i == 0:  # only the first group is regularized

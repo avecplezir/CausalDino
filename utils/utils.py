@@ -695,7 +695,7 @@ class MultiCropWrapperGPT(nn.Module):
         self.predictor_past = predictor_past
         self.headprob = headprob
 
-    def forward(self, x, **kwargs):
+    def forward(self, x, indices=None, **kwargs):
         # convert to list
         if not isinstance(x, list):
             x = [x]
@@ -726,14 +726,15 @@ class MultiCropWrapperGPT(nn.Module):
             x_enc_logits = self.headprob(x_enc)
             # Predict future
             if self.predictor is not None:
-                pred_future = self.predictor(x_enc)
+                pred_future = self.predictor(x_enc, indices=indices)
                 pred_future_logits = self.headprob(pred_future)
             else:
                 pred_future_logits = None
             # Predict past
             if self.predictor_past is not None:
                 x_enc_inv = torch.stack(enc_list[::-1], 1)
-                pred_past = self.predictor_past(x_enc_inv)
+                past_indices = torch.flip(indices, dim=(1,))
+                pred_past = self.predictor_past(x_enc_inv, indices=past_indices)
                 pred_past = torch.flip(pred_past, dims=(1,))
                 pred_past_logits = self.headprob(pred_past)
             else:
