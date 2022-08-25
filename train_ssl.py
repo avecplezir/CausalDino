@@ -403,7 +403,7 @@ def train_svt(args):
 
     if args.use_wandb and utils.is_main_process():
         wandb.init(
-            project='causal_video',
+            project='causal_videov2',
             config=config,
             entity="avecplezir",
             reinit=True,
