@@ -1,11 +1,8 @@
 #!/bin/bash
 
 PROJECT_PATH="$HOME/CausalDino"
-#DATA_PATH="$HOME/kinetics-dataset/k400/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_np"
-#DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
-#EXP_NAME="svt_k400_tiny_32"
+EXP_NAME="svt_k400_tiny_32_np"
 PORT='1025'
 
 cd "$PROJECT_PATH" || exit

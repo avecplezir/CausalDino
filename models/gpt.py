@@ -97,7 +97,6 @@ class Block(nn.Module):
         return x
 
 
-@staticmethod
 def get_default_config():
     C = CN()
     # either model_type or (n_layer, n_head, n_embd) must be given in the config
@@ -171,7 +170,7 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
