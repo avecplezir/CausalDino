@@ -153,7 +153,7 @@ def get_args_parser():
                         help='Temperature used in the voting coefficient')
 
     parser.add_argument('--exp_name', default='svt', type=str, help='Experiment name.')
-    parser.add_argument("--log_every", type=int, default=300, help="Log loss every")
+    parser.add_argument("--log_every", type=int, default=20, help="Log loss every")
     parser.add_argument('--do_eval', type=utils.bool_flag, default=False, help="""Whether to do knn eval.""")
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
@@ -389,7 +389,7 @@ def train_svt(args):
     print(f"Loss, optimizer and schedulers ready.")
 
     # ============ optionally resume training ... ============
-    to_restore = {"epoch": 0}
+    to_restore = {"epoch": 0, "step": 0}
     args.wandb_id = utils.restart_from_checkpoint(
         os.path.join(args.output_dir, "checkpoint.pth"),
         run_variables=to_restore,
@@ -399,7 +399,7 @@ def train_svt(args):
         fp16_scaler=fp16_scaler,
         dino_loss=dino_loss,
     )
-    start_epoch = to_restore["epoch"]
+    start_epoch, start_step = to_restore["epoch"], to_restore["step"]
 
     if args.use_wandb and utils.is_main_process():
         wandb.init(
@@ -423,13 +423,15 @@ def train_svt(args):
 
     start_time = time.time()
     print("Starting DINO training !")
+    step = start_step if start_step else start_epoch*len(dataset)
+    print('step', step)
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
         # ============ training one epoch of DINO ... ============
-        train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
+        train_stats, step = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
                                       data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
-                                      epoch, fp16_scaler, args, cfg=config)
+                                      epoch, step, fp16_scaler, args, cfg=config)
 
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
@@ -440,8 +442,8 @@ def train_svt(args):
                 print('val_stats mean', val_stats2)
                 if args.use_wandb:
                     # wandb.log(val_stats)
-                    wandb.log({'knn/' + key: value for key, value in val_stats.items()})
-                    wandb.log({'knn/mean_'+key: value for key, value in val_stats2.items()})
+                    wandb.log({'knn/' + key: value for key, value in val_stats.items()}, step=step)
+                    wandb.log({'knn/mean_'+key: value for key, value in val_stats2.items()}, step=step)
             utils.synchronize()
 
         # ============ writing logs ... ============
@@ -450,6 +452,7 @@ def train_svt(args):
             'teacher': teacher.state_dict(),
             'optimizer': optimizer.state_dict(),
             'epoch': epoch + 1,
+            'step': step,
             'args': args,
             'dino_loss': dino_loss.state_dict(),
         }
@@ -465,21 +468,21 @@ def train_svt(args):
         if utils.is_main_process():
             with (Path(args.output_dir) / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
-            if args.use_wandb:
-                wandb.log({'epoch': epoch})
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
-                    optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch,
+                    optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, step,
                     fp16_scaler, args, cfg=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
     for it, (images, indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         # update weight decay and learning rate according to their schedule
         it = len(data_loader) * epoch + it  # global training iteration
+        batch_size = images[0].size(0)
+        step += it*batch_size
         for i, param_group in enumerate(optimizer.param_groups):
             param_group["lr"] = lr_schedule[it]
             if i == 0:  # only the first group is regularized
@@ -487,8 +490,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        indices = [idx.cuda(non_blocking=True) for idx in indices]
-        indices = torch.stack(indices, -1)
+        indices = torch.stack([idx.cuda(non_blocking=True) for idx in indices], -1)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
@@ -534,18 +536,18 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
         metric_logger.update(**dict_losses)
 
-        if it % args.log_every and utils.is_main_process() and args.use_wandb:
+        if it % args.log_every == 0 and utils.is_main_process() and args.use_wandb:
             wandb.log(dict(
                 batch_loss=loss.item(),
                 lr=optimizer.param_groups[0]["lr"],
                 wd=optimizer.param_groups[0]["weight_decay"],
-                **{f"batch_{key}": val for key, val in dict_losses.items()},
+                **{f"batch_{key}": val for key, val in dict_losses.items()}, step=step,
             ))
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}, step
 
 
 def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt):

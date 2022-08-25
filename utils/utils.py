@@ -172,7 +172,7 @@ def restart_from_checkpoint(ckp_path, run_variables=None, **kwargs):
     if run_variables is not None:
         for var_name in run_variables:
             if var_name in checkpoint:
-                run_variables[var_name] = checkpoint[var_name]
+                run_variables[var_name] = checkpoint.get(var_name)
 
     wandb_id = (checkpoint["args"].wandb_id if ("args" in checkpoint and "wandb_id" in checkpoint["args"])
                 else wandb.util.generate_id())
