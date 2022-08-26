@@ -21,6 +21,7 @@ python -m torch.distributed.launch \
   --arch "timesformer" \
   --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
+  --val_data_dir "${DATA_PATH}" \
   --output_dir "checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \

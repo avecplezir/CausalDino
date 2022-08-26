@@ -426,7 +426,8 @@ def decode_events(
     end=None,
     duration=None,
     frames_length=None,
-    num_clips_2=2,
+    num_clips_global=2,
+    num_clip_local=0,
     random_sampling=True,
     n_parts=9,
 ):
@@ -499,29 +500,21 @@ def decode_events(
         return None
 
     # Perform temporal sampling from the decoded video.
+    max_len = frames.shape[0]
+    samples = []
     if random_sampling:
-        max_len = frames.shape[0]
-        samples = []
         local_width = max_len // n_parts
-        start_idx = random.randint(0, local_width - 1)
-        indices = np.random.choice(np.arange(0, n_parts-1), replace=False, size=num_clips_2)
+        indices = np.random.choice(np.arange(0, n_parts-1), replace=False, size=num_clips_global)
         indices = sorted(indices)
-        for idx in indices:
-            cur_local = temporal_sampling(frames, start_idx+idx*local_width, start_idx + idx*local_width+local_width, num_frames)
-            samples.append(cur_local)
-
-        frames = [*samples]
     else:
-        max_len = frames.shape[0]
-        samples = []
-        local_width = max_len // (num_clips_2 + 1)
-        idx = random.randint(0, local_width - 1)
-        for _ in range(num_clips_2):
-            cur_local = temporal_sampling(frames, idx, idx + local_width, num_frames)
-            samples.append(cur_local)
-            idx += local_width
+        local_width = max_len // (num_clips_global + 1)
+        indices = tuple(np.arange(0, num_clips_global))
 
-        indices = tuple(np.arange(0, num_clips_2))
-        frames = [*samples]
+    start_idx = random.randint(0, local_width - 1)
+    for idx in indices:
+        cur_local = temporal_sampling(frames, start_idx+idx*local_width, start_idx + idx*local_width+local_width, num_frames)
+        samples.append(cur_local)
+
+    frames = [*samples]
 
     return frames, indices

@@ -208,6 +208,7 @@ class GPTTimeEmb(nn.Module):
             # translate from model_type to detailed configuration
             config.merge_from_dict({
                                     'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
+                                    'gpt-micro-256-3': dict(n_layer=3, n_head=4, n_embd=256),
                                     'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=256),
                                    }[config.model_type])
 

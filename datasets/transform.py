@@ -753,7 +753,8 @@ class VideoDataAugmentationDINO(object):
 
 
 class VideoDataAugmentationEvents(object):
-    def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4), local_crops_number=6,
+    def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4),
+                 local_crops_number=6,
                  n_global_views=2, size=224):
         self.global_crops_scale = global_crops_scale
         self.local_crops_scale = local_crops_scale
@@ -837,4 +838,7 @@ class VideoDataAugmentationEvents(object):
                     crops.append(self.global_transform1(local_image))
                 else:
                     crops.append(self.global_transform2(local_image))
+            for _ in range(self.local_crops_number):
+                for local_image in image:
+                    crops.append(self.local_transform(local_image))
         return crops

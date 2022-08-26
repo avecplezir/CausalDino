@@ -13,7 +13,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -34,5 +34,6 @@ python -m torch.distributed.launch \
   --use_wandb True \
   --loss DINOKLLoss \
   --dataset Kinetics \
+  --out_dim 20 \
   --video_extension avi
 

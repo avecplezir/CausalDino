@@ -182,6 +182,9 @@ def get_args_parser():
     parser.add_argument("--bottleneck_dim", type=int, default=256, help="bottleneck dim in Dino Head")
     parser.add_argument('--predictor_model_type', default='gpt-micro-256', type=str, help="""Name of model""")
     parser.add_argument('--yt_path', default=None, type=str, help="Base path for logs storage in yt") #"//home/yr/ianokhin"
+    parser.add_argument('--val_data_dir', default="/mnt/data/UCF101", type=str,
+                        help="path to validation dataset")  # "//home/yr/ianokhin"
+
 
     return parser
 
@@ -245,7 +248,7 @@ def train_svt(args):
 
     if args.do_eval:
         # validation data
-        config.DATA.PATH_TO_DATA_DIR = "/mnt/data/UCF101"
+        config.DATA.PATH_TO_DATA_DIR = args.val_data_dir
         config.DATA.PATH_PREFIX = ""
         config.TEST.NUM_SPATIAL_CROPS = 1
         eval_train, eval_test, eval_loader_train, eval_loader_test = get_eval_datasets(args.eval_dataset, args)

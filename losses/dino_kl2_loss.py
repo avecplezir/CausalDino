@@ -1,4 +1,4 @@
-__all__ = ['DINOKLLoss']
+__all__ = ['DINOKL2Loss']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class DINOKLLoss(nn.Module):
+class DINOKL2Loss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, global_crops=2, **kwargs):
@@ -31,27 +31,33 @@ class DINOKLLoss(nn.Module):
         """
         total_loss = 0
         n_loss_terms = 0
-        student_out = student_output #/ self.student_temp
-        student_out = student_out.chunk(self.n_crops)
+        student_out = F.softmax(student_output, dim=-1) #/ self.student_temp
+        # student_out = student_out.chunk(self.n_crops)
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
         teacher_out = F.softmax(student_output, dim=-1)
         teacher_out = teacher_out.chunk(self.n_crops)[:2]
+        teacher_out = torch.cat(teacher_out, 0)
 
         # marginal = F.log_softmax(self.center, dim=-1)
         batch_center = self.get_batch_center(student_output)
         marginal = F.log_softmax(batch_center, dim=-1)
-        for iq, q in enumerate(teacher_out):
-            for v in range(len(student_out)):
-                if v == iq:
-                    # we skip cases where student and teacher operate on the same view
-                    continue
-                s = F.log_softmax(student_out[v], dim=-1)
-                loss = torch.sum(-q * (s - marginal), dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
-        total_loss /= n_loss_terms
+
+        p_enc = teacher_out.mean(0)
+        p_pred = student_out.mean(0)
+
+        total_loss = -p_enc * (torch.log(p_pred) - marginal)
+        # for iq, q in enumerate(teacher_out):
+        #     for v in range(len(student_out)):
+        #         if v == iq:
+        #             # we skip cases where student and teacher operate on the same view
+        #             continue
+        #         s = F.log_softmax(student_out[v], dim=-1)
+        #         loss = torch.sum(-q * (s - marginal), dim=-1)
+        #         total_loss += loss.mean()
+        #         n_loss_terms += 1
+        # total_loss /= n_loss_terms
 
         entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
         s_enc_logits = torch.stack(student_out, 1)
