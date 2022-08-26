@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-DATA_PATH="$INPUT_PATH/something-something-v2"
+DATA_PATH="$INPUT_PATH/something-something-v2/raw_mp4"
 EXP_NAME="svt_ucf101_nirvana_debug"
 PORT='1024'
 
@@ -19,7 +19,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 8 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
   --output_dir "checkpoints/$EXP_NAME" \
