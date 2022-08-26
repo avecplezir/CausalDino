@@ -29,31 +29,25 @@ class DINOMILoss(nn.Module):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        student_out = student_output.chunk(self.n_crops)
-        student_out = F.log_softmax(student_out[0], dim=-1)
-        teacher_out = F.softmax(student_out[1], dim=-1)
-        print('student_out', student_out.shape)
-        print('teacher_out', teacher_out.shape)
+        student_out_list = student_output.chunk(self.n_crops)
+        student_out = F.log_softmax(student_out_list[0], dim=-1)
+        teacher_out = F.softmax(student_out_list[1], dim=-1)
 
         teacher_out = teacher_out.mean(0, keepdim=True)
         student_out = student_out.mean(0,  keepdim=True)
 
-        print('student_out 2', student_out.shape)
-        print('teacher_out 2', teacher_out.shape)
-
-        total_loss = -torch.sum(teacher_out * (student_out - torch.log(teacher_out)), dim=-1)
-        print('total_loss', total_loss.shape)
-
-        total_loss = total_loss.mean()
+        CE = -torch.sum(teacher_out * student_out, dim=-1)
+        entropy = torch.sum(teacher_out * torch.log(teacher_out), dim=-1)
+        total_loss = CE.mean() + entropy.mean()
 
         entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
-        s_enc_logits = torch.stack(student_out, 1)
+        s_enc_logits = torch.stack(student_out_list, 1)
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
 
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(s_enc_logits)
 
-        return total_loss, {'CE': total_loss,
+        return total_loss, {'CE': CE,
                             'entropy': entropy,
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,

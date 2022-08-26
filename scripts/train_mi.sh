@@ -31,7 +31,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \
   --n_parts 11 \
-  --use_wandb True \
+  --use_wandb False \
   --loss DINOMILoss \
   --dataset Kinetics \
   --video_extension avi
