@@ -31,28 +31,26 @@ class DINOMI2Loss(nn.Module):
         """
         CE = 0
         n_loss_terms = 0
-        student_out = F.softmax(student_output, dim=1)
-        student_out = student_out.chunk(self.n_crops)
-        teacher_out = student_out[:2]
 
-        for iq, q in enumerate(teacher_out):
-            for v in range(len(student_out)):
+        s_enc_logits = torch.stack(student_output.chunk(self.n_crops), 1)
+        s_proba = F.softmax(s_enc_logits, dim=-1)
+        s_log = torch.log(s_proba)
+        s_marginal = s_proba.mean(0).mean(0)
+
+        for iq in range(self.n_crops):
+            for v in range(self.n_crops):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                s = torch.log(student_out[v]).mean(0, keepdim=True)
-                q = q.mean(0, keepdim=True)
-                loss = torch.sum(-q * s, dim=-1)
+                loss = torch.sum(-s_proba[:, iq] * s_log[:, v], dim=-1)
                 CE += loss.mean()
                 n_loss_terms += 1
         CE /= n_loss_terms
 
-        q = teacher_out.mean(0, keepdim=True)
-        entropy = torch.sum(q * torch.log(q), dim=-1)
+        entropy = torch.sum(s_marginal * torch.log(s_marginal), dim=-1)
 
-        total_loss = CE + entropy.mean()
+        total_loss = CE + entropy
 
-        s_enc_logits = torch.stack(student_output.chunk(self.n_crops), 1)
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(s_enc_logits)
