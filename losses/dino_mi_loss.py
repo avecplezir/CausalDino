@@ -1,4 +1,4 @@
-__all__ = ['DINOKL3Loss']
+__all__ = ['DINOMILoss']
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.distributed as dist
 import numpy as np
 
 
-class DINOKL3Loss(nn.Module):
+class DINOMILoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, global_crops=2, **kwargs):
@@ -29,35 +29,31 @@ class DINOKL3Loss(nn.Module):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        CE = 0
-        n_loss_terms = 0
-        student_out = F.softmax(student_output, dim=1)
-        student_out = student_out.chunk(self.n_crops)
-        teacher_out = student_out[:2]
+        student_out = student_output.chunk(self.n_crops)
+        student_out = F.log_softmax(student_out[0], dim=-1)
+        teacher_out = F.softmax(student_out[1], dim=-1)
+        print('student_out', student_out.shape)
+        print('teacher_out', teacher_out.shape)
 
-        for iq, q in enumerate(teacher_out):
-            for v in range(len(student_out)):
-                if v == iq:
-                    # we skip cases where student and teacher operate on the same view
-                    continue
-                s = torch.log(student_out[v]).mean(0, keepdim=True)
-                q = q.mean(0, keepdim=True)
-                loss = torch.sum(-q * s, dim=-1)
-                CE += loss.mean()
-                n_loss_terms += 1
-        CE /= n_loss_terms
+        teacher_out = teacher_out.mean(0, keepdim=True)
+        student_out = student_out.mean(0,  keepdim=True)
 
-        q = teacher_out.mean(0, keepdim=True)
-        entropy = torch.sum(q * torch.log(q), dim=-1)
+        print('student_out 2', student_out.shape)
+        print('teacher_out 2', teacher_out.shape)
 
-        total_loss = CE + entropy.mean()
+        total_loss = -torch.sum(teacher_out * (student_out - torch.log(teacher_out)), dim=-1)
+        print('total_loss', total_loss.shape)
 
-        s_enc_logits = torch.stack(student_output.chunk(self.n_crops), 1)
+        total_loss = total_loss.mean()
+
+        entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
+        s_enc_logits = torch.stack(student_out, 1)
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
+
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(s_enc_logits)
 
-        return total_loss, {'CE': CE,
+        return total_loss, {'CE': total_loss,
                             'entropy': entropy,
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
