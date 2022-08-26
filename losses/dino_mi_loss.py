@@ -42,7 +42,6 @@ class DINOMILoss(nn.Module):
         entropy = torch.sum(s_marginal * torch.log(s_marginal), dim=-1)
         total_loss = CE + self.args.coef_entropy * entropy
 
-        entropy = -torch.sum(F.softmax(self.center, dim=-1) * F.log_softmax(self.center), dim=-1)
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
 
@@ -54,16 +53,6 @@ class DINOMILoss(nn.Module):
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
-
-    def get_batch_center(self, teacher_output):
-        """
-        Update center used for teacher output.
-        """
-        b, *_ = teacher_output.shape
-        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
-        dist.all_reduce(batch_center)
-        batch_center = batch_center / (b * dist.get_world_size())
-        return batch_center
 
     def compute_kl(self, conditional):
         marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)
@@ -79,17 +68,3 @@ class DINOMILoss(nn.Module):
         max_entropy = np.log(onehot.size(1))
         dirac_entropy_proportion2max = dirac_entropy / max_entropy
         return dirac_entropy, dirac_entropy_proportion2max
-
-    @torch.no_grad()
-    def update_center(self, teacher_output):
-        """
-        Update center used for teacher output.
-        """
-        batch_center = torch.sum(teacher_output, dim=0, keepdim=True)
-        dist.all_reduce(batch_center)
-        batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
-
-        # ema update
-        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
-
-        return batch_center

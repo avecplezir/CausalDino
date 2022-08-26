@@ -2,8 +2,8 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_tiny_mi_ent"
-PORT='1027'
+EXP_NAME="svt_ucf101_tiny_mi_center"
+PORT='1024'
 
 cd "$PROJECT_PATH" || exit
 
@@ -11,7 +11,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=1
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -32,7 +32,6 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --n_parts 11 \
   --use_wandb True \
-  --loss DINOMILoss \
-  --coef_entropy 5 \
+  --loss DINOMI3Loss \
   --dataset Kinetics \
   --video_extension avi
