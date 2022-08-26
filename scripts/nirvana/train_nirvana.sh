@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="svt_ucf101_base_nirvana_2gpu"
+EXP_NAME="svt_ucf101_base_nirvana_1gpu"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -15,7 +15,7 @@ export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
 python -m torch.distributed.launch \
-  --nproc_per_node=2 \
+  --nproc_per_node=1 \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
