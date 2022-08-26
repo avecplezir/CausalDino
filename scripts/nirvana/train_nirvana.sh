@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-DATA_PATH="$INPUT_PATH/something-something-v2"
+DATA_PATH="$INPUT_PATH/UCF101"
 EXP_NAME="svt_ucf101_nirvana"
 PORT='1024'
 
