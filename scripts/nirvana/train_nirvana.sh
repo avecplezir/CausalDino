@@ -19,7 +19,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 8 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
   --output_dir "checkpoints/$EXP_NAME" \
