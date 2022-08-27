@@ -11,7 +11,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=4
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -28,7 +28,7 @@ python -m torch.distributed.launch \
   --model_name get_deit_tiny_patch16_224 \
   --yt_path //home/yr/ianokhin \
   --do_eval True \
-  --eval_freq 2 \
+  --eval_freq 4 \
   --n_global_views 2 \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \
