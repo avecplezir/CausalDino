@@ -6,5 +6,4 @@ from .timeemb_loss import TimeEmbLoss
 from .dinoknn_loss import DINOKNNLoss
 from .timeavr_loss import TimeAvrLoss
 from .dino_mi_loss import DINOMILoss
-from .dino_mi2_loss import DINOMI2Loss
-from .dino_mi3_loss import DINOMI3Loss
+from .dino_mit_loss import DINOMITLoss
