@@ -436,23 +436,22 @@ def train_svt(args):
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
-        # # ============ training one epoch of DINO ... ============
-        # train_stats, step = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
-        #                               data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
-        #                               epoch, step, fp16_scaler, args, cfg=config)
-        #
-        # # ============ eval ========================
-        # if args.do_eval and epoch % args.eval_freq == 0:
-        #     val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-        #     val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
-        #     if utils.is_main_process():
-        #         print('val_stats', val_stats)
-        #         print('val_stats mean', val_stats2)
-        #         if args.use_wandb:
-        #             # wandb.log(val_stats)
-        #             wandb.log({'knn/' + key: value for key, value in val_stats.items()}, step=step)
-        #             wandb.log({'knn/mean_'+key: value for key, value in val_stats2.items()}, step=step)
-        #     utils.synchronize()
+        # ============ training one epoch of DINO ... ============
+        train_stats, step = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
+                                      data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
+                                      epoch, step, fp16_scaler, args, cfg=config)
+
+        # ============ eval ========================
+        if args.do_eval and epoch % args.eval_freq == 0:
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+            if utils.is_main_process():
+                print('val_stats', val_stats)
+                print('val_stats mean', val_stats2)
+                if args.use_wandb:
+                    wandb.log({'knn/' + key: value for key, value in val_stats.items()}, step=step)
+                    wandb.log({'knn/mean_'+key: value for key, value in val_stats2.items()}, step=step)
+            utils.synchronize()
 
         # ============ writing logs ... ============
         save_dict = {
