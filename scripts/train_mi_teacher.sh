@@ -26,6 +26,7 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
+  --yt_path //home/yr/ianokhin \
   --do_eval True \
   --eval_freq 2 \
   --n_global_views 2 \
