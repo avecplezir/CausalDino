@@ -47,7 +47,7 @@ class DINOMILoss(nn.Module):
         entropy = torch.sum(self.center * torch.log(s_marginal), dim=-1) + torch.sum(s_marginal * torch.log(self.center), dim=-1)
         total_loss = CE + self.args.coef_entropy * entropy
 
-        entropy = entropy / 2
+        entropy = -entropy / 2
         CE = CE / 2
 
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)

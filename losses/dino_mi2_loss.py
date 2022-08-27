@@ -56,7 +56,7 @@ class DINOMI2Loss(nn.Module):
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(s_enc_logits)
 
         return total_loss, {'CE': CE,
-                            'entropy': entropy,
+                            'entropy': -entropy,
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
