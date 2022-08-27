@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_ucf101_tiny_mi_center"
+EXP_NAME="svt_ucf101_tiny_mi_center2"
 PORT='1026'
 
 cd "$PROJECT_PATH" || exit
@@ -20,6 +20,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
+  --out_dim 1024 \
   --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
@@ -32,6 +33,6 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --n_parts 11 \
   --use_wandb True \
-  --loss DINOMI3Loss \
+  --loss DINOMILoss \
   --dataset Kinetics \
   --video_extension avi

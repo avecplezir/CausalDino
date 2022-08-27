@@ -17,7 +17,7 @@ class DINOMILoss(nn.Module):
         self.n_crops = ncrops
         self.global_crops = global_crops
         self.args = args
-        self.register_buffer("center", torch.zeros(1, out_dim))
+        self.register_buffer("center", torch.ones(1, out_dim) / out_dim)
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = np.concatenate((
@@ -35,17 +35,26 @@ class DINOMILoss(nn.Module):
         s_log = torch.log(s_proba)
         s_marginal = s_proba.mean(0).mean(0)
 
-        CE = -torch.sum(s_proba[:, 0] * s_log[:, 1], dim=-1) \
-             + -torch.sum(s_proba[:, 1] * s_log[:, 0], dim=-1)
-        CE = (CE / 2).mean()
+        t_enc_logits = torch.stack(teacher_output.chunk(self.n_crops), 1)
+        t_proba = F.softmax(t_enc_logits, dim=-1)
+        t_log = torch.log(t_proba)
+        t_marginal = t_proba.mean(0).mean(0)
 
-        entropy = torch.sum(s_marginal * torch.log(s_marginal), dim=-1)
+        CE1 = -torch.sum(t_proba[:, 0] * s_log[:, 1], dim=-1) - torch.sum(s_proba[:, 0] * t_log[:, 1], dim=-1)
+        CE2 = -torch.sum(t_proba[:, 1] * s_log[:, 0], dim=-1) - torch.sum(s_proba[:, 1] * t_log[:, 0], dim=-1)
+        CE = ((CE1 + CE2) / 2).mean()
+
+        entropy = torch.sum(self.center * torch.log(s_marginal), dim=-1) + torch.sum(s_marginal * torch.log(self.center), dim=-1)
         total_loss = CE + self.args.coef_entropy * entropy
+
+        entropy = entropy / 2
+        CE = CE / 2
 
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
-
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(s_enc_logits)
+
+        self.center = self.center * self.center_momentum + t_marginal * (1 - self.center_momentum)
 
         return total_loss, {'CE': CE,
                             'entropy': entropy,
