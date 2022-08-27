@@ -17,7 +17,7 @@ class DINOMI3Loss(nn.Module):
         self.n_crops = ncrops
         self.global_crops = global_crops
         self.args = args
-        self.register_buffer("center", torch.zeros(1, out_dim) / out_dim)
+        self.register_buffer("center", torch.ones(1, out_dim) / out_dim)
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = np.concatenate((

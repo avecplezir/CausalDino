@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="svt_ucf101_tiny_nirvana"
+EXP_NAME="svt_ucf101_tiny_mi_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -19,6 +19,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
+  --out_dim 20 \
   --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
@@ -31,6 +32,6 @@ python -m torch.distributed.launch \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \
-  --loss DINOLoss \
+  --loss DINOMI3Loss \
   --dataset Kinetics \
   --video_extension avi
