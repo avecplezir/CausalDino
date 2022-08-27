@@ -25,6 +25,7 @@ python -m torch.distributed.launch \
   --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
+  --yt_path //home/yr/ianokhin \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 1 \
