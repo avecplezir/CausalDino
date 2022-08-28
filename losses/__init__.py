@@ -7,3 +7,4 @@ from .dinoknn_loss import DINOKNNLoss
 from .timeavr_loss import TimeAvrLoss
 from .dino_mit_loss import DINOMITLoss
 from .dino_mi_loss import DINOMILoss
+from .feature_mi_loss import FeatureMILoss
