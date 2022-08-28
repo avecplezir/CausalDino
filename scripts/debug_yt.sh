@@ -23,6 +23,7 @@ python -m torch.distributed.launch \
   --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
+  --yt_path //home/yr/ianokhin \
   --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
