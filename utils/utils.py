@@ -36,6 +36,7 @@ from PIL import ImageFilter, ImageOps
 
 try:
     import yt.wrapper as yt
+    from yt.wrapper import file_commands
 except:
     pass
 
@@ -453,27 +454,46 @@ def load_checkpoint_from_yt(path) -> dict:
     return checkpoint
 
 
+def make_client(proxy='hahn', max_thread_count=20, extra_config=None):
+    config = {
+        'read_retries': {'enable': True},
+        'proxy': {'accept_encoding': 'gzip', 'content_encoding': 'gzip'}
+    }
+
+    if max_thread_count > 1:
+        config['read_parallel'] = {
+            'enable': True,
+            'max_thread_count': max_thread_count,
+        }
+
+    if extra_config is not None:
+        config.update(extra_config)
+
+    return yt.YtClient(proxy=proxy, config=config)
+
+
 def save_checkpoint_to_yt(args, state_dict, epoch=None):
     "Save checkpoint (optionaly write to yt table)"
     if is_main_process() and args.yt_path is not None:
         experiment_path = os.path.join(args.yt_path, 'CausalDino', args.exp_name)
         checkpoint_path = os.path.join(experiment_path, "checkpoint.pt")
         experiment_path, _ = os.path.split(checkpoint_path)
-        yt_client = yt.YtClient(
-            # proxy='hahn',
-            proxy="http://euler.sas.yp-c.yandex.net:6953",
-            config={
-                "remote_temp_files_directory": f"{experiment_path}/tmp",
-                "remote_temp_tables_directory": f"{experiment_path}/tmp",
-            }
-        )
+
+        # yt_client = yt.YtClient(
+        #     proxy='hahn',
+        #     config={
+        #         "remote_temp_files_directory": f"{experiment_path}/tmp",
+        #         "remote_temp_tables_directory": f"{experiment_path}/tmp",
+        #     }
+        # )
+        yt_client = make_client()
         print("Saving checkpoint")
         buf = io.BytesIO()
         torch.save(state_dict, buf)
         data = buf.getvalue()
         if epoch is not None:
             checkpoint_path = os.path.join(experiment_path, f"checkpoint_epoch{epoch}.pt")
-        yt_client.write_file(checkpoint_path, data)
+        file_commands.write_file(checkpoint_path, data, client=yt_client)
 
 
 def restore_yt_checkpoint(args):
