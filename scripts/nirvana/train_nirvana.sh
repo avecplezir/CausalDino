@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="svt_ucf101_tiny_nirvana"
+EXP_NAME="svt_ucf101_small_16_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -19,13 +19,12 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
-  --output_dir "checkpoints/$EXP_NAME" \
+  --output_dir "$SNAPSHOT_PATH/$EXP_NAME" \
   --exp_name $EXP_NAME \
-  --model_name get_deit_tiny_patch16_224 \
-  --yt_path //home/yr/ianokhin \
+  --model_name get_deit_small_patch16_224 \
   --do_eval True \
   --eval_freq 2 \
   --n_global_views 2 \
