@@ -37,18 +37,16 @@ class DINOMILoss(nn.Module):
 
         t_enc_logits = torch.stack(teacher_output.chunk(self.n_crops), 1)
         t_proba = F.softmax(t_enc_logits, dim=-1)
-        t_log = torch.log(t_proba)
         t_marginal = t_proba.mean(0).mean(0)
 
-        CE1 = -torch.sum(t_proba[:, 0] * s_log[:, 1], dim=-1) - torch.sum(s_proba[:, 0] * t_log[:, 1], dim=-1)
-        CE2 = -torch.sum(t_proba[:, 1] * s_log[:, 0], dim=-1) - torch.sum(s_proba[:, 1] * t_log[:, 0], dim=-1)
-        CE = ((CE1 + CE2) / 2).mean()
+        CE = -torch.sum(s_proba[:, 0] * s_log[:, 1], dim=-1) \
+             -torch.sum(s_proba[:, 1] * s_log[:, 0], dim=-1)
+        CE = (CE / 2).mean()
 
         entropy = torch.sum(self.center * torch.log(s_marginal), dim=-1) + torch.sum(s_marginal * torch.log(self.center), dim=-1)
         total_loss = CE + self.args.coef_entropy * entropy
 
         entropy = -entropy / 2
-        CE = CE / 2
 
         time_events_proba = F.softmax(s_enc_logits, dim=-1).mean(1)
         time_entropy = -torch.sum(time_events_proba * torch.log(time_events_proba), dim=-1).mean()
