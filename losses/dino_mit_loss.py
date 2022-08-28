@@ -36,6 +36,7 @@ class DINOMITLoss(nn.Module):
         s_marginal = s_proba.mean(0).mean(0)
 
         t_enc_logits = torch.stack(teacher_output.chunk(self.n_crops), 1)
+        t_enc_logits = t_enc_logits * 2
         t_proba = F.softmax(t_enc_logits, dim=-1)
         t_log = torch.log(t_proba)
         t_marginal = t_proba.mean(0).mean(0)
