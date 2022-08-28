@@ -460,7 +460,8 @@ def save_checkpoint_to_yt(args, state_dict, epoch=None):
         checkpoint_path = os.path.join(experiment_path, "checkpoint.pt")
         experiment_path, _ = os.path.split(checkpoint_path)
         yt_client = yt.YtClient(
-            proxy='hahn',
+            # proxy='hahn',
+            proxy="http://euler.sas.yp-c.yandex.net:6953",
             config={
                 "remote_temp_files_directory": f"{experiment_path}/tmp",
                 "remote_temp_tables_directory": f"{experiment_path}/tmp",
