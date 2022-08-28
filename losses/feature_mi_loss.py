@@ -10,11 +10,12 @@ import numpy as np
 class FeatureMILoss(nn.Module):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, **kwargs):
+                 center_momentum=0.9, args=None, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
+        self.args = args
         self.register_buffer("center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_past_center", torch.zeros(1, 1, out_dim))

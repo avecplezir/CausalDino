@@ -2,7 +2,7 @@
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
 EXP_NAME="svt_ucf101_fmi_tiny_32"
-PORT='1028'
+PORT='1032'
 
 cd "$PROJECT_PATH" || exit
 
@@ -10,7 +10,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=1
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 

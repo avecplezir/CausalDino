@@ -92,7 +92,7 @@ class MLPfeaturePredictor(nn.Module):
         super().__init__()
         self.mlp = DINOHead(emb_dim)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         x = self.mlp(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
         return x
