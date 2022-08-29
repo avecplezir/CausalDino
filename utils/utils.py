@@ -495,6 +495,14 @@ def save_checkpoint_to_yt(args, state_dict, epoch=None):
             checkpoint_path = os.path.join(experiment_path, f"checkpoint_epoch{epoch}.pt")
         file_commands.write_file(checkpoint_path, data, client=yt_client)
 
+    try:
+        import nirvana_dl.snapshot as snap
+        snap.dump_snapshot()
+        print('Checkpoint saved to snapshots.')
+    except Exception:
+        print('Checkpoint NOT save to snapshots!')
+        pass
+
 
 def restore_yt_checkpoint(args):
     if is_main_process() and args.yt_path is not None:

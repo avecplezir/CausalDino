@@ -16,7 +16,7 @@ class FeatureMILoss(nn.Module):
         self.center_momentum = center_momentum
         self.n_crops = ncrops
         self.args = args
-        self.register_buffer("center", torch.zeros(1, 1, out_dim))
+        self.register_buffer("center", torch.ones(out_dim) / out_dim)
         self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_past_center", torch.zeros(1, 1, out_dim))
         # we apply a warm up for the teacher temperature because
