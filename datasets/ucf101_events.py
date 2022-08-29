@@ -152,7 +152,6 @@ class UCF101Events(torch.utils.data.Dataset):
                 sampling_rate=sampling_rate,
                 num_frames=self.cfg.DATA.NUM_FRAMES,
                 clip_idx=-1,
-                num_clips=self.cfg.TEST.NUM_ENSEMBLE_VIEWS,
                 video_meta=self._video_meta[index],
                 target_fps=self.cfg.DATA.TARGET_FPS,
                 backend=self.cfg.DATA.DECODING_BACKEND,

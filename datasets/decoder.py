@@ -210,9 +210,9 @@ def torchvision_decode(
     return v_frames, fps, decode_all_video
 
 
-def pyav_decode(
-    container, sampling_rate, num_frames, clip_idx, num_clips=10, target_fps=30, start=None, end=None
-, duration=None, frames_length=None):
+def pyav_decode(container, sampling_rate, num_frames, clip_idx, num_clips=10,
+                target_fps=30, start=None, end=None,
+                duration=None, frames_length=None, mode='random'):
     """
     Convert the video from its original fps to the target_fps. If the video
     support selective decoding (contain decoding information in the video head),
@@ -255,14 +255,19 @@ def pyav_decode(
         decode_all_video = True
         video_start_pts, video_end_pts = 0, math.inf
     else:
-        # Perform selective decoding.
-        decode_all_video = False
-        start_idx, end_idx = get_start_end_idx(
-            frames_length,
-            sampling_rate * num_frames / target_fps * fps,
-            clip_idx,
-            num_clips,
-        )
+        clip_size = sampling_rate * num_frames / target_fps * fps
+        if mode == 'random':
+            # Perform selective decoding.
+            decode_all_video = False
+            start_idx, end_idx = get_start_end_idx(
+                frames_length,
+                clip_size,
+                clip_idx,
+                num_clips,
+            )
+        else:
+            start_idx = clip_size * clip_idx
+            end_idx = start_idx + clip_size - 1
         timebase = duration / frames_length
         video_start_pts = int(start_idx * timebase)
         video_end_pts = int(end_idx * timebase)
@@ -417,7 +422,6 @@ def decode_events(
     sampling_rate,
     num_frames,
     clip_idx=-1,
-    num_clips=10,
     video_meta=None,
     target_fps=30,
     backend="pyav",
@@ -430,6 +434,7 @@ def decode_events(
     num_clip_local=0,
     random_sampling=True,
     n_parts=9,
+    mode='random',
 ):
     """
     Decode the video and perform temporal sampling.
@@ -464,18 +469,19 @@ def decode_events(
     try:
         if backend == "pyav":
             frames, fps, decode_all_video = pyav_decode(
-                container,
-                sampling_rate,
-                num_frames,
-                clip_idx,
-                num_clips,
-                target_fps,
-                start,
-                end,
-                duration,
-                frames_length,
+                container=container,
+                sampling_rate=sampling_rate,
+                num_frames=num_frames,
+                clip_idx=clip_idx,
+                target_fps=target_fps,
+                start=start,
+                end=end,
+                duration=duration,
+                frames_length=frames_length,
+                mode=mode,
             )
         elif backend == "torchvision":
+            #TODO: fix num_clips
             frames, fps, decode_all_video = torchvision_decode(
                 container,
                 sampling_rate,
