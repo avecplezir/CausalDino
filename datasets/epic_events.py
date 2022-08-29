@@ -3,6 +3,7 @@ import glob
 import random
 import warnings
 import torch.utils.data
+from torch.utils.data import Sampler
 
 from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
@@ -30,6 +31,7 @@ class EpicEvents(torch.utils.data.Dataset):
 
         print("Constructing EpicEvents...")
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' * level + '.' + extension)
+        self.num_video = len(self._path_to_videos )
 
         self._start_video_idx = None # index with which video is started
         self._video_clip_size = None # len of the video in terms of number of clips
@@ -150,3 +152,23 @@ class EpicEvents(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return sum(self._video_clip_size)
+
+
+class ContinuousSampler(Sampler):
+    def __init__(self, data_source):
+        super().__init__(data_source)
+        self.data_source = data_source
+
+    def __iter__(self):
+        iters = [
+            iter(range(self.data_source._start_video_idx[i],
+                       self.data_source._start_video_idx[i] + self.data_source._video_clip_size[i]))
+            for i in range(self.data_source.num_videos)
+        ]
+
+        while True:
+            try:
+                for itr in iters:
+                    yield next(itr)
+            except StopIteration:
+                break
