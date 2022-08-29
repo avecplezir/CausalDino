@@ -447,8 +447,6 @@ def decode_events(
             sampling. If clip_idx is larger than -1, uniformly split the
             video to num_clips clips, and select the
             clip_idx-th video clip.
-        num_clips (int): overall number of clips to uniformly
-            sample from the given video.
         video_meta (dict): a dict contains VideoMetaData. Details can be find
             at `pytorch/vision/torchvision/io/_video_opt.py`.
         target_fps (int): the input video may have different fps, convert it to

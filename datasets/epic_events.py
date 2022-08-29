@@ -4,7 +4,6 @@ import random
 import warnings
 import torch.utils.data
 
-from datasets.data_utils import get_random_sampling_rate
 from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
 from datasets.decoder import decode_events
@@ -101,7 +100,8 @@ class EpicEvents(torch.utils.data.Dataset):
                     max_spatial_scale=min_scale,
                     num_clips_global=self.cfg.n_global_views,
                     n_parts=self.cfg.n_parts,
-                    random_sampling=self.cfg.random_sampling
+                    random_sampling=self.cfg.random_sampling,
+                    mode='ordered',
                 )
             except Exception as e:
                 print(
