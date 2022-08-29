@@ -22,7 +22,7 @@ python -m torch.distributed.launch \
   --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
-  --output_dir "$SNAPSHOT_PATH/$EXP_NAME" \
+  --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --exp_name $EXP_NAME \
   --model_name get_deit_small_patch16_224 \
   --do_eval True \
