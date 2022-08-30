@@ -4,6 +4,20 @@ import random
 import warnings
 import torch.utils.data
 from torch.utils.data import Sampler
+import numpy as np
+
+from datasets.video_container import get_video_container
+from datasets.transform import VideoDataAugmentationEvents
+from datasets.decoder import decode_events
+from einops import rearrange
+
+
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+import glob
+import random
+import warnings
+import torch.utils.data
+from torch.utils.data import Sampler
 
 from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
@@ -31,7 +45,7 @@ class EpicEvents(torch.utils.data.Dataset):
 
         print("Constructing EpicEvents...")
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' * level + '.' + extension)
-        self.num_video = len(self._path_to_videos )
+        self.num_videos = len(self._path_to_videos )
 
         self._start_video_idx = [] # index with which video is started
         self._video_clip_size = [] # len of the video in terms of number of clips
@@ -50,7 +64,7 @@ class EpicEvents(torch.utils.data.Dataset):
             video_size = container.streams.video[0].frames
             fps = float(container.streams.video[0].average_rate)
             clip_size = self.sampling_rate * self.num_frames / self.cfg.DATA.TARGET_FPS * fps
-            num_clips = video_size // clip_size
+            num_clips = int(video_size // clip_size)
             self._start_video_idx.append(idx)
             self._video_clip_size.append(num_clips)
             for clip_idx in range(num_clips):
@@ -165,6 +179,7 @@ class ContinuousSampler(Sampler):
                        self.data_source._start_video_idx[i] + self.data_source._video_clip_size[i]))
             for i in range(self.data_source.num_videos)
         ]
+
         while True:
             try:
                 for video_idx, itr in enumerate(iters):
@@ -174,4 +189,38 @@ class ContinuousSampler(Sampler):
                 iters[video_idx] = iter(range(self.data_source._start_video_idx[video_idx],
                                               self.data_source._start_video_idx[video_idx] +
                                               self.data_source._video_clip_size[video_idx]))
+                continue
+
+
+class ContinuousRandomSampler(Sampler):
+    def __init__(self, data_source, batch_size=None):
+        super().__init__(data_source)
+        self.data_source = data_source
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        iters = [
+            {i: iter(range(self.data_source._start_video_idx[i],
+                           self.data_source._start_video_idx[i] + self.data_source._video_clip_size[i]))}
+            for i in range(self.data_source.num_videos)
+        ]
+
+        p = np.array([self.data_source._video_clip_size[i] for i in range(self.data_source.num_videos)])
+        p = p / p.sum()
+
+        choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
+        iteration = 0
+        while True:
+            try:
+                if iteration % self.batch_size == 0:
+                    choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
+                iteration += 1
+                for choice in choices:
+                    video_idx, itr = tuple(choice.items())[0]
+                    yield next(itr)
+            except StopIteration:
+                print(f'StopIteration, redefining iterator for {video_idx} video')
+                iters[video_idx] = {video_idx: iter(range(self.data_source._start_video_idx[video_idx],
+                                                          self.data_source._start_video_idx[video_idx] +
+                                                          self.data_source._video_clip_size[video_idx]))}
                 continue

@@ -187,6 +187,8 @@ def get_args_parser():
                         help="path to validation dataset")  # "//home/yr/ianokhin"
     parser.add_argument('--dataset_level', default=1, type=int,
                         help="level to read the data")
+    parser.add_argument('--continuous', type=utils.bool_flag, default=False,
+                        help="""Whether to use continuous sampler""")
 
 
 
@@ -205,6 +207,9 @@ def train_svt(args):
     utils.restore_yt_checkpoint(args)
     utils.synchronize()
 
+    print('args.world_size', args.world_size)
+    args.batch_size = args.batch_size_per_gpu * args.world_size
+
     # ============ preparing data ... ============
     config = load_config(args)
     if utils.is_main_process():
@@ -218,7 +223,10 @@ def train_svt(args):
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
     dataset = Dataset(cfg=config, mode="train", num_retries=10, extension=args.video_extension, level=args.dataset_level)
-    sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
+    if args.continuous:
+        sampler = datasets.ContinuousRandomSampler(dataset, batch_size=args.batch_size)
+    else:
+        sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
         dataset,
         sampler=sampler,
@@ -227,8 +235,6 @@ def train_svt(args):
         pin_memory=True,
         drop_last=True,
     )
-    print('args.world_size', args.world_size)
-    args.batch_size = args.batch_size_per_gpu * args.world_size
     print(f"Train data loaded: there are {len(dataset)} images.")
 
     def get_eval_datasets(eval_dataset, args):
