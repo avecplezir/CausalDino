@@ -366,6 +366,7 @@ def train_svt(args):
         args.teacher_temp,
         args.warmup_teacher_temp_epochs,
         args.epochs,
+        n_global_views=args.n_global_views,
         weight_inv=args.weight_inv,
         argmax=args.argmax,
         n_parts=args.n_parts,

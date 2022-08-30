@@ -6,15 +6,19 @@ import torch.nn.functional as F
 import torch.distributed as dist
 import numpy as np
 
+from .dino_loss import DINOLoss
 
-class FeatureLoss(nn.Module):
+
+class FeatureLoss(DINOLoss):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, **kwargs):
+                 center_momentum=0.9, args=None, n_global_views=None, **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
+        self.args = args
+        self.n_global_views = n_global_views
         self.register_buffer("center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_past_center", torch.zeros(1, 1, out_dim))
@@ -44,11 +48,7 @@ class FeatureLoss(nn.Module):
         CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
-        # KL = self.compute_kl(s_enc_proba)
-
-        # total_loss = 0.9*CE_fe + 0.1*CE_ef
-        # total_loss = 0.1 * CE_fe + 0.9 * CE_ef
-        total_loss = 0.5 * CE_fe + 0.5 * CE_ef
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_entropy = self.time_entropy(t_enc_proba)
@@ -59,19 +59,9 @@ class FeatureLoss(nn.Module):
                             'CE_ef': CE_ef,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
-                            # 'KL': KL,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
-
-    def dirac_entropy(self, t_enc_logits):
-        labels = torch.argmax(t_enc_logits, dim=-1)
-        onehot = F.one_hot(labels)
-        time_dirac_proba = onehot.float().mean(dim=1)
-        dirac_entropy = -torch.sum(time_dirac_proba * torch.log(time_dirac_proba + 1e-8), dim=-1).mean()
-        max_entropy = np.log(onehot.size(1))
-        dirac_entropy_proportion2max = dirac_entropy / max_entropy
-        return dirac_entropy, dirac_entropy_proportion2max
 
     def time_entropy(self, t_enc_proba):
         time_events_proba = t_enc_proba.mean(1)
@@ -104,25 +94,25 @@ class FeatureLoss(nn.Module):
         kl = F.kl_div(conditional_log, marginal_log, log_target=True)
         return kl.mean()
 
-    def compute_loss_fe(self, future_prediction, encoding):
+    def compute_loss_fe(self, s_pred_future_proba, t_enc_proba):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
         for ip in range(0, self.n_crops): #future_prediction from past
             for ie in range(ip + 1, self.n_crops): #future encoding
-                loss = -torch.sum(encoding[:, ie] * torch.log(future_prediction[:, ip]), dim=-1)
+                loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
 
-    def compute_loss_ef(self, encoding, future_prediction):
+    def compute_loss_ef(self, s_enc_proba, t_pred_future_proba):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
         for ip in range(0, self.n_crops): #future_prediction from past
             for ie in range(ip + 1, self.n_crops): #future encoding
-                loss = -torch.sum(future_prediction[:, ip] * torch.log(encoding[:, ie]), dim=-1)
+                loss = -torch.sum(t_pred_future_proba[:, ip] * torch.log(s_enc_proba[:, ie]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

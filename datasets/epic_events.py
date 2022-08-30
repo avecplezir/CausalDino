@@ -211,16 +211,17 @@ class ContinuousRandomSampler(Sampler):
         choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
         iteration = 0
         while True:
-            try:
-                if iteration % self.batch_size == 0:
-                    choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
-                iteration += 1
-                for choice in choices:
-                    video_idx, itr = tuple(choice.items())[0]
+            if iteration % self.batch_size == 0:
+                choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
+            iteration += 1
+            for choice in choices:
+                video_idx, itr = tuple(choice.items())[0]
+                try:
                     yield next(itr)
-            except StopIteration:
-                print(f'StopIteration, redefining iterator for {video_idx} video')
-                iters[video_idx] = {video_idx: iter(range(self.data_source._start_video_idx[video_idx],
-                                                          self.data_source._start_video_idx[video_idx] +
-                                                          self.data_source._video_clip_size[video_idx]))}
-                continue
+                except StopIteration:
+                    print(f'StopIteration, redefining iterator for {video_idx} video')
+                    iters[video_idx] = {video_idx: iter(range(self.data_source._start_video_idx[video_idx],
+                                                              self.data_source._start_video_idx[video_idx] +
+                                                              self.data_source._video_clip_size[video_idx]))}
+                    video_idx, itr = tuple(iters[video_idx].items())[0]
+                    yield next(itr)

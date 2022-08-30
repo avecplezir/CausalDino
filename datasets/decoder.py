@@ -431,7 +431,6 @@ def decode_events(
     duration=None,
     frames_length=None,
     num_clips_global=2,
-    num_clip_local=0,
     random_sampling=True,
     n_parts=9,
     mode='random',
