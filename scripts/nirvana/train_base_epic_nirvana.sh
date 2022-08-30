@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="svt_epic_base_nirvana"
+EXP_NAME="svt_epic_base_nirvana2"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -27,10 +27,10 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \
   --do_eval True \
-  --eval_freq 20 \
-  --warmup_epochs 50 \
-  --epochs 1000 \
-  --saveckp_freq 100 \
+  --eval_freq 798 \
+  --warmup_epochs 7980 \
+  --epochs 79800 \
+  --saveckp_freq 16000 \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \

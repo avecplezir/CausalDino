@@ -33,8 +33,8 @@ class EpicEvents(torch.utils.data.Dataset):
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' * level + '.' + extension)
         self.num_video = len(self._path_to_videos )
 
-        self._start_video_idx = None # index with which video is started
-        self._video_clip_size = None # len of the video in terms of number of clips
+        self._start_video_idx = [] # index with which video is started
+        self._video_clip_size = [] # len of the video in terms of number of clips
         self.index2clip_video = {}
         self.init_video_clip_indices()
 
@@ -165,10 +165,13 @@ class ContinuousSampler(Sampler):
                        self.data_source._start_video_idx[i] + self.data_source._video_clip_size[i]))
             for i in range(self.data_source.num_videos)
         ]
-
         while True:
             try:
-                for itr in iters:
+                for video_idx, itr in enumerate(iters):
                     yield next(itr)
             except StopIteration:
-                break
+                print(f'StopIteration, redefining iterator for {video_idx} video')
+                iters[video_idx] = iter(range(self.data_source._start_video_idx[video_idx],
+                                              self.data_source._start_video_idx[video_idx] +
+                                              self.data_source._video_clip_size[video_idx]))
+                continue
