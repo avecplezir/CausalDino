@@ -36,5 +36,6 @@ python -m torch.distributed.launch \
   --use_wandb True \
   --loss DINOLoss \
   --dataset Kinetics \
-  --video_extension mp4 \
-  --dataset_level 3
+  --video_extension MP4 \
+  --dataset_level 3 \
+
