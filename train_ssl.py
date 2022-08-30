@@ -185,6 +185,9 @@ def get_args_parser():
     parser.add_argument('--yt_path', default=None, type=str, help="Base path for logs storage in yt")
     parser.add_argument('--val_data_dir', default="/mnt/data/UCF101", type=str,
                         help="path to validation dataset")  # "//home/yr/ianokhin"
+    parser.add_argument('--dataset_level', default=1, type=int,
+                        help="level to read the data")
+
 
 
     return parser
@@ -214,7 +217,7 @@ def train_svt(args):
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
-    dataset = Dataset(cfg=config, mode="train", num_retries=10, extension=args.video_extension)
+    dataset = Dataset(cfg=config, mode="train", num_retries=10, extension=args.video_extension, level=args.dataset_level)
     sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
         dataset,

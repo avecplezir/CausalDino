@@ -256,9 +256,9 @@ def pyav_decode(container, sampling_rate, num_frames, clip_idx, num_clips=10,
         video_start_pts, video_end_pts = 0, math.inf
     else:
         clip_size = sampling_rate * num_frames / target_fps * fps
+        decode_all_video = False
         if mode == 'random':
             # Perform selective decoding.
-            decode_all_video = False
             start_idx, end_idx = get_start_end_idx(
                 frames_length,
                 clip_size,
