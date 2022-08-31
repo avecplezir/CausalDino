@@ -64,7 +64,6 @@ class DINOGumbel2Loss(DINOLoss):
         for _ in range(9):
             teacher_out += F.gumbel_softmax(teacher_output_norm, dim=-1, hard=True)
         teacher_out /= 10
-        print('teacher_out', teacher_out[0])
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
@@ -118,11 +117,9 @@ class DINOTopkLoss(DINOLoss):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                print('p, q', p.shape, q.shape)
-                print('p', p[0])
-                print('q', q[0])
+                loss = 0
                 for itk in range(topK):
-                    loss = p[:, itk]*F.nll_loss(F.log_softmax(student_out[v], dim=-1), q[:, itk])
+                    loss += p[:, itk]*F.nll_loss(F.log_softmax(student_out[v], dim=-1), q[:, itk])
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms
