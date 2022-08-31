@@ -1,4 +1,4 @@
-__all__ = ['DINOGumbelLoss']
+__all__ = ['DINOGumbel2Loss']
 
 import torch
 import torch.nn.functional as F
@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from .dino_loss import DINOLoss
 
 
-class DINOGumbelLoss(DINOLoss):
+class DINOGumbel2Loss(DINOLoss):
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
@@ -18,7 +18,12 @@ class DINOGumbelLoss(DINOLoss):
 
         # teacher centering and sharpening
         temp = self.teacher_temp_schedule[epoch]
-        teacher_out = F.gumbel_softmax((teacher_output - self.center) / temp, dim=-1, hard=True)
+        teacher_output_norm = (teacher_output - self.center) / temp
+        teacher_out = F.gumbel_softmax(teacher_output_norm, dim=-1, hard=True)
+        for _ in range(9):
+            teacher_out += F.gumbel_softmax(teacher_output_norm, dim=-1, hard=True)
+        teacher_out /= 10
+        print('teacher_out', teacher_out[0])
         teacher_out = teacher_out.detach().chunk(self.global_crops)
 
         for iq, q in enumerate(teacher_out):
