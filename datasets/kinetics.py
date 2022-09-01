@@ -257,7 +257,7 @@ class Kinetics(torch.utils.data.Dataset):
                     ).long(),
                 ) for x in frames]
 
-            return frames, index, None
+            return frames, index, 0
 
         else:
             raise RuntimeError(
