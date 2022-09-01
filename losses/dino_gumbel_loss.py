@@ -213,10 +213,9 @@ class DINORandomChoiceLoss(DINOLoss):
         teacher_out_proba = F.softmax((teacher_output - self.center) / temp, dim=-1)
         topK = 10
         teacher_out = teacher_out_proba.multinomial(num_samples=topK, replacement=False)
-        print('teacher_out', teacher_out.shape)
-        proba = teacher_out_proba[teacher_out]
+        b_idx = torch.arange(teacher_out.size(0)).unsqueeze(1).repeat(1, topK)
+        proba = teacher_out_proba[b_idx, teacher_out]
         proba = proba / proba.sum(-1, keepdims=True)
-        print('proba', proba.shape)
 
         teacher_out = teacher_out.detach().chunk(self.global_crops)
         proba = proba.detach().chunk(self.global_crops)
@@ -227,8 +226,6 @@ class DINORandomChoiceLoss(DINOLoss):
                     # we skip cases where student and teacher operate on the same view
                     continue
                 loss = 0
-                b_idx = torch.arange(teacher_out.size(0)).unsqueeze(1).repeat(1, topK)
-                p = teacher_out_proba[b_idx, teacher_out]
                 for itk in range(topK):
                     loss += p[:, itk]*F.nll_loss(F.log_softmax(student_out[v], dim=-1), q[:, itk])
                 total_loss += loss.mean()

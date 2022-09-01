@@ -95,6 +95,7 @@ def resume_checkpoint(model, checkpoint_path, optimizer=None, loss_scaler=None, 
 
 def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=None, img_size=224, num_frames=8,
                     num_patches=196, attention_type='divided_space_time', pretrained_model="", strict=True):
+    print('load_pretrained!')
     if cfg is None:
         cfg = getattr(model, 'default_cfg')
     if cfg is None or 'url' not in cfg or not cfg['url']:
@@ -108,6 +109,8 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
             state_dict = load_state_dict(pretrained_model)['model']
         except:
             state_dict = load_state_dict(pretrained_model)
+
+    print('state_dict', state_dict)
 
     if filter_fn is not None:
         state_dict = filter_fn(state_dict)

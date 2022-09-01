@@ -31,6 +31,10 @@ default_cfgs = {
         url = "https://dl.fbaipublicfiles.com/dino/dino_vitbase16_pretrain/dino_vitbase16_pretrain.pth",
         mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
     ),
+    'vit_small_patch16_224': _cfg(
+        url="https://dl.fbaipublicfiles.com/dino/dino_deitsmall16_pretrain/dino_deitsmall16_pretrain.pth",
+        mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+    ),
 }
 
 
@@ -610,7 +614,7 @@ def get_vit_base_patch16_224(cfg, patch_size=16, no_head=False, **kwargs):
     vit.default_cfg = default_cfgs['vit_base_patch16_224']
     vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
     pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
-    if pretrained_model:
+    if (pretrained_model or pretrained_model == "") and vit.default_cfg is not None:
         load_pretrained(vit, num_classes=vit.num_classes, in_chans=kwargs.get('in_chans', 3),
                         filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=vit.num_patches,
                         attention_type=vit.attention_type, pretrained_model=pretrained_model)
@@ -626,11 +630,12 @@ def get_deit_tiny_patch16_224(cfg, no_head=False, patch_size=16, **kwargs):
                             attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES,
                             attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
     vit.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
-    vit.default_cfg = default_cfgs['vit_base_patch16_224']
+    vit.default_cfg = None
     vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
     pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
-    print('pretrained_model', pretrained_model)
-    if pretrained_model:
+    print('cfg.TIMESFORMER.PRETRAINED_MODEL', cfg.TIMESFORMER.PRETRAINED_MODEL)
+    if (pretrained_model or pretrained_model == "") and vit.default_cfg is not None:
+        print('call load_pretrained')
         load_pretrained(vit, num_classes=vit.num_classes, in_chans=kwargs.get('in_chans', 3),
                         filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=vit.num_patches,
                         attention_type=vit.attention_type, pretrained_model=pretrained_model)
@@ -646,10 +651,10 @@ def get_deit_small_patch16_224(cfg, patch_size=16, no_head=False, **kwargs):
                             attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES,
                             attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
     vit.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
-    vit.default_cfg = default_cfgs['vit_base_patch16_224']
+    vit.default_cfg = default_cfgs['vit_small_patch16_224']
     vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
     pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
-    if pretrained_model:
+    if (pretrained_model or pretrained_model == "") and vit.default_cfg is not None:
         load_pretrained(vit, num_classes=vit.num_classes, in_chans=kwargs.get('in_chans', 3),
                         filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=vit.num_patches,
                         attention_type=vit.attention_type, pretrained_model=pretrained_model)
