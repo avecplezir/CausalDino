@@ -1,4 +1,4 @@
-__all__ = ['TimeEmbLoss']
+__all__ = ['VAELoss']
 
 import torch
 import torch.nn.functional as F
@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from .feature_loss import FeatureLoss
 
 
-class TimeEmbLoss(FeatureLoss):
+class VAELoss(FeatureLoss):
     def forward(self, student_output, teacher_output, epoch, student=None, teacher=None, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.

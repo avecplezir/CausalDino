@@ -1,15 +1,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import glob
-import os
 import random
 import warnings
-from PIL import Image
 import torch
 import torch.utils.data
-import torchvision
-import kornia
 
-from datasets.transform import resize
 from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
 from datasets.decoder import decode_events
 from datasets.video_container import get_video_container
@@ -228,7 +223,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                 ).long(),
             ) for x in frames]
 
-            return frames, indices
+            return frames, indices, None
 
         else:
             raise RuntimeError(

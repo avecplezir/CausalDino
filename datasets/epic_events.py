@@ -1,20 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-import glob
-import random
-import warnings
 import torch.utils.data
-from torch.utils.data import Sampler
 import numpy as np
-
-from datasets.video_container import get_video_container
-from datasets.transform import VideoDataAugmentationEvents
-from datasets.decoder import decode_events
-from einops import rearrange
-
 
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import glob
-import random
 import warnings
 import torch.utils.data
 from torch.utils.data import Sampler
@@ -151,7 +140,7 @@ class EpicEvents(torch.utils.data.Dataset):
             # T C H W -> C T H W.
             frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 
-            return frames, video_idx, clip_idx
+            return frames, index, video_idx
 
         else:
             raise RuntimeError(

@@ -189,8 +189,8 @@ def get_args_parser():
                         help="level to read the data")
     parser.add_argument('--continuous', type=utils.bool_flag, default=False,
                         help="""Whether to use continuous sampler""")
-
-
+    parser.add_argument('--return_prediction_logits', type=utils.bool_flag, default=True,
+                        help="""Whether to return logits with prediction""")
 
     return parser
 
@@ -326,6 +326,7 @@ def train_svt(args):
          predictor=Predictor(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor else None,
          predictor_past=Predictor_past(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
+         return_prediction_logits=args.return_prediction_logits,
          )
     teacher = Wrapper(
         teacher,
@@ -335,6 +336,7 @@ def train_svt(args):
         predictor=Predictor(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor else None,
         predictor_past=Predictor_past(block_size=args.n_parts, model_type=args.predictor_model_type) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
+        return_prediction_logits=args.return_prediction_logits,
     )
 
     # move networks to gpu
@@ -371,6 +373,9 @@ def train_svt(args):
         argmax=args.argmax,
         n_parts=args.n_parts,
         args=args,
+        start_video_idx=dataset._start_video_idx if args.continuous else None,
+        video_clip_size=dataset._video_clip_size if args.continuous else None,
+        index2clip_video=dataset.index2clip_video if args.continuous else None,
     ).cuda()
 
     # ============ preparing optimizer ... ============
@@ -497,10 +502,15 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                     fp16_scaler, args, cfg=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
-    for it, (images, indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
-        # update weight decay and learning rate according to their schedule
+    for it, (images, indices, video_idx, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+        if args.continuous:
+            def all_unique(item):
+                return len(set(item)) == len(item)
+            assert all_unique(video_idx), 'videos in the batch are not unique!'
+        # update step for wandb
         it = len(data_loader) * epoch + it  # global training iteration
         step += args.batch_size
+        # update weight decay and learning rate according to their schedule
         for i, param_group in enumerate(optimizer.param_groups):
             param_group["lr"] = lr_schedule[it]
             if i == 0:  # only the first group is regularized

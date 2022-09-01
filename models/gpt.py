@@ -47,12 +47,13 @@ class CausalSelfAttention(nn.Module):
         self.attn_dropout = nn.Dropout(config.attn_pdrop)
         self.resid_dropout = nn.Dropout(config.resid_pdrop)
         # causal mask to ensure that attention is only applied to the left in the input sequence
+        self.config = config
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                              .view(1, 1, config.block_size, config.block_size))
         self.n_head = config.n_head
         self.n_embd = config.n_embd
 
-    def forward(self, x):
+    def forward(self, x, attn_type='causal'):
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -63,7 +64,9 @@ class CausalSelfAttention(nn.Module):
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-        att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
+        if attn_type == 'causal':
+            print('do masking!')
+            att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)
         y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
@@ -91,8 +94,8 @@ class Block(nn.Module):
         m = self.mlp
         self.mlpf = lambda x: m.dropout(m.c_proj(m.act(m.c_fc(x))))  # MLP forward
 
-    def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
+    def forward(self, x, attn_type='causal'):
+        x = x + self.attn(self.ln_1(x), attn_type=attn_type)
         x = x + self.mlpf(self.ln_2(x))
         return x
 
@@ -117,7 +120,7 @@ def get_default_config():
 class GPT(nn.Module):
     """ GPT Language Model """
 
-    def __init__(self, out_dim=256, block_size=4, model_type='gpt-micro-256-half'): #'gpt-micro-256'
+    def __init__(self, out_dim=256, block_size=4, model_type='gpt-micro-256-half'):
         super().__init__()
         config = get_default_config()
         config.vocab_size = out_dim
@@ -170,7 +173,7 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
 
-    def forward(self, x, **kwargs):
+    def forward(self, x, attn_type='causal', **kwargs):
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
@@ -181,85 +184,17 @@ class GPT(nn.Module):
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
-            x = block(x)
+            x = block(x, attn_type=attn_type)
         # x = self.transformer.ln_f(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
 
         return x
 
 
-class GPTTimeEmb(nn.Module):
+class GPTFuturePastCurrent(GPT):
     """ GPT Language Model """
 
-    def __init__(self, out_dim=256, block_size=4, model_type=None):
-        super().__init__()
-        config = get_default_config()
-        config.vocab_size = out_dim
-        config.block_size = block_size
-        config.model_type = model_type #'gpt-micro-256-half'
-        assert config.vocab_size is not None
-        assert config.block_size is not None
-        self.block_size = config.block_size
-
-        type_given = config.model_type is not None
-        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
-        assert type_given ^ params_given  # exactly one of these (XOR)
-        if type_given:
-            # translate from model_type to detailed configuration
-            config.merge_from_dict({
-                                    'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
-                                    'gpt-micro-256-3': dict(n_layer=3, n_head=4, n_embd=256),
-                                    'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=256),
-                                   }[config.model_type])
-
-        self.transformer = nn.ModuleDict(dict(
-            wpe=nn.Embedding(config.block_size, config.n_embd),
-            drop=nn.Dropout(config.embd_pdrop),
-            h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-            # ln_f=nn.LayerNorm(config.n_embd),
-        ))
-
-        # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
-        self.apply(self._init_weights)
-        for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
-
-        # report number of parameters (note we don't count the decoder parameters in lm_head)
-        n_params = sum(p.numel() for p in self.transformer.parameters())
-        print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-        elif isinstance(module, nn.LayerNorm):
-            torch.nn.init.zeros_(module.bias)
-            torch.nn.init.ones_(module.weight)
-
-    def forward(self, x, indices):
-        b, t = x.size()[:2]
-        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-
-        # forward the GPT model itself
-        tok_emb = x  # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(indices)  # position embeddings of shape (1, t, n_embd)
-        x = self.transformer.drop(tok_emb + pos_emb)
-        for block in self.transformer.h:
-            x = block(x)
-        # x = self.transformer.ln_f(x)
-        x = nn.functional.normalize(x, dim=-1, p=2)
-
-        return x
-
-
-class GPTFutureTimeEmb(nn.Module):
-    """ GPT Language Model """
-
-    def __init__(self, out_dim=256, block_size=4, model_type=None): #'gpt-micro-256-half'
+    def __init__(self, out_dim=256, block_size=4, model_type='gpt-micro-256-half'):
         super().__init__()
         config = get_default_config()
         config.vocab_size = out_dim
@@ -272,15 +207,21 @@ class GPTFutureTimeEmb(nn.Module):
         type_given = config.model_type is not None
         params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
         assert type_given ^ params_given  # exactly one of these (XOR)
+        print('config.model_type', config.model_type)
         if type_given:
             # translate from model_type to detailed configuration
             config.merge_from_dict({
-                                    'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
-                                    'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=256),
+                                       'gpt-mini': dict(n_layer=6, n_head=6, n_embd=192),
+                                       'gpt-micro': dict(n_layer=4, n_head=4, n_embd=128),
+                                       'gpt-nano': dict(n_layer=3, n_head=3, n_embd=48),
+                                       'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=256),
+                                       'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=256),
+                                       'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=256),
                                    }[config.model_type])
 
         self.transformer = nn.ModuleDict(dict(
             wpe=nn.Embedding(config.block_size, config.n_embd),
+            wte=nn.Embedding(config.block_size, config.n_embd),
             drop=nn.Dropout(config.embd_pdrop),
             h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             # ln_f=nn.LayerNorm(config.n_embd),
@@ -296,18 +237,35 @@ class GPTFutureTimeEmb(nn.Module):
         n_params = sum(p.numel() for p in self.transformer.parameters())
         print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
 
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-        elif isinstance(module, nn.LayerNorm):
-            torch.nn.init.zeros_(module.bias)
-            torch.nn.init.ones_(module.weight)
+    def forward(self, x, past_indices=None, future_indices=None, attn_type='causal', **kwargs):
+        device = x.device
+        b, t_c = x.size()[:2]
+        t_p = past_indices.size(2) if past_indices is not None else 0
+        t_f = future_indices.size(2) if future_indices is not None else 0
+        t = t_c + t_p + t_f
+        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
-    def forward(self, x, future_index):
+        tok_emb = x
+        # forward the GPT model itself
+        if past_indices is not None:
+            past = self.transformer.wpe(past_indices)
+            tok_emb = torch.cat([past, tok_emb], 1)
+        if future_indices is not None:
+            future = self.transformer.wpe(future_indices)
+            tok_emb = torch.cat([tok_emb, future], 1)
+
+        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+        for block in self.transformer.h:
+            x = block(x, attn_type=attn_type)
+        x = nn.functional.normalize(x, dim=-1, p=2)
+
+        return x
+
+
+class GPTFutureTimeEmb(GPT):
+    def forward(self, x, future_index=None, attn_type='causal'):
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
 
@@ -317,8 +275,7 @@ class GPTFutureTimeEmb(nn.Module):
         future_pos_emb = self.transformer.wpe(future_index)  # position embeddings of shape (1, t, n_embd)
         x = torch.cat([future_pos_emb, tok_emb], 1)
         for block in self.transformer.h:
-            x = block(x)
-        # x = self.transformer.ln_f(x)
+            x = block(x, attn_type=attn_type)
         x = nn.functional.normalize(x, dim=-1, p=2)
 
         # return all tokens except the conditioning
@@ -328,8 +285,18 @@ class GPTFutureTimeEmb(nn.Module):
 class GPT2FoldPredictor(nn.Module):
     def __init__(self, out_dim=256, block_size=4, **kwargs):
         super().__init__()
-        self.gpt = GPTTimeEmb(out_dim, block_size, model_type='gpt-micro-256-half')
+        self.gpt = GPT(out_dim, block_size, model_type='gpt-micro-256-half')
         self.future_embgpt = GPTFutureTimeEmb(out_dim, block_size, model_type='gpt-micro-256-half')
 
-    def forward(self, x, indices):
-        return self.gpt(x, indices)
+    def forward(self, x):
+        return self.gpt(x)
+
+
+class GPTVAEPredictor(nn.Module):
+    def __init__(self, out_dim=256, block_size=4, **kwargs):
+        super().__init__()
+        self.gpt = GPT(out_dim, block_size, model_type='gpt-micro-256-half')
+        self.future_embgpt = GPTFutureTimeEmb(out_dim, block_size, model_type='gpt-micro-256-half')
+
+    def forward(self, x):
+        return self.gpt(x)

@@ -1,7 +1,6 @@
 __all__ = ['FeatureLoss']
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 import numpy as np
@@ -12,7 +11,9 @@ from .dino_loss import DINOLoss
 class FeatureLoss(DINOLoss):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
-                 center_momentum=0.9, args=None, n_global_views=None, **kwargs):
+                 center_momentum=0.9, args=None, n_global_views=None,
+                 start_video_idx=None, video_clip_size=None, index2clip_video=None,
+                 **kwargs):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
@@ -30,12 +31,34 @@ class FeatureLoss(DINOLoss):
             np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
         ))
 
+        if self.args.continuous:
+            self.start_video_idx = start_video_idx
+            self.video_clip_size = video_clip_size
+            self.index2clip_video = index2clip_video
+            self.memory = None
+            self.init_memory(video_clip_size)
+
+    def init_memory(self, video_clip_size):
+        # self.register_buffer("memory", -torch.ones(sum(video_clip_size)))
+        self.memory = -np.ones(sum(video_clip_size))
+
+    def add_memory(self, keys, values):
+        if self.args.continuous:
+            self.memory[keys] = values
+
+    def retrieve_memory(self, keys):
+        if self.args.continuous:
+            return self.memory[keys]
+
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        s_enc_logits, s_pred_future_logits, s_pred_past_logits = student_output
-        t_enc_logits, t_pred_future_logits, t_pred_past_logits = teacher_output
+        s_enc_logits, s_pred_future_logits, s_pred_past_logits, s_indices = student_output
+        t_enc_logits, t_pred_future_logits, t_pred_past_logits, t_indices = teacher_output
+
+        retrieved_memories = self.retrieve_memory(t_indices.cpu().numpy())
+        print('retrieved_memories', retrieved_memories.shape)
 
         temp = self.teacher_temp_schedule[epoch]
 
@@ -49,6 +72,8 @@ class FeatureLoss(DINOLoss):
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
+
+        self.add_memory(t_indices.view(-1).cpu().numpy(), t_enc_logits.argmax(dim=-1).view(-1).cpu().numpy())
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_entropy = self.time_entropy(t_enc_proba)
