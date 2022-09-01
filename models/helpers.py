@@ -105,8 +105,12 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
         return
 
     if len(pretrained_model) == 0:
-        state_dict = model_zoo.load_url(cfg['url'], progress=False, map_location='cpu')
-        # state_dict = utils.load_checkpoint_from_yt(cfg['yt_path'])
+        try:
+            print('load pretrain checkpoint from yt!')
+            state_dict = utils.load_checkpoint_from_yt(cfg['yt_path'])
+        except:
+            print('load pretrain checkpoint from hub!')
+            state_dict = model_zoo.load_url(cfg['url'], progress=False, map_location='cpu')
     else:
         try:
             state_dict = load_state_dict(pretrained_model)['model']

@@ -62,6 +62,7 @@ def topk_accuracies(preds, labels, ks):
     num_topks_correct = topks_correct(preds, labels, ks)
     return [(x / preds.size(0)) * 100.0 for x in num_topks_correct]
 
+
 def multitask_topks_correct(preds, labels, ks=(1,)):
     """
     Args:
