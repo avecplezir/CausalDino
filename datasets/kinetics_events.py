@@ -65,6 +65,7 @@ class KineticsEvents(torch.utils.data.Dataset):
         print("Constructing KineticsEvents {}...".format(mode))
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*'*level + '.' + extension)
         self.pseudo_length = pseudo_length
+        self.n_videos = len(self._path_to_videos)
 
     def __getitem__(self, index):
         """
@@ -80,6 +81,7 @@ class KineticsEvents(torch.utils.data.Dataset):
                 decoded, then return the index of the video. If not, return the
                 index of the video replacement that can be decoded.
         """
+        index = index % self.n_videos
         short_cycle_idx = None
         # When short cycle is used, input index is a tupple.
         if isinstance(index, tuple):
