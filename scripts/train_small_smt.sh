@@ -1,8 +1,8 @@
 #!/bin/bash
 
-PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
+PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/something-something-v2/raw_mp4"
-EXP_NAME="svt_small_smt_nirvana"
+EXP_NAME="svt_small_smt"
 PORT='1032'
 
 cd "$PROJECT_PATH" || exit
@@ -20,9 +20,9 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 8 \
+  --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
-  --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
+  --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_deit_small_patch16_224 \
   --do_eval True \

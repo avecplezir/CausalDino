@@ -276,7 +276,7 @@ class Kinetics(torch.utils.data.Dataset):
         Returns:
             (int): the number of videos in the dataset.
         """
-        if self.self.pseudo_length:
+        if self.pseudo_length:
             return self.pseudo_length
         else:
             return len(self._path_to_videos)
