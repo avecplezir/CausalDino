@@ -191,6 +191,8 @@ def get_args_parser():
                         help="""Whether to use continuous sampler""")
     parser.add_argument('--return_prediction_logits', type=utils.bool_flag, default=True,
                         help="""Whether to return logits with prediction""")
+    parser.add_argument('--pseudo_length', type=int, default=None,
+                        help="""pseudo_length of the dataset""")
 
     return parser
 
@@ -222,7 +224,9 @@ def train_svt(args):
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
-    dataset = Dataset(cfg=config, mode="train", num_retries=10, extension=args.video_extension, level=args.dataset_level)
+    dataset = Dataset(cfg=config, mode="train", num_retries=10,
+                      extension=args.video_extension, level=args.dataset_level,
+                      pseudo_length=args.pseudo_length)
     if args.continuous:
         sampler = datasets.ContinuousRandomSampler(dataset, batch_size=args.batch_size)
     else:

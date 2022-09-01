@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="svt_small_smt_te_nirvana"
+EXP_NAME="svt_epic_base_te_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -38,6 +38,7 @@ python -m torch.distributed.launch \
   --n_global_views 4 \
   --global_crops_scale 0.14 1 \
   --dataset KineticsEvents \
+  --dataset_level 3 \
   --wrapper MultiCropWrapperTimeEmb \
   --predictor GPT2FoldPredictor \
   --headproba HeadProba \
@@ -45,5 +46,5 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5 \
-  --video_extension mp4
-
+  --video_extension MP4 \
+  --pseudo_length 239789

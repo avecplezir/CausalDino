@@ -23,7 +23,8 @@ class Kinetics(torch.utils.data.Dataset):
     bottom crop if the height is larger than the width.
     """
 
-    def __init__(self, cfg, mode, num_retries=10, get_flow=False, extension='avi', level=1, **kwargs):
+    def __init__(self, cfg, mode, num_retries=10, get_flow=False, extension='avi', level=1,
+                 pseudo_length=None, **kwargs):
         """
         Construct the Kinetics video loader with a given csv file. The format of
         the csv file is:
@@ -70,6 +71,7 @@ class Kinetics(torch.utils.data.Dataset):
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*'*level + '.' + extension)
         print('self.cfg.DATA.PATH_TO_DATA_DIR', self.cfg.DATA.PATH_TO_DATA_DIR)
         print('self._path_to_videos', len(self._path_to_videos))
+        self.pseudo_length = pseudo_length
 
     def __getitem__(self, index):
         """
@@ -271,7 +273,10 @@ class Kinetics(torch.utils.data.Dataset):
         Returns:
             (int): the number of videos in the dataset.
         """
-        return len(self._path_to_videos)
+        if self.self.pseudo_length:
+            return self.pseudo_length
+        else:
+            return len(self._path_to_videos)
 
 
 if __name__ == '__main__':
