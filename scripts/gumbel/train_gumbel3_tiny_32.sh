@@ -2,8 +2,8 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_topk_tiny_32_correct"
-PORT='1026'
+EXP_NAME="svt_gumbel3_tiny_32"
+PORT='1028'
 
 cd "$PROJECT_PATH" || exit
 
@@ -11,7 +11,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=1
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -30,7 +30,7 @@ python -m torch.distributed.launch \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \
-  --loss DINOTopkLoss \
+  --loss DINOGumbel3Loss \
   --dataset Kinetics \
   --video_extension avi
 
