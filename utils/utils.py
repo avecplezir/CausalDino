@@ -474,8 +474,8 @@ def make_client(proxy='hahn', max_thread_count=20, extra_config=None):
 
 # def transfer_checkpoint_to_yt(path='/home/ivananokhin/.cache/torch/hub/checkpoints/dino_deitsmall16_pretrain.pth',
 #                               yt_path='//home/yr/ianokhin/CausalDino/pretrain/dino_deitsmall16_pretrain.pth'):
-def transfer_checkpoint_to_yt(path='/home/ivananokhin/.cache/torch/hub/checkpoints/dino_deitsmall16_pretrain.pth',
-                                  yt_path='//home/yr/ianokhin/CausalDino/pretrain/dino_deitsmall16_pretrain.pth'):
+def transfer_checkpoint_to_yt(path='/home/ivananokhin/.cache/torch/hub/checkpoints/dino_vitbase16_pretrain.pth',
+                                  yt_path='//home/yr/ianokhin/CausalDino/pretrain/dino_vitbase16_pretrain.pth'):
     state_dict = torch.load(path)
     print("Saving checkpoint")
     buf = io.BytesIO()
