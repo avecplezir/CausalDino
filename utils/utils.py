@@ -472,6 +472,18 @@ def make_client(proxy='hahn', max_thread_count=20, extra_config=None):
     return yt.YtClient(proxy=proxy, config=config)
 
 
+def transfer_checkpoint_to_yt(path='/home/ivananokhin/.cache/torch/hub/checkpoints/dino_deitsmall16_pretrain.pth',
+                              yt_path='//home/yr/ianokhin/CausalDino/pretrain/dino_deitsmall16_pretrain.pth'):
+    state_dict = torch.load(path)
+    print("Saving checkpoint")
+    buf = io.BytesIO()
+    torch.save(state_dict, buf)
+    data = buf.getvalue()
+
+    yt_client = make_client()
+    file_commands.write_file(yt_path, data, client=yt_client)
+
+
 def save_checkpoint_to_yt(args, state_dict, epoch=None):
     "Save checkpoint (optionaly write to yt table)"
     if is_main_process() and args.yt_path is not None:
@@ -479,13 +491,6 @@ def save_checkpoint_to_yt(args, state_dict, epoch=None):
         checkpoint_path = os.path.join(experiment_path, "checkpoint.pt")
         experiment_path, _ = os.path.split(checkpoint_path)
 
-        # yt_client = yt.YtClient(
-        #     proxy='hahn',
-        #     config={
-        #         "remote_temp_files_directory": f"{experiment_path}/tmp",
-        #         "remote_temp_tables_directory": f"{experiment_path}/tmp",
-        #     }
-        # )
         yt_client = make_client()
         print("Saving checkpoint")
         buf = io.BytesIO()
