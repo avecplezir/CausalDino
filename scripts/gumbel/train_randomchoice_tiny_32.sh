@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="svt_topk100_tiny_32"
+EXP_NAME="svt_randomchoice_tiny_32"
 PORT='1026'
 
 cd "$PROJECT_PATH" || exit
@@ -30,7 +30,7 @@ python -m torch.distributed.launch \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \
-  --loss DINOTopkLoss \
+  --loss DINORandomChoiceLoss \
   --dataset Kinetics \
   --video_extension avi
 

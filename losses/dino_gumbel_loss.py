@@ -120,8 +120,8 @@ class DINOTopkLoss(DINOLoss):
                     # we skip cases where student and teacher operate on the same view
                     continue
                 loss = 0
-                b_idx = torch.arange(teacher_out.size(0)).unsqueeze(1).repeat(1, topK)
-                p = teacher_out_proba[b_idx, teacher_out]
+                # b_idx = torch.arange(teacher_out.size(0)).unsqueeze(1).repeat(1, topK)
+                # p = teacher_out_proba[b_idx, teacher_out]
                 for itk in range(topK):
                     loss += p[:, itk]*F.nll_loss(F.log_softmax(student_out[v], dim=-1), q[:, itk])
                 total_loss += loss.mean()
