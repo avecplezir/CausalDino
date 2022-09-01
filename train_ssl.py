@@ -367,11 +367,11 @@ def train_svt(args):
     Loss = losses.__dict__[args.loss]
     dino_loss = Loss(
         args.out_dim,
-        args.local_crops_number + args.n_global_views,  # total number of crops = 2 global crops + local_crops_number
-        args.warmup_teacher_temp,
-        args.teacher_temp,
-        args.warmup_teacher_temp_epochs,
-        args.epochs,
+        ncrops=args.local_crops_number + args.n_global_views,  # total number of crops = 2 global crops + local_crops_number
+        warmup_teacher_temp=args.warmup_teacher_temp,
+        teacher_temp=args.teacher_temp,
+        warmup_teacher_temp_epochs=args.warmup_teacher_temp_epochs,
+        nepochs=args.epochs,
         n_global_views=args.n_global_views,
         weight_inv=args.weight_inv,
         argmax=args.argmax,

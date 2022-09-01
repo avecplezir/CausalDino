@@ -1,8 +1,7 @@
 #!/bin/bash
 
 PROJECT_PATH="$HOME/CausalDino"
-VAL_DATA_PATH="$INPUT_PATH/UCF101"
-DATA_PATH="$INPUT_PATH/raw_mp4"
+DATA_PATH="/mnt/data/something-something-v2/raw_mp4"
 EXP_NAME="svt_small_smt_te"
 PORT='1033'
 
@@ -39,6 +38,7 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --dataset KineticsEvents \
   --wrapper MultiCropWrapperGPT \
+  --return_prediction_logits False \
   --predictor GPT2FoldPredictor \
   --headproba HeadProba \
   --skip_last True \

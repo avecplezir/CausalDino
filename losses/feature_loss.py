@@ -14,7 +14,7 @@ class FeatureLoss(DINOLoss):
                  center_momentum=0.9, args=None, n_global_views=None,
                  start_video_idx=None, video_clip_size=None, index2clip_video=None,
                  **kwargs):
-        super().__init__()
+        super(DINOLoss, self).__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
         self.n_crops = ncrops
