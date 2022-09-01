@@ -39,7 +39,8 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --dataset KineticsEvents \
   --dataset_level 3 \
-  --wrapper MultiCropWrapperTimeEmb \
+  --wrapper MultiCropWrapperGPT \
+  --return_prediction_logits False \
   --predictor GPT2FoldPredictor \
   --headproba HeadProba \
   --skip_last True \

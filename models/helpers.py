@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 
+import utils.utils as utils
+
 _logger = logging.getLogger(__name__)
 
 
@@ -104,6 +106,7 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
 
     if len(pretrained_model) == 0:
         state_dict = model_zoo.load_url(cfg['url'], progress=False, map_location='cpu')
+        # state_dict = utils.load_checkpoint_from_yt(cfg['yt_path'])
     else:
         try:
             state_dict = load_state_dict(pretrained_model)['model']
