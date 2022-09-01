@@ -66,6 +66,7 @@ class KineticsEvents(torch.utils.data.Dataset):
         self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*'*level + '.' + extension)
         self.pseudo_length = pseudo_length
         self.n_videos = len(self._path_to_videos)
+        print('n_videos', self.n_videos)
 
     def __getitem__(self, index):
         """

@@ -73,6 +73,7 @@ class Kinetics(torch.utils.data.Dataset):
         print('self._path_to_videos', len(self._path_to_videos))
         self.pseudo_length = pseudo_length
         self.n_videos = len(self._path_to_videos)
+        print('n_videos', self.n_videos)
 
     def __getitem__(self, index):
         """

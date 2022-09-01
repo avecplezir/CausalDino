@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
-DATA_PATH="$INPUT_PATH/videos_256"
+DATA_PATH="$INPUT_PATH/raw_mp4"
 EXP_NAME="svt_small_smt_te_nirvana"
 PORT='1024'
 

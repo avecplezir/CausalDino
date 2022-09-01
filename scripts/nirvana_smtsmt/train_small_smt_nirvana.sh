@@ -2,8 +2,8 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
-DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="svt_small_epic_nirvana2"
+DATA_PATH="$INPUT_PATH/raw_mp4"
+EXP_NAME="svt_small_smt_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -37,7 +37,4 @@ python -m torch.distributed.launch \
   --use_wandb True \
   --loss DINOLoss \
   --dataset Kinetics \
-  --video_extension MP4 \
-  --dataset_level 3 \
-  --pseudo_length 239789
-
+  --video_extension mp4
