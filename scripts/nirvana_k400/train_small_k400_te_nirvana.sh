@@ -2,8 +2,8 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
-DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="small_epic_nirvana"
+DATA_PATH="$INPUT_PATH/videos_train_256p_dense_cache"
+EXP_NAME="small_k400_te_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -32,12 +32,19 @@ python -m torch.distributed.launch \
   --warmup_epochs 5 \
   --weight_decay_end 0.1 \
   --saveckp_freq 10 \
-  --n_global_views 2 \
-  --n_parts 11 \
   --use_wandb True \
-  --loss DINOLoss \
-  --dataset Kinetics \
-  --video_extension MP4 \
-  --dataset_level 3 \
-  --pseudo_length 239789
+  --loss TimeEmbLoss \
+  --local_crops_number 0 \
+  --n_global_views 4 \
+  --global_crops_scale 0.14 1 \
+  --dataset KineticsEvents \
+  --wrapper MultiCropWrapperGPT \
+  --return_prediction_logits False \
+  --predictor GPT2FoldPredictor \
+  --headproba HeadProba \
+  --skip_last True \
+  --random_sampling False \
+  --CE_fe_c 0.5 \
+  --CE_ef_c 0.5 \
+  --video_extension mp4
 
