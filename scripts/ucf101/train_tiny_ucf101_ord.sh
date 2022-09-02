@@ -1,7 +1,7 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="tiny_ucf101_ord"
+EXP_NAME="tiny_ucf101_sr2048_ord"
 PORT='1029'
 
 cd "$PROJECT_PATH" || exit
