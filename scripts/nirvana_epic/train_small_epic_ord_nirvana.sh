@@ -50,7 +50,6 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
-  --return_prediction_logits False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5 \
   --video_extension MP4 \
