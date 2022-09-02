@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="svt_ucf101_small_16_nirvana"
+EXP_NAME="ucf101_small_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
