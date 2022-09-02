@@ -193,7 +193,7 @@ def get_args_parser():
                         help="""Whether to return logits with prediction""")
     parser.add_argument('--pseudo_length', type=int, default=None,
                         help="""pseudo_length of the dataset""")
-    parser.add_argument('--sampling_rate', type=32, default=None,
+    parser.add_argument('--sampling_rate', type=int, default=32,
                         help="""sampling rate for video reading""")
 
     return parser
