@@ -330,8 +330,8 @@ def train_svt(args):
              skip_last=args.skip_last,
              bottleneck_dim=args.bottleneck_dim,
          ),
-         predictor=Predictor(block_size=args.args.n_global_views, model_type=args.predictor_model_type) if Predictor else None,
-         predictor_past=Predictor_past(block_size=args.args.n_global_views, model_type=args.predictor_model_type) if Predictor_past else None,
+         predictor=Predictor(block_size=args.n_global_views, model_type=args.predictor_model_type) if Predictor else None,
+         predictor_past=Predictor_past(block_size=args.n_global_views, model_type=args.predictor_model_type) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
          )
