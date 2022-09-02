@@ -41,7 +41,7 @@ python -m torch.distributed.launch \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 16 \
-  --sampling_rate 2048 \
+  --sampling_rate 256 \
   --global_size 128 \
   --freeze_last_layer 1 \
   --predictor GPT \
