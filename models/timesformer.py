@@ -415,8 +415,7 @@ class vit_base_patch16_224(nn.Module):
                                        attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
 
         self.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
-        # self.model.default_cfg = default_cfgs['vit_base_patch16_224']
-        self.model.default_cfg = default_cfgs['vit_mae_base_patch16_224']
+        self.model.default_cfg = default_cfgs['vit_base_patch16_224']
         self.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
         pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
         if self.pretrained:
