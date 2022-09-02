@@ -195,6 +195,8 @@ def get_args_parser():
                         help="""pseudo_length of the dataset""")
     parser.add_argument('--sampling_rate', type=int, default=32,
                         help="""sampling rate for video reading""")
+    parser.add_argument('--global_size', type=int, default=224,
+                        help="""size of the image with global augmentation""")
 
     return parser
 
@@ -224,6 +226,7 @@ def train_svt(args):
     config.n_parts = args.n_parts
     config.n_global_views = args.n_global_views
     config.random_sampling = args.random_sampling
+    config.global_size = args.global_size
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]

@@ -57,8 +57,7 @@ class FeatureLoss(DINOLoss):
         s_enc_logits, s_pred_future_logits, s_pred_past_logits, s_indices = student_output
         t_enc_logits, t_pred_future_logits, t_pred_past_logits, t_indices = teacher_output
 
-        retrieved_memories = self.retrieve_memory(t_indices.cpu().numpy())
-        print('retrieved_memories', retrieved_memories.shape)
+        # retrieved_memories = self.retrieve_memory(t_indices.cpu().numpy())
 
         temp = self.teacher_temp_schedule[epoch]
 
@@ -73,7 +72,7 @@ class FeatureLoss(DINOLoss):
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 
-        self.add_memory(t_indices.view(-1).cpu().numpy(), t_enc_logits.argmax(dim=-1).view(-1).cpu().numpy())
+        # self.add_memory(t_indices.view(-1).cpu().numpy(), t_enc_logits.argmax(dim=-1).view(-1).cpu().numpy())
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_entropy = self.time_entropy(t_enc_proba)
