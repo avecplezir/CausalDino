@@ -103,9 +103,9 @@ class EpicEvents(torch.utils.data.Dataset):
                     target_fps=self.cfg.DATA.TARGET_FPS,
                     backend=self.cfg.DATA.DECODING_BACKEND,
                     max_spatial_scale=min_scale,
-                    num_clips_global=self.cfg.n_global_views,
-                    n_parts=self.cfg.n_parts,
-                    random_sampling=self.cfg.random_sampling,
+                    num_clips_global=4,
+                    n_parts=4,
+                    random_sampling=False,
                     mode='ordered',
                 )
             except Exception as e:
