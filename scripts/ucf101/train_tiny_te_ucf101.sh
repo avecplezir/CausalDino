@@ -1,9 +1,7 @@
 
 PROJECT_PATH="$HOME/CausalDino"
-#DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
 DATA_PATH="/mnt/data/UCF101"
-#EXP_NAME="svt_ucf101_timeemb_order_tiny"
-EXP_NAME="svt_ucf101_te_order_tiny"
+EXP_NAME="tiny_ucf101_te"
 PORT='1030'
 
 cd "$PROJECT_PATH" || exit

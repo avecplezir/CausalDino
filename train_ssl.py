@@ -193,6 +193,8 @@ def get_args_parser():
                         help="""Whether to return logits with prediction""")
     parser.add_argument('--pseudo_length', type=int, default=None,
                         help="""pseudo_length of the dataset""")
+    parser.add_argument('--sampling_rate', type=32, default=None,
+                        help="""sampling rate for video reading""")
 
     return parser
 
@@ -217,6 +219,7 @@ def train_svt(args):
     if utils.is_main_process():
         json.dump(vars(args), open(Path(args.output_dir) / "config.txt", "w"), indent=4)
     config.DATA.PATH_TO_DATA_DIR = args.data_path
+    config.DATA.SAMPLING_RATE = args.sampling_rate
     config.local_crops_number = args.local_crops_number
     config.n_parts = args.n_parts
     config.n_global_views = args.n_global_views
