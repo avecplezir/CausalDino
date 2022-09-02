@@ -155,6 +155,7 @@ def get_args_parser():
     parser.add_argument('--exp_name', default='svt', type=str, help='Experiment name.')
     parser.add_argument("--log_every", type=int, default=20, help="Log loss every")
     parser.add_argument('--do_eval', type=utils.bool_flag, default=False, help="""Whether to do knn eval.""")
+    parser.add_argument('--do_eval_before_train', type=utils.bool_flag, default=False, help="""Whether to do knn eval before train.""")
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
@@ -443,18 +444,24 @@ def train_svt(args):
         wandb.config.update(config, allow_val_change=True)
         wandb.run.log_code(".")
 
-    # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-    # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
-    # if utils.is_main_process():
-    #     print('val_stats', val_stats)
-    #     print('val_stats mean', val_stats2)
+    step = start_step if start_step else start_epoch*len(dataset)
+    print('start_step', start_step)
+    print('step', step)
+
+    if args.do_eval and args.do_eval_before_train:
+        val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+        val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+        if utils.is_main_process():
+            print('val_stats', val_stats)
+            print('val_stats mean', val_stats2)
+            if args.use_wandb:
+                wandb.log({'knn/' + key: value for key, value in val_stats.items()}, step=step)
+                wandb.log({'knn/mean_' + key: value for key, value in val_stats2.items()}, step=step)
+        utils.synchronize()
 
     start_time = time.time()
     print("Starting DINO training !")
-    print('start_step', start_step)
     print('len(dataset)', len(dataset))
-    step = start_step if start_step else start_epoch*len(dataset)
-    print('step', step)
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 

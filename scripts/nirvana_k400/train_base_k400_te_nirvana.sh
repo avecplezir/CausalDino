@@ -27,6 +27,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \
   --do_eval True \
+  --do_eval_before_train True \
   --eval_freq 1 \
   --epochs 20 \
   --warmup_epochs 5 \
