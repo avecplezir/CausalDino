@@ -465,7 +465,8 @@ def get_vit_base_patch16_224(cfg, patch_size=16, no_head=False, **kwargs):
                             attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES,
                             attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
     vit.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
-    vit.default_cfg = default_cfgs['vit_base_patch16_224']
+    # vit.default_cfg = default_cfgs['vit_base_patch16_224']
+    vit.default_cfg = default_cfgs['svt_vit_base_patch16_224']
     vit.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
     pretrained_model = cfg.TIMESFORMER.PRETRAINED_MODEL
     if (pretrained_model or pretrained_model == "") and vit.default_cfg is not None:
