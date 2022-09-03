@@ -198,6 +198,8 @@ def get_args_parser():
                         help="""sampling rate for video reading""")
     parser.add_argument('--global_size', type=int, default=224,
                         help="""size of the image with global augmentation""")
+    parser.add_argument('--num_frames', type=int, default=8,
+                        help="""number of frames in each clip""")
 
     return parser
 
@@ -223,6 +225,7 @@ def train_svt(args):
         json.dump(vars(args), open(Path(args.output_dir) / "config.txt", "w"), indent=4)
     config.DATA.PATH_TO_DATA_DIR = args.data_path
     config.DATA.SAMPLING_RATE = args.sampling_rate
+    config.DATA.NUM_FRAMES = args.num_frames
     config.local_crops_number = args.local_crops_number
     config.n_parts = args.n_parts
     config.n_global_views = args.n_global_views
