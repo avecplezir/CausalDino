@@ -200,6 +200,9 @@ def get_args_parser():
                         help="""size of the image with global augmentation""")
     parser.add_argument('--num_frames', type=int, default=8,
                         help="""number of frames in each clip""")
+    parser.add_argument('--num_frames', type=int, default=8,
+                        help="""number of frames in each clip""")
+    parser.add_argument('--default_cfg', default=None, type=str, help='Video extension.')
 
     return parser
 
@@ -285,8 +288,8 @@ def train_svt(args):
     if args.arch == "timesformer":
         Model = models.__dict__[args.model_name]
         print('Model', Model)
-        student = Model(cfg=config, no_head=True, patch_size=args.patch_size)
-        teacher = Model(cfg=config, no_head=True, patch_size=args.patch_size)
+        student = Model(cfg=config, no_head=True, patch_size=args.patch_size, default_cfg=args.default_cfg)
+        teacher = Model(cfg=config, no_head=True, patch_size=args.patch_size, default_cfg=args.default_cfg)
         embed_dim = student.embed_dim
 
         if args.pretrained_rgb is not None:
