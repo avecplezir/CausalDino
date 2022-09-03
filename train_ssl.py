@@ -425,7 +425,7 @@ def train_svt(args):
     if args.full_pretrain is not None:
         utils.restart_from_pretrain(
             args.full_pretrain,
-            student=student,
+            student=student.module,
             teacher=teacher,
         )
 
