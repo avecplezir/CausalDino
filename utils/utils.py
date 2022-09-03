@@ -141,6 +141,24 @@ def synchronize():
         dist.barrier()
 
 
+def restart_from_pretrain(ckp_path, **kwargs):
+    # open checkpoint file
+    checkpoint = torch.load(ckp_path, map_location="cpu")
+
+    for key, value in kwargs.items():
+        try:
+            msg = value.load_state_dict(checkpoint, strict=False)
+            print("=> loaded '{}' from checkpoint '{}' with msg {}".format(key, ckp_path, msg))
+        except TypeError:
+            try:
+                msg = value.load_state_dict(checkpoint)
+                print("=> loaded '{}' from checkpoint: '{}'".format(key, ckp_path))
+            except ValueError:
+                print("=> failed to load '{}' from checkpoint: '{}'".format(key, ckp_path))
+    else:
+        print("=> key '{}' not found in checkpoint: '{}'".format(key, ckp_path))
+
+
 def restart_from_checkpoint(ckp_path, run_variables=None, **kwargs):
     """
     Re-start from checkpoint

@@ -2,7 +2,8 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
-EXP_NAME="base_k400"
+#EXP_NAME="base_k400"
+EXP_NAME="base_k400_full_kinetics400_vitb_ssl"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -38,3 +39,6 @@ python -m torch.distributed.launch \
   --loss DINOLoss \
   --dataset Kinetics \
   --video_extension mp4 \
+  --full_pretrain .cache/torch/hub/checkpoints/kinetics400_vitb_ssl.pth
+
+#  --default_cfg svt_vit_base_patch16_224 \

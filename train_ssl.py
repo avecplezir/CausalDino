@@ -201,6 +201,7 @@ def get_args_parser():
     parser.add_argument('--num_frames', type=int, default=8,
                         help="""number of frames in each clip""")
     parser.add_argument('--default_cfg', default=None, type=str, help='Video extension.')
+    parser.add_argument('--full_pretrain', default=None, type=str, help='path to pretrained checkpoint')
 
     return parser
 
@@ -420,6 +421,13 @@ def train_svt(args):
     momentum_schedule = utils.cosine_scheduler(args.momentum_teacher, 1,
                                                args.epochs, len(data_loader))
     print(f"Loss, optimizer and schedulers ready.")
+
+    if args.full_pretrain is not None:
+        utils.restart_from_pretrain(
+            args.full_pretrain,
+            student=student,
+            teacher=teacher,
+        )
 
     # ============ optionally resume training ... ============
     to_restore = {"epoch": 0, "step": 0}
