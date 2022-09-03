@@ -200,8 +200,6 @@ def get_args_parser():
                         help="""size of the image with global augmentation""")
     parser.add_argument('--num_frames', type=int, default=8,
                         help="""number of frames in each clip""")
-    parser.add_argument('--num_frames', type=int, default=8,
-                        help="""number of frames in each clip""")
     parser.add_argument('--default_cfg', default=None, type=str, help='Video extension.')
 
     return parser

@@ -20,7 +20,6 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --default_cfg svt_vit_base_patch16_224 \
   --batch_size_per_gpu 8 \
   --data_path "${DATA_PATH}" \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
@@ -39,3 +38,5 @@ python -m torch.distributed.launch \
   --loss DINOLoss \
   --dataset Kinetics \
   --video_extension mp4
+
+#  --default_cfg svt_vit_base_patch16_224 \
