@@ -119,6 +119,13 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
 
     # for key in state_dict.keys():
     #     key.replace("backbone.", "")
+    # teacher_param_groups = [dict(
+    #     params=[params[k.replace('detr.', 'teacher.')] if match_teacher_params(k) else torch.Tensor() for k in
+    #             g['params_names']]) for g in optimizer.param_groups]
+    if model.default_cfg == 'svt_vit_base_patch16_224':
+        state_dict = {key.replace("backbone.", ""): value for key, value in state_dict.items()}
+        print('state_dict', state_dict)
+
     if filter_fn is not None:
         state_dict = filter_fn(state_dict)
 
