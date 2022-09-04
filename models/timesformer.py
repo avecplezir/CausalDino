@@ -470,8 +470,8 @@ def get_vit_base_patch16_224(cfg, patch_size=16, no_head=False, **kwargs):
                             attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES,
                             attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
     vit.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
-    print("kwargs['default_cfg']", kwargs['default_cfg'])
-    if kwargs['default_cfg'] is None:
+    print("kwargs['default_cfg']", kwargs.get('default_cfg'))
+    if kwargs.get('default_cfg') is None:
         vit.default_cfg = default_cfgs['vit_base_patch16_224']
     else:
         vit.default_cfg = default_cfgs[kwargs['default_cfg']]

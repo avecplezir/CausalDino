@@ -44,6 +44,7 @@ def eval_linear(args):
         dataset_train = UCF101(cfg=config, mode="train", num_retries=10)
         dataset_val = UCF101(cfg=config, mode="val", num_retries=10)
         config.TEST.NUM_SPATIAL_CROPS = 3
+        config.NUM_ENSEMBLE_VIEWS = 3
         multi_crop_val = UCF101(cfg=config, mode="val", num_retries=10)
     elif args.dataset == "hmdb51":
         dataset_train = HMDB51(cfg=config, mode="train", num_retries=10)
