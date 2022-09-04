@@ -52,7 +52,12 @@ class UCF101Events(torch.utils.data.Dataset):
         self._split_idx = mode
         # For training mode, one single clip is sampled from every video. For validation or testing, NUM_ENSEMBLE_VIEWS
         # clips are sampled from every video. For every clip, NUM_SPATIAL_CROPS is cropped spatially from the frames.
-        self._num_clips = 1
+        if self.mode in ["train"]:
+            self._num_clips = 1
+        elif self.mode in ["val", "test"]:
+            self._num_clips = (
+                    cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
+            )
 
         print("Constructing UCF101 {}...".format(mode))
         self._construct_loader()
@@ -77,15 +82,15 @@ class UCF101Events(torch.utils.data.Dataset):
                         len(path_label.split(self.cfg.DATA.PATH_LABEL_SEPARATOR))
                         == 2
                 )
-                name, label = path_label.split(
+                path, label = path_label.split(
                     self.cfg.DATA.PATH_LABEL_SEPARATOR
                 )
-                path = self.cfg.DATA.PATH_TO_DATA_DIR + '/' + name
                 for idx in range(self._num_clips):
                     self._path_to_videos.append(
                         os.path.join(self.cfg.DATA.PATH_PREFIX, path)
                     )
                     self._labels.append(int(label))
+                    self._spatial_temporal_idx.append(idx)
                     self._video_meta[clip_idx * self._num_clips + idx] = {}
         assert (len(self._path_to_videos) > 0), f"Failed to load UCF101 split {self._split_idx} from {path_to_file}"
         print(f"Constructing UCF101 dataloader (size: {len(self._path_to_videos)}) from {path_to_file}")

@@ -488,8 +488,11 @@ def train_svt(args):
 
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
-            val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+            # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+            # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher.backbone, eval_train, eval_test, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher.backbone, eval_train2, eval_test2,
+                                  opt=args)
             if utils.is_main_process():
                 print('val_stats', val_stats)
                 print('val_stats mean', val_stats2)

@@ -2,13 +2,13 @@ import os
 import random
 import warnings
 
+import torch
 import torch.utils.data
 
 from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
 from datasets.decoder import decode
 from datasets.video_container import get_video_container
-from datasets.transform import VideoDataAugmentationEvents
-
+from datasets.transform import VideoDataAugmentationDINO
 from einops import rearrange
 
 
@@ -82,10 +82,9 @@ class UCF101(torch.utils.data.Dataset):
                         len(path_label.split(self.cfg.DATA.PATH_LABEL_SEPARATOR))
                         == 2
                 )
-                name, label = path_label.split(
+                path, label = path_label.split(
                     self.cfg.DATA.PATH_LABEL_SEPARATOR
                 )
-                path = self.cfg.DATA.PATH_TO_DATA_DIR + '/' + name
                 for idx in range(self._num_clips):
                     self._path_to_videos.append(
                         os.path.join(self.cfg.DATA.PATH_PREFIX, path)
@@ -116,30 +115,50 @@ class UCF101(torch.utils.data.Dataset):
         if isinstance(index, tuple):
             index, short_cycle_idx = index
 
-        # -1 indicates random sampling.
-        temporal_sample_index = -1
-        spatial_sample_index = -1
-        min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
-        max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
-        crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
-        if short_cycle_idx in [0, 1]:
-            crop_size = int(
-                round(
-                    self.cfg.MULTIGRID.SHORT_CYCLE_FACTORS[short_cycle_idx]
-                    * self.cfg.MULTIGRID.DEFAULT_S
+        if self.mode in ["train"]:
+            # -1 indicates random sampling.
+            temporal_sample_index = -1
+            spatial_sample_index = -1
+            min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
+            max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
+            crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
+            if short_cycle_idx in [0, 1]:
+                crop_size = int(
+                    round(
+                        self.cfg.MULTIGRID.SHORT_CYCLE_FACTORS[short_cycle_idx]
+                        * self.cfg.MULTIGRID.DEFAULT_S
+                    )
                 )
-            )
-        if self.cfg.MULTIGRID.DEFAULT_S > 0:
-            # Decreasing the scale is equivalent to using a larger "span"
-            # in a sampling grid.
-            min_scale = int(
-                round(
-                    float(min_scale)
-                    * crop_size
-                    / self.cfg.MULTIGRID.DEFAULT_S
+            if self.cfg.MULTIGRID.DEFAULT_S > 0:
+                # Decreasing the scale is equivalent to using a larger "span"
+                # in a sampling grid.
+                min_scale = int(
+                    round(
+                        float(min_scale)
+                        * crop_size
+                        / self.cfg.MULTIGRID.DEFAULT_S
+                    )
                 )
+        elif self.mode in ["val", "test"]:
+            temporal_sample_index = (self._spatial_temporal_idx[index] // self.cfg.TEST.NUM_SPATIAL_CROPS)
+            # spatial_sample_index is in [0, 1, 2]. Corresponding to left,
+            # center, or right if width is larger than height, and top, middle,
+            # or bottom if height is larger than width.
+            spatial_sample_index = (
+                (self._spatial_temporal_idx[index] % self.cfg.TEST.NUM_SPATIAL_CROPS)
+                if self.cfg.TEST.NUM_SPATIAL_CROPS > 1 else 1
             )
-
+            min_scale, max_scale, crop_size = (
+                [self.cfg.DATA.TEST_CROP_SIZE] * 3 if self.cfg.TEST.NUM_SPATIAL_CROPS > 1
+                else [self.cfg.DATA.TRAIN_JITTER_SCALES[0]] * 2 + [self.cfg.DATA.TEST_CROP_SIZE]
+            )
+            # The testing is deterministic and no jitter should be performed.
+            # min_scale, max_scale, and crop_size are expect to be the same.
+            assert len({min_scale, max_scale}) == 1
+        else:
+            raise NotImplementedError(
+                "Does not support {} mode".format(self.mode)
+            )
         sampling_rate = get_random_sampling_rate(
             self.cfg.MULTIGRID.LONG_CYCLE_SAMPLING_RATE,
             self.cfg.DATA.SAMPLING_RATE,
@@ -167,7 +186,7 @@ class UCF101(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if i_try > self._num_retries // 2:
+                if self.mode not in ["val", "test"] and i_try > self._num_retries // 2:
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
@@ -193,21 +212,41 @@ class UCF101(torch.utils.data.Dataset):
                         index, self._path_to_videos[index], i_try
                     )
                 )
-                if i_try > self._num_retries // 2:
+                if self.mode not in ["test"] and i_try > self._num_retries // 2:
                     # let's try another one
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
 
             label = self._labels[index]
 
-            # T H W C -> T C H W.
-            frames = rearrange(frames, "t h w c -> t c h w")
+            # Perform color normalization.
+            frames = tensor_normalize(
+                frames, self.cfg.DATA.MEAN, self.cfg.DATA.STD
+            )
+            frames = frames.permute(3, 0, 1, 2)
 
-            augmentation = VideoDataAugmentationEvents()
-            frames = augmentation([frames], from_list=True, no_aug=True)[0] #works with list
+            # Perform data augmentation.
+            frames = spatial_sampling(
+                frames,
+                spatial_idx=spatial_sample_index,
+                min_scale=min_scale,
+                max_scale=max_scale,
+                crop_size=crop_size,
+                random_horizontal_flip=self.cfg.DATA.RANDOM_FLIP,
+                inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
+            )
 
-            # T C H W -> C T H W.
-            frames = rearrange(frames, "t c h w -> c t h w")
+            # if not self.cfg.MODEL.ARCH in ['vit']:
+            #     frames = pack_pathway_output(self.cfg, frames)
+            # else:
+            # Perform temporal sampling from the fast pathway.
+            # frames = [torch.index_select(
+            #     x,
+            #     1,
+            #     torch.linspace(
+            #         0, x.shape[1] - 1, self.cfg.DATA.NUM_FRAMES
+            #     ).long(),
+            # ) for x in frames]
 
             return frames, label, index, {}
         else:
@@ -223,12 +262,6 @@ class UCF101(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
-
-
-class UCFReturnIndexDataset(UCF101):
-    def __getitem__(self, idx):
-        img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
-        return img, idx
 
 
 if __name__ == '__main__':
