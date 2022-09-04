@@ -278,8 +278,10 @@ def train_svt(args):
         config.DATA.PATH_TO_DATA_DIR = args.val_data_dir
         config.DATA.PATH_PREFIX = ""
         config.TEST.NUM_SPATIAL_CROPS = 1
-        eval_train, eval_test, eval_loader_train, eval_loader_test = get_eval_datasets(args.eval_dataset, args)
-        eval_train2, eval_test2, eval_loader_train2, eval_loader_test2 = get_eval_datasets(args.eval_dataset2, args)
+        if args.eval_dataset:
+            eval_train, eval_test, eval_loader_train, eval_loader_test = get_eval_datasets(args.eval_dataset, args)
+        if args.eval_dataset2:
+            eval_train2, eval_test2, eval_loader_train2, eval_loader_test2 = get_eval_datasets(args.eval_dataset2, args)
 
     # ============ building student and teacher networks ... ============
     # we changed the name DeiT-S for ViT-S to avoid confusions
@@ -447,7 +449,7 @@ def train_svt(args):
 
     if args.use_wandb and utils.is_main_process():
         wandb.init(
-            project='causal_videov3',
+            project='causal_videov4',
             config=config,
             entity="avecplezir",
             reinit=True,
@@ -464,10 +466,8 @@ def train_svt(args):
     print('step', step)
 
     if args.do_eval and args.do_eval_before_train:
-        # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-        # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
-        val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher.backbone, eval_train, eval_test, opt=args)
-        val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher.backbone, eval_train2, eval_test2, opt=args)
+        val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
+        val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone, opt=args)
         if utils.is_main_process():
             print('val_stats', val_stats)
             print('val_stats mean', val_stats2)
@@ -489,10 +489,8 @@ def train_svt(args):
 
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
-            # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-            # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
-            val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher.backbone, eval_train, eval_test, opt=args)
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher.backbone, eval_train2, eval_test2,
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone,
                                   opt=args)
             if utils.is_main_process():
                 print('val_stats', val_stats)
@@ -612,7 +610,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}, step
 
 
-def eval_knn(train_loader, test_loader, model, train_dataset, test_dataset, opt):
+def eval_knn(train_loader, test_loader, train_dataset, test_dataset, model, opt):
     model.eval()  # teacher model already on eval
     print("Extracting features for train set...")
     train_features = extract_features(model, train_loader)

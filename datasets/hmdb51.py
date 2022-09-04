@@ -268,32 +268,3 @@ class HMDBReturnIndexDataset(HMDB51):
     def __getitem__(self, idx):
         img, _, _, _ = super(HMDBReturnIndexDataset, self).__getitem__(idx)
         return img, idx
-
-
-if __name__ == '__main__':
-
-    from utils.parser import parse_args, load_config
-    from tqdm import tqdm
-
-    args = parse_args()
-    args.cfg_file = "models/configs/Kinetics/TimeSformer_divST_8x32_224.yaml"
-    config = load_config(args)
-    config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/repo/mmaction2/data/hmdb51/splits"
-    config.DATA.PATH_PREFIX = "/home/kanchanaranasinghe/repo/mmaction2/data/hmdb51/videos"
-    dataset = HMDB51(cfg=config, mode="train", num_retries=10)
-    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=4)
-    print(f"Loaded train dataset of length: {len(dataset)}")
-    for idx, i in tqdm(enumerate(dataloader)):
-        # continue
-        print(idx, i[0].shape, i[1:])
-        if idx > 2:
-            break
-
-    test_dataset = HMDB51(cfg=config, mode="val", num_retries=10)
-    test_dataloader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=4)
-    print(f"Loaded test dataset of length: {len(test_dataset)}")
-    for idx, i in tqdm(enumerate(test_dataloader)):
-        # continue
-        print(idx, i[0].shape, i[1:])
-        if idx > 2:
-            break

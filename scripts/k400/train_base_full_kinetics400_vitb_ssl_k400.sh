@@ -2,7 +2,8 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
-VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
+#VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
+VAL_DATA_PATH="/mnt/data/hmdb51/videos"
 EXP_NAME="base_k400_full_kinetics400_vitb_ssl"
 PORT='1024'
 
@@ -12,7 +13,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir -p "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=1,2,3,4
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
@@ -41,4 +42,7 @@ python -m torch.distributed.launch \
   --loss DINOLoss \
   --dataset Kinetics \
   --video_extension mp4 \
-  --full_pretrain ~/.cache/torch/hub/checkpoints/kinetics400_vitb_ssl.pth
+  --full_pretrain ~/.cache/torch/hub/checkpoints/kinetics400_vitb_ssl.pth \
+  --eval_dataset2 "" \
+  --eval_dataset HMDBReturnIndexDataset \
+

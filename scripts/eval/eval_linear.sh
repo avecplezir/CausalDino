@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PROJECT_PATH="$HOME/CausalDino"
-EXP_NAME="le_001"
+EXP_NAME="le_002"
 DATASET="ucf101"
 DATA_PATH="/mnt/data/ucf101"
 CHECKPOINT="/home/ivananokhin/.cache/torch/hub/checkpoints/kinetics400_vitb_ssl.pth"
@@ -12,7 +12,7 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
   --master_port="$RANDOM" \
