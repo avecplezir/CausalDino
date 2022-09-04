@@ -155,8 +155,6 @@ def restart_from_pretrain(ckp_path, **kwargs):
                 print("=> loaded '{}' from checkpoint: '{}'".format(key, ckp_path))
             except ValueError:
                 print("=> failed to load '{}' from checkpoint: '{}'".format(key, ckp_path))
-    else:
-        print("=> key '{}' not found in checkpoint: '{}'".format(key, ckp_path))
 
 
 def restart_from_checkpoint(ckp_path, run_variables=None, **kwargs):

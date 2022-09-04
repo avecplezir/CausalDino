@@ -40,5 +40,3 @@ python -m torch.distributed.launch \
   --dataset Kinetics \
   --video_extension mp4 \
   --full_pretrain ~/.cache/torch/hub/checkpoints/kinetics400_vitb_ssl.pth
-
-#  --default_cfg svt_vit_base_patch16_224 \

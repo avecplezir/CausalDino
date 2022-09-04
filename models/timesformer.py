@@ -31,26 +31,31 @@ default_cfgs = {
         url="https://dl.fbaipublicfiles.com/dino/dino_vitbase16_pretrain/dino_vitbase16_pretrain.pth",
         yt_path='//home/yr/ianokhin/CausalDino/pretrain/dino_vitbase16_pretrain.pth',
         mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+        name='vit_base_patch16_224',
     ),
    'svt_vit_base_patch16_224': _cfg(
        url="https://github.com/kahnchana/svt/releases/download/v1.0/kinetics400_vitb_ssl.pth",
        yt_path='',
        mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+       name='svt_vit_base_patch16_224',
    ),
     'vit_small_patch16_224': _cfg(
         url="https://dl.fbaipublicfiles.com/dino/dino_deitsmall16_pretrain/dino_deitsmall16_pretrain.pth",
         yt_path='//home/yr/ianokhin/CausalDino/pretrain/dino_deitsmall16_pretrain.pth',
         mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+        name='vit_small_patch16_224',
     ),
     'vit_mae_base_patch16_224': _cfg(
        url="https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_base.pth",
        yt_path='//home/yr/ianokhin/CausalDino/pretrain/mae_pretrain_vit_base.pth',
        mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+       name='vit_mae_base_patch16_224',
     ),
     'vit_mae_large_patch16_224': _cfg(
        url="https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_large.pth",
        yt_path='//home/yr/ianokhin/CausalDino/pretrain/mae_pretrain_vit_large.pth',
        mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+       name='vit_mae_large_patch16_224',
     ),
 }
 

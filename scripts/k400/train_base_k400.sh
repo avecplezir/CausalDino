@@ -25,6 +25,7 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \
+  --default_cfg svt_vit_base_patch16_224 \
   --do_eval True \
   --do_eval_before_train True \
   --eval_freq 1 \

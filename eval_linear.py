@@ -21,7 +21,7 @@ from torch import nn
 from tqdm import tqdm
 
 from datasets import UCF101, HMDB51, Kinetics
-from models import get_vit_base_patch16_224, get_aux_token_vit, SwinTransformer3D
+from models import get_vit_base_patch16_224, SwinTransformer3D
 from utils import utils
 from utils.meters import TestMeter
 from utils.parser import load_config
@@ -83,21 +83,16 @@ def eval_linear(args):
     print(f"Data loaded with {len(dataset_train)} train and {len(dataset_val)} val imgs.")
 
     # ============ building network ... ============
-    if config.DATA.USE_FLOW or config.MODEL.TWO_TOKEN:
-        model = get_aux_token_vit(cfg=config, no_head=True)
-        model_embed_dim = 2 * model.embed_dim
+    if args.arch == "vit_base":
+        model = get_vit_base_patch16_224(cfg=config, no_head=True)
+        model_embed_dim = model.embed_dim
+    elif args.arch == "swin":
+        model = SwinTransformer3D(depths=[2, 2, 18, 2], embed_dim=128, num_heads=[4, 8, 16, 32])
+        model_embed_dim = 1024
     else:
-        if args.arch == "vit_base":
-            model = get_vit_base_patch16_224(cfg=config, no_head=True)
-            model_embed_dim = model.embed_dim
-        elif args.arch == "swin":
-            model = SwinTransformer3D(depths=[2, 2, 18, 2], embed_dim=128, num_heads=[4, 8, 16, 32])
-            model_embed_dim = 1024
-        else:
-            raise Exception(f"invalid model: {args.arch}")
+        raise Exception(f"invalid model: {args.arch}")
 
     ckpt = torch.load(args.pretrained_weights)
-    #  select_ckpt = 'motion_teacher' if args.use_flow else "teacher"
     if "teacher" in ckpt:
         ckpt = ckpt["teacher"]
     renamed_checkpoint = {x[len("backbone."):]: y for x, y in ckpt.items() if x.startswith("backbone.")}

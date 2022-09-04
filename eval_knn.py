@@ -100,6 +100,7 @@ def extract_features(model, data_loader):
         samples = [im.cuda(non_blocking=True) for im in samples]
         index = index.cuda(non_blocking=True)
         b, num_views = index.size(0), len(samples)
+        samples = torch.cat(samples, 0)
         feats = model(samples).clone()
         if len(feats.shape) == 2:
             feats = torch.stack(feats.chunk(num_views, 0), 1)

@@ -423,6 +423,7 @@ def train_svt(args):
     print(f"Loss, optimizer and schedulers ready.")
 
     if args.full_pretrain is not None:
+        print('load pretrain!')
         utils.restart_from_pretrain(
             args.full_pretrain,
             student=student.module,
@@ -431,6 +432,7 @@ def train_svt(args):
 
     # ============ optionally resume training ... ============
     to_restore = {"epoch": 0, "step": 0}
+    print('load restart!')
     args.wandb_id = utils.restart_from_checkpoint(
         os.path.join(args.output_dir, "checkpoint.pth"),
         run_variables=to_restore,
@@ -461,8 +463,10 @@ def train_svt(args):
     print('step', step)
 
     if args.do_eval and args.do_eval_before_train:
-        val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
-        val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+        # val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher, eval_train, eval_test, opt=args)
+        # val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher, eval_train2, eval_test2, opt=args)
+        val_stats = eval_knn(eval_loader_train, eval_loader_test, teacher.backbone, eval_train, eval_test, opt=args)
+        val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, teacher.backbone, eval_train2, eval_test2, opt=args)
         if utils.is_main_process():
             print('val_stats', val_stats)
             print('val_stats mean', val_stats2)
