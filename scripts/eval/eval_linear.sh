@@ -1,10 +1,10 @@
 #!/bin/bash
 
-PROJECT_PATH="$HOME/repo/svt"
+PROJECT_PATH="$HOME/CausalDino"
 EXP_NAME="le_001"
 DATASET="ucf101"
-DATA_PATH="${HOME}/repo/mmaction2/data/${DATASET}"
-CHECKPOINT="path/to/checkpoint.pth"
+DATA_PATH="/mnt/data/ucf101"
+CHECKPOINT="~/.cache/torch/hub/checkpoints/kinetics400_vitb_ssl.pth"
 
 cd "$PROJECT_PATH" || exit
 
@@ -28,6 +28,6 @@ python -m torch.distributed.launch \
   --dataset "$DATASET" \
   --output_dir "checkpoints/eval/$EXP_NAME" \
   --opts \
-  DATA.PATH_TO_DATA_DIR "${DATA_PATH}/splits" \
-  DATA.PATH_PREFIX f"${DATA_PATH}/videos" \
+  DATA.PATH_TO_DATA_DIR "${DATA_PATH}" \
+  DATA.PATH_PREFIX "{$DATA_PATH}/videos_256p_dense_cache" \
   DATA.USE_FLOW False

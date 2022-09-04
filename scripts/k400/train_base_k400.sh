@@ -12,12 +12,12 @@ if [ ! -d "checkpoints/$EXP_NAME" ]; then
   mkdir -p "checkpoints/$EXP_NAME"
 fi
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
 python -m torch.distributed.launch \
-  --nproc_per_node=1 \
+  --nproc_per_node=4 \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
@@ -27,7 +27,6 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \
-  --default_cfg svt_vit_base_patch16_224 \
   --do_eval True \
   --do_eval_before_train True \
   --eval_freq 1 \
