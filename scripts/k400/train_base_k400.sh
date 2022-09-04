@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/Kinetics/videos_train_256p_dense_cache"
-VAL_DATA_PATH = "/mnt/data/ucf101/videos_256p_dense_cache"
+VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
 EXP_NAME="base_k400"
 PORT='1024'
 
@@ -27,6 +27,7 @@ python -m torch.distributed.launch \
   --output_dir "$PROJECT_PATH/checkpoints/$EXP_NAME" \
   --exp_name $EXP_NAME \
   --model_name get_vit_base_patch16_224 \
+  --default_cfg svt_vit_base_patch16_224 \
   --do_eval True \
   --do_eval_before_train True \
   --eval_freq 1 \
@@ -40,5 +41,3 @@ python -m torch.distributed.launch \
   --loss DINOLoss \
   --dataset Kinetics \
   --video_extension mp4 \
-
-#  --default_cfg svt_vit_base_patch16_224 \

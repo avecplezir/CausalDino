@@ -264,28 +264,7 @@ class UCF101(torch.utils.data.Dataset):
         return len(self._path_to_videos)
 
 
-if __name__ == '__main__':
-
-    from utils.parser import parse_args, load_config
-    from tqdm import tqdm
-
-    args = parse_args()
-    args.cfg_file = "models/configs/Kinetics/TimeSformer_divST_8x32_224.yaml"
-    config = load_config(args)
-    config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/repo/mmaction2/data/ucf101/splits"
-    config.DATA.PATH_PREFIX = "/home/kanchanaranasinghe/repo/mmaction2/data/ucf101/videos"
-    dataset = UCF101(cfg=config, mode="train", num_retries=10)
-    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=4)
-    print(f"Loaded train dataset of length: {len(dataset)}")
-    for idx, i in enumerate(dataloader):
-        print(idx, i[0].shape, i[1:])
-        if idx > 2:
-            break
-
-    test_dataset = UCF101(cfg=config, mode="val", num_retries=10)
-    test_dataloader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=4)
-    print(f"Loaded test dataset of length: {len(test_dataset)}")
-    for idx, i in enumerate(test_dataloader):
-        print(idx, i[0].shape, i[1:])
-        if idx > 2:
-            break
+class UCFReturnIndexDataset(UCF101):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
+        return img, idx

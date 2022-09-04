@@ -254,6 +254,7 @@ def train_svt(args):
     print(f"Train data loaded: there are {len(dataset)} images.")
 
     def get_eval_datasets(eval_dataset, args):
+        config.DATA.PATH_PREFIX = args.val_data_dir
         Eval_Dataset = datasets.__dict__[eval_dataset]
         print('Eval_Dataset', Eval_Dataset)
         eval_train = Eval_Dataset(cfg=config, mode="train", num_retries=10)
