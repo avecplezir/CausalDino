@@ -30,7 +30,7 @@ python -m torch.distributed.launch \
   --loss TimeEmbLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
-  --n_global_views 5 \
+  --n_global_views 4 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGPT \
