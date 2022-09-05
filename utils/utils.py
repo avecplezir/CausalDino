@@ -848,10 +848,10 @@ class MultiCropWrapperPredictorProjector(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(self.head(x_enc))
             # Predict future
-            pred_future = self.head(self.predictor(x_enc))
+            pred_future = self.predictor(x_enc)
             predict_past = None #ToDo: the place to write past prediction
             if self.return_prediction_logits:
-                pred_future_logits = self.headprob(pred_future)
+                pred_future_logits = self.headprob(self.head(pred_future))
                 return x_enc_logits, pred_future_logits, predict_past, indices
             else:
                 return x_enc_logits, pred_future, predict_past, indices
