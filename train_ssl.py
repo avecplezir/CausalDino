@@ -333,6 +333,8 @@ def train_svt(args):
     # multi-crop wrapper handles forward with inputs of different resolutions
     Wrapper = getattr(utils, args.wrapper)
     print('Wrapper', Wrapper)
+    n_embd = embed_dim if args.wrapper == 'MultiCropWrapperPredictorProjector' else 256
+    layer_norm = True if args.wrapper == 'MultiCropWrapperPredictorProjector' else False
     student = Wrapper(student,
          DINOHead(
              embed_dim,
@@ -342,8 +344,10 @@ def train_svt(args):
              skip_last=args.skip_last,
              bottleneck_dim=args.bottleneck_dim,
          ),
-         predictor=Predictor(block_size=args.n_global_views, model_type=args.predictor_model_type) if Predictor else None,
-         predictor_past=Predictor_past(block_size=args.n_global_views, model_type=args.predictor_model_type) if Predictor_past else None,
+         predictor=Predictor(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+                             layer_norm=layer_norm) if Predictor else None,
+         predictor_past=Predictor_past(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+                                       layer_norm=layer_norm) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
          )
@@ -352,8 +356,10 @@ def train_svt(args):
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head,
                  skip_last=args.skip_last,
                  bottleneck_dim=args.bottleneck_dim,),
-        predictor=Predictor(block_size=args.n_global_views, model_type=args.predictor_model_type) if Predictor else None,
-        predictor_past=Predictor_past(block_size=args.n_global_views, model_type=args.predictor_model_type) if Predictor_past else None,
+        predictor=Predictor(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+                            layer_norm=layer_norm) if Predictor else None,
+        predictor_past=Predictor_past(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+                                      layer_norm=layer_norm) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
     )
