@@ -33,6 +33,7 @@ python -m torch.distributed.launch \
   --n_global_views 4 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
+  --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperGPT \
   --predictor GPT \
   --headproba HeadProba \
