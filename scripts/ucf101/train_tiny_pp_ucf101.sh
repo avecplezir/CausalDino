@@ -44,5 +44,6 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5 \
-  --video_extension avi
+  --video_extension avi \
+  --dataset_level 2 \
 
