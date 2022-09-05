@@ -14,12 +14,12 @@ export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
 python -m torch.distributed.launch \
-  --data_path "${DATA_PATH}" \
-  --val_data_dir "${DATA_PATH}" \
-  --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --nproc_per_node=1 \
   --master_port="$PORT" \
   train_ssl.py \
+  --data_path "${DATA_PATH}" \
+  --val_data_dir "${DATA_PATH}" \
+  --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \

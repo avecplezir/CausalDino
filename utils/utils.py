@@ -808,7 +808,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
     """
     def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
                  return_prediction_logits=True, **kwargs):
-        super(MultiCropWrapperGPT, self).__init__()
+        super(MultiCropWrapperPredictorProjector, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
             backbone.fc, backbone.head = nn.Identity(), nn.Identity()
