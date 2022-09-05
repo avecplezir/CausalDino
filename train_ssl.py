@@ -335,6 +335,8 @@ def train_svt(args):
     print('Wrapper', Wrapper)
     n_embd = embed_dim if args.wrapper == 'MultiCropWrapperPredictorProjector' else 256
     layer_norm = True if args.wrapper == 'MultiCropWrapperPredictorProjector' else False
+    print('n_embd', n_embd)
+    print('layer_norm', layer_norm)
     student = Wrapper(student,
          DINOHead(
              embed_dim,
