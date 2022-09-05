@@ -33,7 +33,8 @@ python -m torch.distributed.launch \
   --n_global_views 5 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperTimeEmb \
+  --wrapper MultiCropWrapperGPT \
+  --return_prediction_logits False \
   --predictor GPT2FoldPredictor \
   --headproba HeadProba \
   --skip_last True \
