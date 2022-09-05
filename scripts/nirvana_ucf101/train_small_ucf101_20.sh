@@ -30,7 +30,6 @@ python -m torch.distributed.launch \
   --epochs 20 \
   --weight_decay_end 0.1 \
   --warmup_epochs 5 \
-  --weight_decay_end 0.1 \
   --saveckp_freq 10 \
   --use_wandb True \
   --loss DINOLoss \

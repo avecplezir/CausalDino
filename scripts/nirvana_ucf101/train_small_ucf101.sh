@@ -31,7 +31,6 @@ python -m torch.distributed.launch \
   --warmup_epochs 20 \
   --weight_decay_end 0.1 \
   --saveckp_freq 20 \
-  --weight_decay_end 0.1 \
   --use_wandb True \
   --loss DINOLoss \
   --dataset Kinetics \
