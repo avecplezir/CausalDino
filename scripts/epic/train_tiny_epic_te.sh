@@ -25,7 +25,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
