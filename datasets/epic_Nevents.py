@@ -123,4 +123,10 @@ class EpicNEvents(EpicEvents):
 
         return frames
 
+    def __len__(self):
+        """
+        Returns:
+            (int): the number of videos in the dataset.
+        """
+        return sum(self._video_clip_size)
 

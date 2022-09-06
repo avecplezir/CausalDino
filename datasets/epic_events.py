@@ -44,6 +44,7 @@ class EpicEvents(torch.utils.data.Dataset):
         self._video_clip_size = [] # len of the video in terms of number of clips
         self.index2clip_video = {}
         self.init_video_clip_indices()
+        self.span = 32
 
     def init_video_clip_indices(self, ):
         idx = 0

@@ -34,7 +34,7 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 1 \
   --weight_decay_end 0.1 \
-  --use_wandb True \
+  --use_wandb False \
   --loss TimeEmbLoss \
   --local_crops_number 0 \
   --n_global_views 4 \
@@ -43,7 +43,7 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --dataset EpicNEvents \
   --continuous True \
-  --sampling_rate 32 \
+  --sampling_rate 10 \
   --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
   --return_prediction_logits False \
