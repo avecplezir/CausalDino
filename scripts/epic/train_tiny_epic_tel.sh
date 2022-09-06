@@ -43,7 +43,7 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --dataset EpicNEvents \
   --continuous True \
-  --sampling_rate 10 \
+  --sampling_rate 32 \
   --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
   --return_prediction_logits False \
