@@ -25,7 +25,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
@@ -36,9 +36,9 @@ python -m torch.distributed.launch \
   --weight_decay_end 0.1 \
   --n_global_views 2 \
   --n_parts 11 \
-  --use_wandb True \
+  --use_wandb False \
   --loss DINOLoss \
   --dataset EpicEvents \
   --video_extension MP4 \
-  --dataset_level 3
+  --dataset_level 3 \
 

@@ -10,7 +10,7 @@ from torch.utils.data import Sampler
 
 from datasets.data_utils import get_random_sampling_rate
 from datasets.video_container import get_video_container
-from datasets.transform import VideoDataAugmentationEvents
+from datasets.transform import VideoDataAugmentationEvents, VideoDataAugmentationDINO
 from datasets.decoder import decode_events
 from einops import rearrange
 
@@ -138,13 +138,17 @@ class EpicEvents(torch.utils.data.Dataset):
                     index = index + 1
                 continue
 
-            # T H W C -> T C H W.
-            frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-            # Perform data augmentation.
-            augmentation = VideoDataAugmentationEvents(local_crops_number=self.cfg.local_crops_number)
-            frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
-            # T C H W -> C T H W.
-            frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+            if self.cfg.temporal_aug:
+                frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+                augmentation = VideoDataAugmentationDINO()
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL,
+                                      two_token=self.cfg.MODEL.TWO_TOKEN)
+                frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+            else:
+                frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+                augmentation = VideoDataAugmentationEvents(local_crops_number=self.cfg.local_crops_number)
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+                frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 
             return frames, index, video_idx
 
