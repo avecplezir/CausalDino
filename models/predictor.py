@@ -101,18 +101,27 @@ class MLPfeaturePredictor(nn.Module):
 class MLPfeaturePredictorTimeEmb(nn.Module):
     def __init__(self, n_embd=256, block_size=None, **kwargs):
         super().__init__()
-        self.mlp = DINOHead(3*n_embd)
+        self.mlp_post = DINOHead(2*n_embd)
+        self.mlp_prior = DINOHead(2 * n_embd)
+        z_dim = 16
+        self.predictor = DINOHead(n_embd + z_dim)
         self.wpe = nn.Embedding(block_size, n_embd)
 
-    def forward(self, x, future_index=None, **kwargs):
-        future_pos_emb = self.wpe(future_index)  # position embeddings of shape (1, t, n_embd)
-        x = torch.cat([future_pos_emb, x], 1)
-        x = self.mlp(x)
-        x = nn.functional.normalize(x, dim=-1, p=2)
-        return x
+    def forward(self, x, f_x=None, f_idx=None, **kwargs):
+        dist_post = self.mlp_post(torch.cat([f_x, x], 1))
+
+        fp_emb = self.wpe(f_idx)
+        dist_prior = self.mlp_prior(torch.cat([fp_emb, x], 1))
+
+        z_post = dist_post.sample()
+
+        out = self.predictor(torch.cat([z_post, x], 1))
+        out = nn.functional.normalize(out, dim=-1, p=2)
+
+        return out, dist_post, dist_prior
 
 
-class MLP2FoldPredictor(nn.Module):
+class MLPVAEPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=4, **kwargs):
         super().__init__()
         self.wpe = nn.Embedding(block_size, n_embd)
@@ -120,7 +129,7 @@ class MLP2FoldPredictor(nn.Module):
 
     def forward(self, x, indices=None):
         pos = self.wpe(indices)
-        x = torch.cat([pos, x], 1)
+        x = x + pos
         return x
 
 
