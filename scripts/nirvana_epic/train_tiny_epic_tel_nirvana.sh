@@ -35,7 +35,8 @@ python -m torch.distributed.launch \
   --n_global_views 4 \
   --global_crops_scale 0.14 1 \
   --dataset EpicNEvents \
-  --num_workers 32 \
+  --num_workers 20 \
+  --sampling_rate 10 \
   --block_size 64 \
   --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
