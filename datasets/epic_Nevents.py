@@ -8,14 +8,15 @@ import warnings
 import torch.utils.data
 from torch.utils.data import Sampler
 
-from datasets.data_utils import get_random_sampling_rate
 from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
 from datasets.decoder import decode_events
+from datasets.data_utils import get_random_sampling_rate
+
 from einops import rearrange
 
 
-class EpicEvents(torch.utils.data.Dataset):
+class EpicNEvents(torch.utils.data.Dataset):
     """
     Kinetics video loader. Construct the Kinetics video loader, then sample
     clips from the videos. For training and validation, a single clip is
@@ -67,10 +68,35 @@ class EpicEvents(torch.utils.data.Dataset):
     def __getitem__(self, index):
 
         clip_idx, video_idx = self.index2clip_video[index]
-        min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
+        clip_idx2 = np.random.choice(np.arange(self._start_video_idx[video_idx],
+                                   self._start_video_idx[video_idx]+self._video_clip_size[video_idx]),
+                                     size=self.cfg.n_global_views,
+                                     replace=False)
 
+        print('clip_idx clip_idx2', clip_idx, clip_idx2)
+        indices_sorted = sorted([clip_idx, *clip_idx2])
+        print('indices_sorted', self.cfg.n_global_views)
+
+        frames = []
+        for i in self.cfg.n_global_views:
+            frames.extend(self.get_event(indices_sorted[i], video_idx))
+
+        print('frames', len(frames))
+
+        # T H W C -> T C H W.
+        frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+        # Perform data augmentation.
+        augmentation = VideoDataAugmentationEvents(local_crops_number=self.cfg.local_crops_number)
+        frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+        # T C H W -> C T H W.
+        frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+
+        return frames, indices_sorted, video_idx
+
+    def get_event(self, clip_idx, video_idx):
         # Try to decode and sample a clip from a video. If the video can not be
         # decoded, repeatly find a random video replacement that can be decoded.
+        min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
         for i_try in range(self._num_retries):
             video_container = None
             try:
@@ -107,7 +133,7 @@ class EpicEvents(torch.utils.data.Dataset):
                     target_fps=self.cfg.DATA.TARGET_FPS,
                     backend=self.cfg.DATA.DECODING_BACKEND,
                     max_spatial_scale=min_scale,
-                    num_clips_global=self.cfg.n_global_views,
+                    num_clips_global=1,
                     n_parts=self.cfg.n_parts,
                     random_sampling=self.cfg.random_sampling,
                     mode='ordered',
@@ -136,15 +162,7 @@ class EpicEvents(torch.utils.data.Dataset):
                     index = index + 1
                 continue
 
-            # T H W C -> T C H W.
-            frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-            # Perform data augmentation.
-            augmentation = VideoDataAugmentationEvents(local_crops_number=self.cfg.local_crops_number)
-            frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
-            # T C H W -> C T H W.
-            frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
-
-            return frames, index, video_idx
+            return frames
 
         else:
             raise RuntimeError(
