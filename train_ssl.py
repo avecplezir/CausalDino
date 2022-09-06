@@ -352,6 +352,7 @@ def train_svt(args):
                                        layer_norm=layer_norm) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
+         n_global_views=args.n_global_views,
          )
     teacher = Wrapper(
         teacher,
@@ -364,6 +365,7 @@ def train_svt(args):
                                       layer_norm=layer_norm) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
+        n_global_views=args.n_global_views,
     )
 
     # move networks to gpu
