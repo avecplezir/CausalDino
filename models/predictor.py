@@ -88,13 +88,39 @@ class LinearPredictor(nn.Module):
 
 
 class MLPfeaturePredictor(nn.Module):
-    def __init__(self, emb_dim=256, **kwargs):
+    def __init__(self, n_embd=256, **kwargs):
         super().__init__()
-        self.mlp = DINOHead(emb_dim)
+        self.mlp = DINOHead(n_embd)
 
     def forward(self, x, **kwargs):
         x = self.mlp(x)
         x = nn.functional.normalize(x, dim=-1, p=2)
+        return x
+
+
+class MLPfeaturePredictorTimeEmb(nn.Module):
+    def __init__(self, n_embd=256, block_size=None, **kwargs):
+        super().__init__()
+        self.mlp = DINOHead(3*n_embd)
+        self.wpe = nn.Embedding(block_size, n_embd)
+
+    def forward(self, x, future_index=None, **kwargs):
+        future_pos_emb = self.wpe(future_index)  # position embeddings of shape (1, t, n_embd)
+        x = torch.cat([future_pos_emb, x], 1)
+        x = self.mlp(x)
+        x = nn.functional.normalize(x, dim=-1, p=2)
+        return x
+
+
+class MLP2FoldPredictor(nn.Module):
+    def __init__(self, n_embd=256, block_size=4, **kwargs):
+        super().__init__()
+        self.wpe = nn.Embedding(block_size, n_embd)
+        self.future_embgpt = MLPfeaturePredictorTimeEmb(n_embd)
+
+    def forward(self, x, indices=None):
+        pos = self.wpe(indices)
+        x = torch.cat([pos, x], 1)
         return x
 
 

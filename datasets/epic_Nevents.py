@@ -19,7 +19,6 @@ from einops import rearrange
 
 class EpicNEvents(EpicEvents):
     def __getitem__(self, index):
-
         for i_try in range(self._num_retries):
             try:
                 ancor, video_idx = self.index2clip_video[index]
@@ -130,3 +129,65 @@ class EpicNEvents(EpicEvents):
         """
         return sum(self._video_clip_size)
 
+
+class EpicNFEvents(EpicNEvents):
+    def init_video_clip_indices(self, ):
+        idx = 0
+        for video_idx in range(len(self._path_to_videos)):
+            container = get_video_container(
+                self._path_to_videos[video_idx],
+                self.cfg.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE,
+                self.cfg.DATA.DECODING_BACKEND,
+            )
+
+            video_size = container.streams.video[0].frames
+            fps = float(container.streams.video[0].average_rate)
+            clip_size = self.sampling_rate * self.num_frames / self.cfg.DATA.TARGET_FPS * fps
+            num_clips = int(video_size // clip_size) - self.cfg.n_global_views
+            self._start_video_idx.append(idx)
+            self._video_clip_size.append(num_clips)
+            for clip_idx in range(num_clips):
+                self.index2clip_video[idx] = clip_idx, video_idx
+                idx += 1
+
+    def __getitem__(self, index):
+        for i_try in range(self._num_retries):
+            try:
+                ancor, video_idx = self.index2clip_video[index]
+                left_limit = ancor
+                right_limit = min(ancor+self.span, self._video_clip_size[video_idx]+self.cfg.n_global_views)
+                clip_idx = np.random.choice(np.arange(left_limit, right_limit),
+                                            size=self.cfg.n_global_views,
+                                            replace=False)
+
+                indices_sorted = sorted(clip_idx)
+
+                frames = []
+                for i in range(self.cfg.n_global_views):
+                    frames.extend(self.get_event(indices_sorted[i], video_idx))
+
+                # T H W C -> T C H W.
+                frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+                # Perform data augmentation.
+                augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                           local_crops_number=self.cfg.local_crops_number,
+                                                           global_crops_scale=self.cfg.global_crops_scale,
+                                                           )
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+                # T C H W -> C T H W.
+                frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+
+                indices_sorted = np.array(indices_sorted) - left_limit
+                return frames, indices_sorted, video_idx
+            except:
+                if i_try > self._num_retries // 2:
+                    # let's try another one
+                    index = index + 1
+                    continue
+
+        else:
+            raise RuntimeError(
+                "Failed to fetch video after {} retries.".format(
+                    self._num_retries
+                )
+            )
