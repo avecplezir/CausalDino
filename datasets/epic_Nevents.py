@@ -12,60 +12,12 @@ from datasets.video_container import get_video_container
 from datasets.transform import VideoDataAugmentationEvents
 from datasets.decoder import decode_events
 from datasets.data_utils import get_random_sampling_rate
+from datasets.epic_events import EpicEvents
 
 from einops import rearrange
 
 
-class EpicNEvents(torch.utils.data.Dataset):
-    """
-    Kinetics video loader. Construct the Kinetics video loader, then sample
-    clips from the videos. For training and validation, a single clip is
-    randomly sampled from every video with random cropping, scaling, and
-    flipping. For testing, multiple clips are uniformaly sampled from every
-    video with uniform cropping. For uniform cropping, we take the left, center,
-    and right crop if the width is larger than height, or take top, center, and
-    bottom crop if the height is larger than the width.
-    """
-
-    def __init__(self, cfg, num_retries=10, extension='avi', level=1, **kwargs):
-        # Only support train, val, and test mode.
-        self.cfg = cfg
-        self._num_retries = num_retries
-        self.sampling_rate = get_random_sampling_rate(
-            self.cfg.MULTIGRID.LONG_CYCLE_SAMPLING_RATE,
-            self.cfg.DATA.SAMPLING_RATE,
-        )
-        self.num_frames = self.cfg.DATA.NUM_FRAMES
-
-        print("Constructing EpicEvents...")
-        self._path_to_videos = glob.glob(self.cfg.DATA.PATH_TO_DATA_DIR + '/*' * level + '.' + extension)
-        self.num_videos = len(self._path_to_videos )
-
-        self._start_video_idx = [] # index with which video is started
-        self._video_clip_size = [] # len of the video in terms of number of clips
-        self.index2clip_video = {}
-        self.init_video_clip_indices()
-
-    def init_video_clip_indices(self, ):
-        idx = 0
-        for video_idx in range(len(self._path_to_videos)):
-            container = get_video_container(
-                self._path_to_videos[video_idx],
-                self.cfg.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE,
-                self.cfg.DATA.DECODING_BACKEND,
-            )
-
-            video_size = container.streams.video[0].frames
-            fps = float(container.streams.video[0].average_rate)
-            clip_size = self.sampling_rate * self.num_frames / self.cfg.DATA.TARGET_FPS * fps
-            num_clips = int(video_size // clip_size)
-            self._start_video_idx.append(idx)
-            self._video_clip_size.append(num_clips)
-            self.span = 32
-            for clip_idx in range(num_clips):
-                self.index2clip_video[idx] = clip_idx, video_idx
-                idx += 1
-
+class EpicNEvents(EpicEvents):
     def __getitem__(self, index):
 
         for i_try in range(self._num_retries):
@@ -171,10 +123,4 @@ class EpicNEvents(torch.utils.data.Dataset):
 
         return frames
 
-    def __len__(self):
-        """
-        Returns:
-            (int): the number of videos in the dataset.
-        """
-        return sum(self._video_clip_size)
 
