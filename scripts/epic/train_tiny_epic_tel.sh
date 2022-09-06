@@ -42,6 +42,7 @@ python -m torch.distributed.launch \
   --num_workers 20 \
   --global_crops_scale 0.14 1 \
   --dataset EpicNEvents \
+  --continuous True \
   --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
   --return_prediction_logits False \

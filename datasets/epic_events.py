@@ -174,6 +174,7 @@ class ContinuousSampler(Sampler):
     def __init__(self, data_source):
         super().__init__(data_source)
         self.data_source = data_source
+        self.epoch = 0
 
     def __iter__(self):
         iters = [
@@ -193,12 +194,23 @@ class ContinuousSampler(Sampler):
                                               self.data_source._video_clip_size[video_idx]))
                 continue
 
+    def __len__(self):
+        """
+        Returns:
+            (int): the number of videos in the dataset.
+        """
+        return sum(self.data_source._video_clip_size)
 
-class ContinuousRandomSampler(Sampler):
+    def set_epoch(self, epoch):
+        self.epoch = epoch
+
+
+class ContinuousRandomSampler(ContinuousSampler):
     def __init__(self, data_source, batch_size=None):
         super().__init__(data_source)
         self.data_source = data_source
         self.batch_size = batch_size
+        self.epoch = 0
 
     def __iter__(self):
         iters = [
@@ -227,3 +239,4 @@ class ContinuousRandomSampler(Sampler):
                                                               self.data_source._video_clip_size[video_idx]))}
                     video_idx, itr = tuple(iters[video_idx].items())[0]
                     yield next(itr)
+

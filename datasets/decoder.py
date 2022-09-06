@@ -517,9 +517,10 @@ def decode_events(
             local_width = max_len // n_parts
             indices = np.random.choice(np.arange(0, n_parts - 1), replace=False, size=num_clips_global)
             indices = sorted(indices)
+            indices = np.array([idx for idx in indices])
         else:
             local_width = max_len // (num_clips_global + 1)
-            indices = tuple(np.arange(0, num_clips_global))
+            indices = np.arange(0, num_clips_global)
 
         start_idx = random.randint(0, local_width - 1)
         for idx in indices:
