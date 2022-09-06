@@ -39,7 +39,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 4 \
   --block_size 64 \
-  --num_workers 10 \
+  --num_workers 20 \
   --global_crops_scale 0.14 1 \
   --dataset EpicNEvents \
   --continuous True \

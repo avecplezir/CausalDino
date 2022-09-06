@@ -244,7 +244,7 @@ def train_svt(args):
                       extension=args.video_extension, level=args.dataset_level,
                       pseudo_length=args.pseudo_length)
     if args.continuous:
-        sampler = datasets.ContinuousRandomSampler(dataset, batch_size=args.batch_size)
+        sampler = datasets.ContinuousBeg2EndSampler(dataset, batch_size=args.batch_size)
     else:
         sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
@@ -554,7 +554,8 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         if args.continuous:
             def all_unique(item):
                 return len(set(item)) == len(item)
-            assert all_unique(video_idx), 'videos in the batch are not unique!'
+            # print('video_idx', video_idx)
+            # assert all_unique(video_idx), 'videos in the batch are not unique!'
         # update step for wandb
         it = len(data_loader) * epoch + it  # global training iteration
         step += args.batch_size

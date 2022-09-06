@@ -240,6 +240,7 @@ class ContinuousRandomSampler(ContinuousSampler):
                     video_idx, itr = tuple(iters[video_idx].items())[0]
                     yield next(itr)
 
+
 class ContinuousBeg2EndSampler(ContinuousSampler):
     def __init__(self, data_source, batch_size=None):
         super().__init__(data_source)
@@ -258,7 +259,7 @@ class ContinuousBeg2EndSampler(ContinuousSampler):
         current_choices = set(current_choices)
         offset = full_indices.difference(current_choices)
         while True:
-            print('video_indices', current_choices)
+            # print('video_indices', current_choices)
             for video_idx in current_choices:
                 try:
                     yield next(iters[video_idx])
@@ -267,9 +268,9 @@ class ContinuousBeg2EndSampler(ContinuousSampler):
                     iters[video_idx] = iter(range(self.data_source._start_video_idx[video_idx],
                                                               self.data_source._start_video_idx[video_idx] +
                                                               self.data_source._video_clip_size[video_idx]))
-                    current_choices.difference({video_idx})
-                    offset.add({video_idx})
-                    replacement_idx = np.random.choice(offset, replace=False)
-                    current_choices.add({replacement_idx})
-                    offset.difference({replacement_idx})
+                    current_choices.remove(video_idx)
+                    offset.add(video_idx)
+                    replacement_idx = np.random.choice(list(offset), replace=False)
+                    current_choices.add(replacement_idx)
+                    offset.remove(replacement_idx)
 
