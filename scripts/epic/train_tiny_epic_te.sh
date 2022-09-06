@@ -1,46 +1,53 @@
+#!/bin/bash
 
+SOURCE_CODE_PATH=$HOME
+SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+INPUT_PATH="/mnt/data"
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="epic_tiny_fe"
+VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
+DATA_PATH="$INPUT_PATH/videos_256"
 PORT='1024'
+
+EXP_NAME="tiny_epic_te"
 
 cd "$PROJECT_PATH" || exit
 
 if [ ! -d "checkpoints/$EXP_NAME" ]; then
-  mkdir "checkpoints/$EXP_NAME"
+  mkdir -p "checkpoints/$EXP_NAME"
 fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
-export CUDA_VISIBLE_DEVICES=1
+
+export CUDA_VISIBLE_DEVICES=4
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
-  --val_data_dir "${DATA_PATH}" \
+  --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --exp_name $EXP_NAME \
+  --model_name get_deit_small_patch16_224 \
   --do_eval True \
-  --eval_freq 5 \
+  --eval_freq 1 \
+  --weight_decay_end 0.1 \
   --use_wandb True \
-  --loss FeatureLoss \
-  --dataset KineticsEvents \
+  --loss TimeEmbLoss \
   --local_crops_number 0 \
   --n_global_views 4 \
-  --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
-  --weight_decay_end 0.1 \
+  --dataset EpicEvents \
+  --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
-  --predictor GPT \
+  --return_prediction_logits False \
+  --predictor GPT2FoldPredictor \
   --headproba HeadProba \
   --skip_last True \
   --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5 \
-  --video_extension avi
-
+  --video_extension MP4

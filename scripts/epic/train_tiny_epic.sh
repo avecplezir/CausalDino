@@ -1,10 +1,14 @@
 #!/bin/bash
 
+SOURCE_CODE_PATH=$HOME
+SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+INPUT_PATH="/mnt/data"
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-VAL_DATA_PATH="$INPUT_PATH/UCF101"
+VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_nirvana"
 PORT='1024'
+
+EXP_NAME="tiny_epic"
 
 cd "$PROJECT_PATH" || exit
 
@@ -14,6 +18,8 @@ fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
+
+export CUDA_VISIBLE_DEVICES=4
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
