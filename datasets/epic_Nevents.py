@@ -61,6 +61,7 @@ class EpicNEvents(torch.utils.data.Dataset):
             num_clips = int(video_size // clip_size)
             self._start_video_idx.append(idx)
             self._video_clip_size.append(num_clips)
+            self.span = 32
             for clip_idx in range(num_clips):
                 self.index2clip_video[idx] = clip_idx, video_idx
                 idx += 1
@@ -69,11 +70,13 @@ class EpicNEvents(torch.utils.data.Dataset):
 
         for i_try in range(self._num_retries):
             try:
-                _, video_idx = self.index2clip_video[index]
+                ancor, video_idx = self.index2clip_video[index]
                 print('self._video_clip_size[video_idx]', self._video_clip_size[video_idx])
-                clip_idx = np.random.choice(np.arange(self._video_clip_size[video_idx]),
-                                             size=self.cfg.n_global_views,
-                                             replace=False)
+                left_limit = max(0, ancor-self.span)
+                right_limit = min(ancor+self.span, self._video_clip_size[video_idx])
+                clip_idx = np.random.choice(np.arange(left_limit, right_limit),
+                                            size=self.cfg.n_global_views,
+                                            replace=False)
 
                 print('clip_idx', clip_idx)
                 indices_sorted = sorted(clip_idx)
@@ -102,6 +105,8 @@ class EpicNEvents(torch.utils.data.Dataset):
             # T C H W -> C T H W.
             frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 
+            indices_sorted = np.array(indices_sorted) - left_limit
+            print('indices_sorted 2', indices_sorted)
             return frames, indices_sorted, video_idx
 
         else:
@@ -180,61 +185,3 @@ class EpicNEvents(torch.utils.data.Dataset):
         """
         return sum(self._video_clip_size)
 
-
-class ContinuousSampler(Sampler):
-    def __init__(self, data_source):
-        super().__init__(data_source)
-        self.data_source = data_source
-
-    def __iter__(self):
-        iters = [
-            iter(range(self.data_source._start_video_idx[i],
-                       self.data_source._start_video_idx[i] + self.data_source._video_clip_size[i]))
-            for i in range(self.data_source.num_videos)
-        ]
-
-        while True:
-            try:
-                for video_idx, itr in enumerate(iters):
-                    yield next(itr)
-            except StopIteration:
-                print(f'StopIteration, redefining iterator for {video_idx} video')
-                iters[video_idx] = iter(range(self.data_source._start_video_idx[video_idx],
-                                              self.data_source._start_video_idx[video_idx] +
-                                              self.data_source._video_clip_size[video_idx]))
-                continue
-
-
-class ContinuousRandomSampler(Sampler):
-    def __init__(self, data_source, batch_size=None):
-        super().__init__(data_source)
-        self.data_source = data_source
-        self.batch_size = batch_size
-
-    def __iter__(self):
-        iters = [
-            {i: iter(range(self.data_source._start_video_idx[i],
-                           self.data_source._start_video_idx[i] + self.data_source._video_clip_size[i]))}
-            for i in range(self.data_source.num_videos)
-        ]
-
-        p = np.array([self.data_source._video_clip_size[i] for i in range(self.data_source.num_videos)])
-        p = p / p.sum()
-
-        choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
-        iteration = 0
-        while True:
-            if iteration % self.batch_size == 0:
-                choices = np.random.choice(iters, size=self.batch_size, p=p, replace=False)
-            iteration += 1
-            for choice in choices:
-                video_idx, itr = tuple(choice.items())[0]
-                try:
-                    yield next(itr)
-                except StopIteration:
-                    print(f'StopIteration, redefining iterator for {video_idx} video')
-                    iters[video_idx] = {video_idx: iter(range(self.data_source._start_video_idx[video_idx],
-                                                              self.data_source._start_video_idx[video_idx] +
-                                                              self.data_source._video_clip_size[video_idx]))}
-                    video_idx, itr = tuple(iters[video_idx].items())[0]
-                    yield next(itr)

@@ -173,11 +173,11 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
 
-    def forward(self, x, attn_type='causal', **kwargs):
+    def forward(self, x, indices=None, attn_type='causal', **kwargs):
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  if indices is None else indices # shape (1, t)
 
         # forward the GPT model itself
         tok_emb = x  # token embeddings of shape (b, t, n_embd)

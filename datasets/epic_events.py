@@ -153,7 +153,7 @@ class EpicEvents(torch.utils.data.Dataset):
                 frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 
-            return frames, index, video_idx
+            return frames, indices, video_idx
 
         else:
             raise RuntimeError(
