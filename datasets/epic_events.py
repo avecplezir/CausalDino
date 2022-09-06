@@ -140,13 +140,16 @@ class EpicEvents(torch.utils.data.Dataset):
 
             if self.cfg.temporal_aug:
                 frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-                augmentation = VideoDataAugmentationDINO()
+                augmentation = VideoDataAugmentationDINO(global_crops_scale=self.cfg.global_crops_scale)
                 frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL,
                                       two_token=self.cfg.MODEL.TWO_TOKEN)
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
             else:
                 frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-                augmentation = VideoDataAugmentationEvents(local_crops_number=self.cfg.local_crops_number)
+                augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                           local_crops_number=self.cfg.local_crops_number,
+                                                           global_crops_scale=self.cfg.global_crops_scale,
+                                                           )
                 frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 

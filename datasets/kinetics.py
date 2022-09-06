@@ -245,9 +245,10 @@ class Kinetics(torch.utils.data.Dataset):
                 frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
 
                 # Perform data augmentation.
-                augmentation = VideoDataAugmentationDINO()
+                augmentation = VideoDataAugmentationDINO(global_crops_scale=self.cfg.global_crops_scale)
                 frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL,
-                                      two_token=self.cfg.MODEL.TWO_TOKEN)
+                                      two_token=self.cfg.MODEL.TWO_TOKEN,
+                                      )
 
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]

@@ -94,7 +94,10 @@ class EpicNEvents(torch.utils.data.Dataset):
             # T H W C -> T C H W.
             frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
             # Perform data augmentation.
-            augmentation = VideoDataAugmentationEvents(local_crops_number=self.cfg.local_crops_number)
+            augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                       local_crops_number=self.cfg.local_crops_number,
+                                                       global_crops_scale=self.cfg.global_crops_scale,
+                                                       )
             frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
             # T C H W -> C T H W.
             frames = [rearrange(x, "t c h w -> c t h w") for x in frames]

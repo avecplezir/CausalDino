@@ -234,6 +234,7 @@ def train_svt(args):
     config.random_sampling = args.random_sampling
     config.global_size = args.global_size
     config.temporal_aug = (args.loss == "DINOLoss")
+    config.global_crops_scale = args.global_crops_scale
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
