@@ -169,7 +169,7 @@ class HMDB51(torch.utils.data.Dataset):
             video_container = None
             try:
                 video_container = get_video_container(
-                    self._path_to_videos[index],
+                    self._path_to_videos[index].decode('ISO-8859-1'),
                     self.cfg.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE,
                     self.cfg.DATA.DECODING_BACKEND,
                 )
