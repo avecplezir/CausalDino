@@ -740,7 +740,7 @@ class MultiCropWrapperGPT(nn.Module):
     concatenated features.
     """
     def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
-                 return_prediction_logits=True, **kwargs):
+                 return_prediction_logits=True, n_global_views=None, **kwargs):
         super(MultiCropWrapperGPT, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -751,6 +751,7 @@ class MultiCropWrapperGPT(nn.Module):
         self.predictor_past = predictor_past
         self.headprob = headprob
         self.return_prediction_logits = return_prediction_logits
+        self.n_global_views = n_global_views
 
     def forward(self, x, indices=None, **kwargs):
         # convert to list
@@ -782,7 +783,7 @@ class MultiCropWrapperGPT(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(x_enc)
             # Predict future
-            pred_future = self.predictor(x_enc)
+            pred_future = self.predictor(x_enc[:, :self.n_global_views])
             predict_past = None #ToDo: the place to write past prediction
             if self.return_prediction_logits:
                 pred_future_logits = self.headprob(pred_future)
@@ -807,7 +808,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
     concatenated features.
     """
     def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
-                 return_prediction_logits=True, **kwargs):
+                 return_prediction_logits=True, n_global_views=None, **kwargs):
         super(MultiCropWrapperPredictorProjector, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -818,6 +819,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
         self.predictor_past = predictor_past
         self.headprob = headprob
         self.return_prediction_logits = return_prediction_logits
+        self.n_global_views = n_global_views
 
     def forward(self, x, indices=None, **kwargs):
         # convert to list
@@ -848,7 +850,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(self.head(x_enc))
             # Predict future
-            pred_future = self.predictor(x_enc)
+            pred_future = self.predictor(x_enc[:, :self.n_global_views])
             predict_past = None #ToDo: the place to write past prediction
             if self.return_prediction_logits:
                 pred_future_logits = self.headprob(self.head(pred_future))

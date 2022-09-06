@@ -1,7 +1,8 @@
 
-PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="ucf101_tiny_fe_nirvana"
+PROJECT_PATH="$HOME/CausalDino"
+DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
+EXP_NAME="ucf101_tiny_fel"
+SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -27,9 +28,9 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb True \
-  --loss FeatureLoss \
+  --loss FeatureLocLoss \
   --dataset KineticsEvents \
-  --local_crops_number 0 \
+  --local_crops_number 8 \
   --n_global_views 4 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
@@ -41,5 +42,6 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5 \
-  --video_extension avi
+  --video_extension avi \
+  --dataset_level 2 \
 

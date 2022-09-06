@@ -28,8 +28,8 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 1 \
   --epochs 20 \
-  --warmup_epochs 5 \
   --weight_decay_end 0.1 \
+  --warmup_epochs 5 \
   --saveckp_freq 10 \
   --use_wandb True \
   --loss DINOLoss \
