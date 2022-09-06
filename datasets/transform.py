@@ -838,7 +838,7 @@ class VideoDataAugmentationEvents(object):
                     crops.append(self.global_transform1(local_image))
                 else:
                     crops.append(self.global_transform2(local_image))
-            for i in range(self.local_crops_number):
-                idx = int(i % len(image))
-                crops.append(self.local_transform(image[idx]))
+            # for i in range(self.local_crops_number):
+            #     idx = int(i % len(image))
+            #     crops.append(self.local_transform(image[idx]))
         return crops

@@ -125,7 +125,6 @@ class EpicEvents(torch.utils.data.Dataset):
                     index = index + 1
                 continue
 
-            print('frames', len(frames))
             # If decoding failed (wrong format, video is too short, and etc),
             # select another video.
             if frames is None:
