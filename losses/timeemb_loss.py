@@ -19,10 +19,8 @@ class TimeEmbLoss(FeatureLoss):
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        b, t = t_pred.size()[:2]
-        indices = torch.arange(t).unsqueeze(0).repeat(b, 1).cuda()
-        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, indices)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, indices, temp)
+        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, t_indices)
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, t_indices, temp)
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 

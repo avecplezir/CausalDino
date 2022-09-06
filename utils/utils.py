@@ -783,7 +783,7 @@ class MultiCropWrapperGPT(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(x_enc)
             # Predict future
-            pred_future = self.predictor(x_enc[:, :self.n_global_views])
+            pred_future = self.predictor(x_enc[:, :self.n_global_views], indices=indices)
             predict_past = None #ToDo: the place to write past prediction
             if self.return_prediction_logits:
                 pred_future_logits = self.headprob(pred_future)
@@ -850,7 +850,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             x_enc_logits = self.headprob(self.head(x_enc))
             # Predict future
-            pred_future = self.predictor(x_enc[:, :self.n_global_views])
+            pred_future = self.predictor(x_enc[:, :self.n_global_views], indices=indices)
             predict_past = None #ToDo: the place to write past prediction
             if self.return_prediction_logits:
                 pred_future_logits = self.headprob(self.head(pred_future))

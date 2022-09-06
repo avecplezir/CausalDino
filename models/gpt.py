@@ -218,8 +218,8 @@ class GPT2FoldPredictor(nn.Module):
         self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half')
         self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half')
 
-    def forward(self, x):
-        return self.gpt(x)
+    def forward(self, x, indices=None):
+        return self.gpt(x, indices=indices)
 
 
 class GPTVAEPredictor(nn.Module):
@@ -228,5 +228,5 @@ class GPTVAEPredictor(nn.Module):
         self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half')
         self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half')
 
-    def forward(self, x):
-        return self.gpt(x)
+    def forward(self, x, indices=None):
+        return self.gpt(x, indices=indices)
