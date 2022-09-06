@@ -1,8 +1,7 @@
 
-PROJECT_PATH="$HOME/CausalDino"
-DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
-EXP_NAME="ucf101_tiny_fel"
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
+DATA_PATH="$INPUT_PATH/UCF101"
+EXP_NAME="epic_tiny_fe"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -21,7 +20,7 @@ python -m torch.distributed.launch \
   train_ssl.py \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
-  --batch_size_per_gpu 16 \
+  --batch_size_per_gpu 32 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
@@ -29,12 +28,10 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb True \
-  --loss FeatureLocLoss \
-  --dataset EpicNEvents \
-  --num_workers 0 \
-  --n_global_views 3 \
-  --sampling_rate 5 \
+  --loss FeatureLoss \
+  --dataset KineticsEvents \
   --local_crops_number 0 \
+  --n_global_views 4 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --weight_decay_end 0.1 \
@@ -45,6 +42,5 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --CE_fe_c 0.5 \
   --CE_ef_c 0.5 \
-  --video_extension avi \
-  --dataset_level 2 \
+  --video_extension avi
 
