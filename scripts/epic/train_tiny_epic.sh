@@ -1,11 +1,10 @@
 #!/bin/bash
 
 SOURCE_CODE_PATH=$HOME
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
-INPUT_PATH="/mnt/data"
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
+SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
-DATA_PATH="$INPUT_PATH/videos_256"
+DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
 PORT='1024'
 
 EXP_NAME="tiny_epic"
@@ -26,12 +25,12 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --arch "timesformer" \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --exp_name $EXP_NAME \
-  --model_name get_deit_small_patch16_224 \
+  --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
   --eval_freq 1 \
   --weight_decay_end 0.1 \

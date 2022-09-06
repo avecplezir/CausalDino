@@ -507,6 +507,7 @@ def decode_events(
             local_samples.append(cur_local)
 
         frames = [global_1, global_2, *local_samples]
+        indices = 0
 
     else:
         # Perform temporal sampling from the decoded video.
