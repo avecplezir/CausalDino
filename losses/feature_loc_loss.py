@@ -32,8 +32,7 @@ class FeatureLocLoss(FeatureLoss):
 
         CE_ef_l = 0
         n = 0
-        print('(len(s_enc_proba_l[0]) / self.n_global_views', (len(s_enc_proba_l[0]) / self.n_global_views))
-        for i in range(len(s_enc_proba_l[0]) / self.n_global_views):
+        for i in range(int(len(s_enc_proba_l[0]) / self.n_global_views)):
             CE_ef_l += self.compute_loss_ef(s_enc_proba_l[:, self.n_global_views*i:self.n_global_views*(i+1)],
                                             t_pred_future_proba)
             n += 1

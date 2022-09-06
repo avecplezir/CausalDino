@@ -113,8 +113,8 @@ class FeatureLoss(DINOLoss):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ip in range(0, self.n_crops): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops): #future encoding
+        for ip in range(0, self.n_global_views): #future_prediction from past
+            for ie in range(ip + 1, self.n_global_views): #future encoding
                 loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
@@ -125,8 +125,8 @@ class FeatureLoss(DINOLoss):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ip in range(0, self.n_crops): #future_prediction from past
-            for ie in range(ip + 1, self.n_crops): #future encoding
+        for ip in range(0, self.n_global_views): #future_prediction from past
+            for ie in range(ip + 1, self.n_global_views): #future encoding
                 loss = -torch.sum(t_pred_future_proba[:, ip] * torch.log(s_enc_proba[:, ie]), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
