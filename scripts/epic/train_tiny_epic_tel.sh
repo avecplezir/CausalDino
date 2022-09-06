@@ -39,11 +39,11 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 4 \
   --block_size 64 \
-  --num_workers 20 \
+  --num_workers 10 \
   --global_crops_scale 0.14 1 \
   --dataset EpicNEvents \
   --continuous True \
-  --sampling_rate 15 \
+  --sampling_rate 10 \
   --dataset_level 3 \
   --wrapper MultiCropWrapperGPT \
   --return_prediction_logits False \
