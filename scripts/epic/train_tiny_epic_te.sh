@@ -3,7 +3,7 @@
 SOURCE_CODE_PATH=$HOME
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
-VAL_DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
+VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
 PORT='1024'
 
