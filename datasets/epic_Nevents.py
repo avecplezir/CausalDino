@@ -71,43 +71,36 @@ class EpicNEvents(torch.utils.data.Dataset):
         for i_try in range(self._num_retries):
             try:
                 ancor, video_idx = self.index2clip_video[index]
-                # print('self._video_clip_size[video_idx]', self._video_clip_size[video_idx])
                 left_limit = max(0, ancor-self.span)
                 right_limit = min(ancor+self.span, self._video_clip_size[video_idx])
                 clip_idx = np.random.choice(np.arange(left_limit, right_limit),
                                             size=self.cfg.n_global_views,
                                             replace=False)
 
-                # print('clip_idx', clip_idx)
                 indices_sorted = sorted(clip_idx)
-                # print('indices_sorted', indices_sorted)
 
                 frames = []
                 for i in range(self.cfg.n_global_views):
-                    # print('indices_sorted[i]', indices_sorted[i])
                     frames.extend(self.get_event(indices_sorted[i], video_idx))
 
-                # print('frames', len(frames))
+                # T H W C -> T C H W.
+                frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+                # Perform data augmentation.
+                augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                           local_crops_number=self.cfg.local_crops_number,
+                                                           global_crops_scale=self.cfg.global_crops_scale,
+                                                           )
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+                # T C H W -> C T H W.
+                frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+
+                indices_sorted = np.array(indices_sorted) - left_limit
+                return frames, indices_sorted, video_idx
             except:
                 if i_try > self._num_retries // 2:
                     # let's try another one
                     index = index + 1
                     continue
-
-            # T H W C -> T C H W.
-            frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-            # Perform data augmentation.
-            augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
-                                                       local_crops_number=self.cfg.local_crops_number,
-                                                       global_crops_scale=self.cfg.global_crops_scale,
-                                                       )
-            frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
-            # T C H W -> C T H W.
-            frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
-
-            indices_sorted = np.array(indices_sorted) - left_limit
-            # print('indices_sorted 2', indices_sorted)
-            return frames, indices_sorted, video_idx
 
         else:
             raise RuntimeError(
