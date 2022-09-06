@@ -202,6 +202,8 @@ def get_args_parser():
                         help="""number of frames in each clip""")
     parser.add_argument('--default_cfg', default=None, type=str, help='Video extension.')
     parser.add_argument('--full_pretrain', default=None, type=str, help='path to pretrained checkpoint')
+    parser.add_argument('--block_size', type=int, default=8,
+                        help="""block_size in gpt""")
 
     return parser
 
@@ -348,9 +350,9 @@ def train_svt(args):
              skip_last=args.skip_last,
              bottleneck_dim=args.bottleneck_dim,
          ),
-         predictor=Predictor(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+         predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                              layer_norm=layer_norm) if Predictor else None,
-         predictor_past=Predictor_past(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+         predictor_past=Predictor_past(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                                        layer_norm=layer_norm) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
@@ -361,9 +363,9 @@ def train_svt(args):
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head,
                  skip_last=args.skip_last,
                  bottleneck_dim=args.bottleneck_dim,),
-        predictor=Predictor(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+        predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                             layer_norm=layer_norm) if Predictor else None,
-        predictor_past=Predictor_past(n_embd=n_embd, block_size=args.n_global_views, model_type=args.predictor_model_type,
+        predictor_past=Predictor_past(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                                       layer_norm=layer_norm) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
@@ -564,7 +566,8 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        indices = torch.stack([idx.cuda(non_blocking=True) for idx in indices], -1)
+        # indices = torch.stack([idx.cuda(non_blocking=True) for idx in indices], -1)
+        indices = indices.cuda(non_blocking=True)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
