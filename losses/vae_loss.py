@@ -50,7 +50,7 @@ class VAELoss(TimeEmbLoss):
                 student.module.predictor.future_embgpt(s_pred[:, :ie], f_x=s_pred[:, ie], f_idx=indices[:, ie])
             s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
-            kl_loss = self.kl_loss(stats_post, stats_prior)
+            kl_loss = self.kl_loss(stats_post, stats_prior, balance=self.args.kl_balance)
             total_kl_loss += kl_loss
             for ip in range(0, ie): #future_prediction from past
                 loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
@@ -81,12 +81,12 @@ class VAELoss(TimeEmbLoss):
         dist = torchd.independent.Independent(tools.OneHotDist(logit), 1)
         return dist
 
-    def kl_loss(self, post, prior, forward=False, balance=0.8):
+    def kl_loss(self, post, prior, balance=0.8):
         kld = torchd.kl.kl_divergence
         dist = lambda x: self.get_dist(x)
         sg = lambda x: {k: v.detach() for k, v in x.items()}
-        lhs, rhs = (prior, post) if forward else (post, prior)
-        mix = balance if forward else (1 - balance)
+        lhs, rhs = (post, prior)
+        mix = 1 - balance
 
         value_lhs = kld(dist(lhs), dist(sg(rhs)))
         value_rhs = kld(dist(sg(lhs)), dist(rhs))

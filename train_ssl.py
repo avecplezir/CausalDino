@@ -208,6 +208,8 @@ def get_args_parser():
                         help="""block_size in gpt""")
     parser.add_argument('--max_len', type=int, default=8,
                         help="""max len in memory""")
+    parser.add_argument('--kl_balance', default=0.8, type=float, help='kl balance in VAE loss')
+
 
     return parser
 
