@@ -24,7 +24,7 @@ class VAELoss(TimeEmbLoss):
         CE_fe, kl = self.compute_loss_fe(s_pred, t_enc_proba, student, t_indices)
         CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, t_indices, temp)
 
-        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + 0.1*kl
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.kl_c * kl
 
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_enc_proba)

@@ -26,12 +26,16 @@ python -m torch.distributed.launch \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
-  --batch_size_per_gpu 4 \
+  --batch_size_per_gpu 32 \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb False \
   --loss MemoryLoss \
+  --max_len 16 \
+  --CE_fe_c 1. \
+  --CE_ef_c 1. \
+  --CE_ee_c 0. \
   --dataset EpicNFEvents \
   --sampling_rate 5 \
   --num_workers 10 \
@@ -44,7 +48,5 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \
   --random_sampling False \
-  --CE_fe_c 0.5 \
-  --CE_ef_c 0.5 \
   --video_extension avi
 

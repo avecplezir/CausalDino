@@ -8,9 +8,9 @@ from .te_pp_loss import TEPPLoss
 
 
 class MemoryLoss(TEPPLoss):
-    def init_memory(self, batch_size=None, maxlen=4, **kwargs):
-        self.memory = deque(maxlen=maxlen)
-        self.memory_mask = deque(maxlen=maxlen)
+    def init_memory(self, batch_size=None, **kwargs):
+        self.memory = deque(maxlen=self.args.maxlen)
+        self.memory_mask = deque(maxlen=self.args.maxlen)
         self.current_video_indices = -torch.ones(batch_size)
 
     def add_memory(self, values):
@@ -20,18 +20,18 @@ class MemoryLoss(TEPPLoss):
         # print('add_memory self.memory_mask', self.memory_mask)
 
     def remove_memory(self, video_indices):
-        print('self.current_video_indices', self.current_video_indices)
-        print('video_indices', video_indices)
+        # print('self.current_video_indices', self.current_video_indices)
+        # print('video_indices', video_indices)
         new_video_indices = ~(self.current_video_indices == video_indices)
-        print('new_video_indices', new_video_indices)
+        # print('new_video_indices', new_video_indices)
         self.current_video_indices = video_indices
-        print('before remove_memory self.memory_mask', self.memory_mask)
+        # print('before remove_memory self.memory_mask', self.memory_mask)
         for idx in torch.arange(self.batch_size)[new_video_indices]:
-            print('remove_memory idx', idx)
+            # print('remove_memory idx', idx)
             for i in range(len(self.memory)):
                 self.memory[i][idx] = torch.zeros_like(self.memory[i][idx])
                 self.memory_mask[i][idx] = 0
-        print('remove_memory self.memory_mask', self.memory_mask)
+        # print('remove_memory self.memory_mask', self.memory_mask)
 
     def retrieve_memory(self, ):
         return torch.stack(list(self.memory), 1), torch.stack(list(self.memory_mask), 1)
@@ -58,8 +58,9 @@ class MemoryLoss(TEPPLoss):
 
         CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, t_indices)
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, teacher, t_indices, temp)
+        CE_ee = self.dino_loss(t_enc_proba, s_enc_proba)
 
-        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
 
         self.add_memory(t_enc[:, 0])
         self.update_centers(t_enc_logits, None, None)
@@ -69,6 +70,7 @@ class MemoryLoss(TEPPLoss):
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
                             'CE_ef': CE_ef,
+                            'CE_ee': CE_ee,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
@@ -86,7 +88,7 @@ class MemoryLoss(TEPPLoss):
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
         # print('loss', loss.shape, memory_mask.shape)
         mask_sum = max(memory_mask.sum().item(), 1)
-        print('memory_mask', memory_mask)
+        # print('memory_mask', memory_mask)
         # print('mask_sum', mask_sum)
         total_loss = (memory_mask * loss).sum() / mask_sum
         return total_loss
@@ -104,4 +106,19 @@ class MemoryLoss(TEPPLoss):
         mask_sum = max(memory_mask.sum().item(), 1)
         # print('mask_sum', mask_sum)
         total_loss = (memory_mask * loss).sum() / mask_sum
+        return total_loss
+
+    def dino_loss(self, t_enc_proba, s_enc_proba):
+        total_loss = 0
+        n_loss_terms = 0
+        for iq in range(self.n_global_views):
+            for v in range(self.n_crops):
+                if v == iq:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = torch.sum(-t_enc_proba[:, iq] * torch.log(s_enc_proba[:, v]), dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        n_loss_terms = max(1, n_loss_terms)
+        total_loss /= n_loss_terms
         return total_loss

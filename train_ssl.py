@@ -180,6 +180,8 @@ def get_args_parser():
     parser.add_argument('--video_extension', default='avi', type=str, help='Video extension.')
     parser.add_argument('--CE_fe_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument('--CE_ef_c', default=0.5, type=float, help='loss coefficient')
+    parser.add_argument('--kl_c', default=1., type=float, help='loss coefficient')
+    parser.add_argument('--CE_ee_c', default=0.5, type=float, help='loss coefficient')
     parser.add_argument('--coef_entropy', default=1, type=float, help='loss coefficient')
     parser.add_argument("--bottleneck_dim", type=int, default=256, help="bottleneck dim in Dino Head")
     parser.add_argument('--predictor_model_type', default='gpt-micro-256', type=str, help="""Name of model""")
@@ -204,6 +206,8 @@ def get_args_parser():
     parser.add_argument('--full_pretrain', default=None, type=str, help='path to pretrained checkpoint')
     parser.add_argument('--block_size', type=int, default=64,
                         help="""block_size in gpt""")
+    parser.add_argument('--max_len', type=int, default=8,
+                        help="""max len in memory""")
 
     return parser
 

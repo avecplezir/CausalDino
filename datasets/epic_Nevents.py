@@ -131,26 +131,7 @@ class EpicNEvents(EpicEvents):
 
 
 class EpicNFEvents(EpicNEvents):
-    def init_video_clip_indices(self, ):
-        idx = 0
-        for video_idx in range(len(self._path_to_videos)):
-            container = get_video_container(
-                self._path_to_videos[video_idx],
-                self.cfg.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE,
-                self.cfg.DATA.DECODING_BACKEND,
-            )
-
-            video_size = container.streams.video[0].frames
-            fps = float(container.streams.video[0].average_rate)
-            clip_size = self.sampling_rate * self.num_frames / self.cfg.DATA.TARGET_FPS * fps
-            num_clips = int(video_size // clip_size)
-            self._start_video_idx.append(idx)
-            self._video_clip_size.append(num_clips)
-            for clip_idx in range(num_clips):
-                self.index2clip_video[idx] = clip_idx, video_idx
-                idx += 1
-
-    def __getitem__(self, index):
+      def __getitem__(self, index):
         for i_try in range(self._num_retries):
             try:
                 clip_idx, video_idx = self.index2clip_video[index]
