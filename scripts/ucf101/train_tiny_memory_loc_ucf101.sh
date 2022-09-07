@@ -30,7 +30,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb False \
+  --use_wandb True \
   --loss MemoryLoss \
   --maxlen 16 \
   --CE_fe_c 1. \

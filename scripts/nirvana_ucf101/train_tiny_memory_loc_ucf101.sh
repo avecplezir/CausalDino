@@ -1,11 +1,8 @@
 
-
-PROJECT_PATH="$HOME/CausalDino"
-DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="ucf101_tiny_memory"
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
+DATA_PATH="$INPUT_PATH/UCF101"
+EXP_NAME="ucf101_tiny_memory_loc_nirvana"
 PORT='1024'
-
 
 cd "$PROJECT_PATH" || exit
 
@@ -15,7 +12,6 @@ fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
-export CUDA_VISIBLE_DEVICES=1
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -34,16 +30,16 @@ python -m torch.distributed.launch \
   --loss MemoryLoss \
   --maxlen 16 \
   --CE_fe_c 1. \
-  --CE_ef_c 1. \
-  --CE_ee_c 0. \
+  --CE_ef_c 0.5 \
+  --CE_ee_c 0.5 \
   --dataset EpicNFEvents \
   --sampling_rate 5 \
   --num_workers 10 \
   --continuous True \
-  --local_crops_number 0 \
-  --n_global_views 1 \
+  --local_crops_number 8 \
+  --n_global_views 2 \
   --freeze_last_layer 1 \
-  --global_crops_scale 0.14 1 \
+  --global_crops_scale 0.4 1 \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \
