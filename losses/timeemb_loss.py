@@ -41,9 +41,8 @@ class TimeEmbLoss(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ie in range(1, self.n_crops):  # future encoding
-            future_index = indices[:, ie].unsqueeze(1)
-            s_pred_future = student.module.predictor.future_embgpt(s_pred[:, :ie], future_index=future_index)
+        for ie in range(1, self.n_global_views):  # future encoding
+            s_pred_future = student.module.predictor.future_embgpt(s_pred[:, :ie], future_index=indices[:, ie])
             s_pred_future_logits = student.module.headprob(s_pred_future)
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
             for ip in range(0, ie): #future_prediction from past
@@ -57,9 +56,8 @@ class TimeEmbLoss(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         # ip < ie
-        for ie in range(1, self.n_crops):  # future encoding
-            future_index = indices[:, ie].unsqueeze(1)
-            t_pred_future = teacher.predictor.future_embgpt(t_pred[:, :ie], future_index=future_index)
+        for ie in range(1, self.n_global_views):  # future encoding
+            t_pred_future = teacher.predictor.future_embgpt(t_pred[:, :ie], future_index=indices[:, ie])
             t_pred_future_logits = teacher.headprob(t_pred_future)
             t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
             for ip in range(0, ie): #future_prediction from past

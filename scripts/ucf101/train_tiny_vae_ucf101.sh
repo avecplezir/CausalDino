@@ -1,8 +1,11 @@
 
-PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="ucf101_tiny_tepp_nirvana"
+
+PROJECT_PATH="$HOME/CausalDino"
+DATA_PATH="/mnt/data/UCF101"
+EXP_NAME="ucf101_tiny_vae"
+SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 PORT='1024'
+
 
 cd "$PROJECT_PATH" || exit
 
@@ -12,6 +15,7 @@ fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
+export CUDA_VISIBLE_DEVICES=1
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -26,8 +30,8 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb True \
-  --loss TEPPLoss \
+  --use_wandb False \
+  --loss VAELoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 4 \
@@ -36,7 +40,7 @@ python -m torch.distributed.launch \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperPredictorProjector \
   --return_prediction_logits False \
-  --predictor GPT2FoldPredictor \
+  --predictor MLPVAE2FoldPredictor \
   --headproba HeadProba \
   --skip_last True \
   --random_sampling False \

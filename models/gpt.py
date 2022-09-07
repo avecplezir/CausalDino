@@ -203,7 +203,7 @@ class GPTFutureTimeEmb(GPT):
         t_f = future_index.size(1)
         # forward the GPT model itself
         tok_emb = x  # token embeddings of shape (b, t, n_embd)
-        future_pos_emb = self.transformer.wpe(future_index)  # position embeddings of shape (1, t, n_embd)
+        future_pos_emb = self.transformer.wpe(future_index.unsqueeze(1))  # position embeddings of shape (1, t, n_embd)
         x = torch.cat([future_pos_emb, tok_emb], 1)
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type)
