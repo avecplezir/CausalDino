@@ -34,16 +34,16 @@ python -m torch.distributed.launch \
   --loss MemoryLoss \
   --maxlen 16 \
   --CE_fe_c 1. \
-  --CE_ef_c 1. \
-  --CE_ee_c 0. \
+  --CE_ef_c 0.5 \
+  --CE_ee_c 0.5 \
   --dataset EpicNFEvents \
   --sampling_rate 5 \
   --num_workers 10 \
   --continuous True \
-  --local_crops_number 0 \
-  --n_global_views 1 \
+  --local_crops_number 8 \
+  --n_global_views 2 \
   --freeze_last_layer 1 \
-  --global_crops_scale 0.14 1 \
+  --global_crops_scale 0.4 1 \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \

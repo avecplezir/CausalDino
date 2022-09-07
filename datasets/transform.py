@@ -749,7 +749,10 @@ class VideoDataAugmentationDINO(object):
                 image = image.float()
                 image = image / 255.0
             if self.n_global_views == 2:
-                crops = [self.global_transform1(image), self.global_transform2(image)]
+                if random.randint(0, 1):
+                    crops = [self.global_transform1(image), self.global_transform2(image)]
+                else:
+                    crops = [self.global_transform2(image), self.global_transform1(image)]
             else:
                 crops = []
                 for _ in range(self.n_global_views):
