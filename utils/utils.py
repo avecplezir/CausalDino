@@ -860,6 +860,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
         else:
             return self.headprob(self.head(output))
 
+
 class MultiCropWrapperMemory(nn.Module):
     """
     Perform forward pass separately on each resolution input.
@@ -870,7 +871,7 @@ class MultiCropWrapperMemory(nn.Module):
     concatenated features.
     """
     def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, **kwargs):
-        super(MultiCropWrapper, self).__init__()
+        super(MultiCropWrapperMemory, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
             backbone.fc, backbone.head = nn.Identity(), nn.Identity()

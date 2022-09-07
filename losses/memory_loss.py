@@ -1,4 +1,4 @@
-__all__ = ['TEPPMemoryLoss']
+__all__ = ['MemoryLoss']
 
 import torch
 import torch.nn.functional as F
@@ -7,7 +7,7 @@ from collections import deque
 from .te_pp_loss import TEPPLoss
 
 
-class TEPPMemoryLoss(TEPPLoss):
+class MemoryLoss(TEPPLoss):
     def init_memory(self, batch_size=None, maxlen=16):
         if self.args.continuous:
             self.memory = deque(maxlen=maxlen)
