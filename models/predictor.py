@@ -137,12 +137,15 @@ class MLPVAEPredictor(nn.Module):
 
     def forward(self, x, f_x=None, f_idx=None, **kwargs):
 
-        f_x = f_x.unsqueeze(1)
-        f_idx = f_idx.unsqueeze(1)
         print('f_x, f_idx, f_pos_enc, x', f_x.shape, f_idx.shape, x.shape)
+        t = x.size(1)
+        f_x = f_x.unsqueeze(1).repeat(1, t, 1)
+        f_idx = f_idx.unsqueeze(1).repeat(1, t)
+        print('f_x, f_idx, f_pos_enc, x 2', f_x.shape, f_idx.shape, x.shape)
         x_post = self.mlp_post(torch.cat([f_x, x], -1))
         print('x_post', x_post.shape)
         stats_post = self._suff_stats_layer('ims', x_post)
+
         stoch_post = self.get_dist(stats_post).sample()
         print('stoch_post', stoch_post.shape)
 
@@ -157,6 +160,7 @@ class MLPVAEPredictor(nn.Module):
         print('stoch_post 2', stoch_post.shape)
         out = self.predictor(torch.cat([stoch_post, x], -1))
         print('out', out.shape)
+
         if self.layer_norm:
             out = self.ln_f(out)
         else:

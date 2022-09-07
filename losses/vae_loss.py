@@ -87,16 +87,11 @@ class VAELoss(TimeEmbLoss):
         sg = lambda x: {k: v.detach() for k, v in x.items()}
         lhs, rhs = (prior, post) if forward else (post, prior)
         mix = balance if forward else (1 - balance)
-        if balance == 0.5:
-          value = kld(dist(lhs) if self._discrete else dist(lhs)._dist,
-                      dist(rhs) if self._discrete else dist(rhs)._dist)
-          loss = torch.mean(torch.maximum(value, free))
-        else:
-          value_lhs = kld(dist(lhs) if self._discrete else dist(lhs)._dist,
-                                  dist(sg(rhs)) if self._discrete else dist(sg(rhs))._dist)
-          value_rhs = kld(dist(sg(lhs)) if self._discrete else dist(sg(lhs))._dist,
-                          dist(rhs) if self._discrete else dist(rhs)._dist)
-          loss_lhs = torch.maximum(torch.mean(value_lhs), torch.Tensor([free])[0])
-          loss_rhs = torch.maximum(torch.mean(value_rhs), torch.Tensor([free])[0])
-          loss = mix * loss_lhs + (1 - mix) * loss_rhs
+
+        value_lhs = kld(dist(lhs), dist(sg(rhs)))
+        value_rhs = kld(dist(sg(lhs)), dist(rhs))
+
+        loss_lhs = torch.maximum(torch.mean(value_lhs), torch.Tensor([free])[0])
+        loss_rhs = torch.maximum(torch.mean(value_rhs), torch.Tensor([free])[0])
+        loss = mix * loss_lhs + (1 - mix) * loss_rhs
         return loss
