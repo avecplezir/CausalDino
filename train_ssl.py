@@ -206,10 +206,9 @@ def get_args_parser():
     parser.add_argument('--full_pretrain', default=None, type=str, help='path to pretrained checkpoint')
     parser.add_argument('--block_size', type=int, default=64,
                         help="""block_size in gpt""")
-    parser.add_argument('--max_len', type=int, default=8,
+    parser.add_argument('--maxlen', type=int, default=8,
                         help="""max len in memory""")
     parser.add_argument('--kl_balance', default=0.8, type=float, help='kl balance in VAE loss')
-
 
     return parser
 

@@ -58,7 +58,7 @@ class EpicEvents(torch.utils.data.Dataset):
             video_size = container.streams.video[0].frames
             fps = float(container.streams.video[0].average_rate)
             clip_size = self.sampling_rate * self.num_frames / self.cfg.DATA.TARGET_FPS * fps
-            num_clips = int(video_size // clip_size)
+            num_clips = max(int(video_size // clip_size), 1)
             self._start_video_idx.append(idx)
             self._video_clip_size.append(num_clips)
             for clip_idx in range(num_clips):

@@ -2,7 +2,7 @@
 
 PROJECT_PATH="$HOME/CausalDino"
 DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="ucf101_tiny_memory"
+EXP_NAME="ucf101_tiny_memory_loc"
 SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 PORT='1024'
 
