@@ -2,11 +2,12 @@ __all__ = ['VAELoss']
 
 import torch
 import torch.nn.functional as F
+from torch import distributions as torchd
 
-from .feature_loss import FeatureLoss
+from .timeemb_loss import TimeEmbLoss
 
 
-class VAELoss(FeatureLoss):
+class VAELoss(TimeEmbLoss):
     def forward(self, student_output, teacher_output, epoch, student=None, teacher=None, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
@@ -19,11 +20,8 @@ class VAELoss(FeatureLoss):
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        b, t = t_pred.size()[:2]
-        indices = torch.arange(t).unsqueeze(0).repeat(b, 1)
-        print('indices', indices.shape)
-        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, indices)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, indices, temp)
+        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, t_indices)
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, t_indices, temp)
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 
@@ -45,9 +43,9 @@ class VAELoss(FeatureLoss):
         n_loss_terms = 0
         # ip < ie
         for ie in range(1, self.n_crops):  # future encoding
-            future_index = indices[:, ie].unsqueeze(1)
-            s_pred_future = student.module.predictor.future_embgpt(s_pred[:, :ie], future_index=future_index)
-            s_pred_future_logits = student.module.headprob(s_pred_future)
+            future_index = indices[:, ie]
+            s_pred_future, stoch_post, stats_post, stats_prior = student.module.predictor.future_embgpt(s_pred[:, ie], f_x=s_pred[:, ], f_idx=future_index)
+            s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
             for ip in range(0, ie): #future_prediction from past
                 loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
@@ -62,7 +60,7 @@ class VAELoss(FeatureLoss):
         # ip < ie
         for ie in range(1, self.n_crops):  # future encoding
             future_index = indices[:, ie].unsqueeze(1)
-            t_pred_future = teacher.predictor.future_embgpt(t_pred[:, :ie], future_index=future_index)
+            t_pred_future = teacher.predictor.future_embgpt(t_pred[:, :ie], f_idx=future_index)
             t_pred_future_logits = teacher.headprob(t_pred_future)
             t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
             for ip in range(0, ie): #future_prediction from past
@@ -71,3 +69,24 @@ class VAELoss(FeatureLoss):
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
+
+    def kl_loss(self, post, prior, forward, balance, free, scale):
+        kld = torchd.kl.kl_divergence
+        dist = lambda x: self.get_dist(x)
+        sg = lambda x: {k: v.detach() for k, v in x.items()}
+        lhs, rhs = (prior, post) if forward else (post, prior)
+        mix = balance if forward else (1 - balance)
+        if balance == 0.5:
+          value = kld(dist(lhs) if self._discrete else dist(lhs)._dist,
+                      dist(rhs) if self._discrete else dist(rhs)._dist)
+          loss = torch.mean(torch.maximum(value, free))
+        else:
+          value_lhs = value = kld(dist(lhs) if self._discrete else dist(lhs)._dist,
+                                  dist(sg(rhs)) if self._discrete else dist(sg(rhs))._dist)
+          value_rhs = kld(dist(sg(lhs)) if self._discrete else dist(sg(lhs))._dist,
+                          dist(rhs) if self._discrete else dist(rhs)._dist)
+          loss_lhs = torch.maximum(torch.mean(value_lhs), torch.Tensor([free])[0])
+          loss_rhs = torch.maximum(torch.mean(value_rhs), torch.Tensor([free])[0])
+          loss = mix * loss_lhs + (1 - mix) * loss_rhs
+        loss *= scale
+        return loss, value

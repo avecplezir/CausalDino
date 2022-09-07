@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
+from torch import distributions as torchd
+
 import torch.nn.functional as F
 from utils.utils import trunc_normal_
+import gpt_utils as tools
 
 
 class DINOHead(nn.Module):
@@ -103,22 +106,45 @@ class MLPfeaturePredictorTimeEmb(nn.Module):
         super().__init__()
         self.mlp_post = DINOHead(2*n_embd)
         self.mlp_prior = DINOHead(2 * n_embd)
-        z_dim = 16
-        self.predictor = DINOHead(n_embd + z_dim)
+
+        self._stoch = 32
+        self._discrete = 32
+        self.predictor = DINOHead(n_embd + self._stoch * self._discrete)
         self.wpe = nn.Embedding(block_size, n_embd)
 
+        self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
+        self._obs_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
+
+    def get_dist(self, state, dtype=None):
+        logit = state['logit']
+        dist = torchd.independent.Independent(tools.OneHotDist(logit), 1)
+        return dist
+
+    def _suff_stats_layer(self, name, x):
+        if name == 'ims':
+            x = self._ims_stat_layer(x)
+        elif name == 'obs':
+            x = self._obs_stat_layer(x)
+        else:
+            raise NotImplementedError
+        logit = x.reshape(list(x.shape[:-1]) + [self._stoch, self._discrete])
+        return {'logit': logit}
+
     def forward(self, x, f_x=None, f_idx=None, **kwargs):
-        dist_post = self.mlp_post(torch.cat([f_x, x], 1))
+        x_post = self.mlp_post(torch.cat([f_x, x], 1))
+        stats_post = self._suff_stats_layer('ims', x_post)
+        stoch_post = self.get_dist(stats_post).sample()
 
         fp_emb = self.wpe(f_idx)
-        dist_prior = self.mlp_prior(torch.cat([fp_emb, x], 1))
+        x_prior = self.mlp_prior(torch.cat([fp_emb, x], 1))
+        stats_prior = self._suff_stats_layer('ims', x_prior)
 
-        z_post = dist_post.sample()
-
-        out = self.predictor(torch.cat([z_post, x], 1))
+        shape = list(stoch_post.shape[:-2]) + [self._stoch * self._discrete]
+        stoch_post = stoch_post.reshape(shape)
+        out = self.predictor(torch.cat([stoch_post, x], 1))
         out = nn.functional.normalize(out, dim=-1, p=2)
 
-        return out, dist_post, dist_prior
+        return out, stoch_post, stats_post, stats_prior
 
 
 class MLPVAEPredictor(nn.Module):

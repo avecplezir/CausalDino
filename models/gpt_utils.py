@@ -6,6 +6,8 @@ from ast import literal_eval
 
 import numpy as np
 import torch
+from torch.nn import functional as F
+from torch import distributions as torchd
 
 # -----------------------------------------------------------------------------
 
@@ -98,3 +100,46 @@ class CfgNode:
             # overwrite the attribute
             print("command line overwriting config attribute %s with %s" % (key, val))
             setattr(obj, leaf_key, val)
+
+
+class OneHotDist(torchd.one_hot_categorical.OneHotCategorical):
+
+  def __init__(self, logits=None, probs=None):
+    super().__init__(logits=logits, probs=probs)
+
+  def mode(self):
+    _mode = F.one_hot(torch.argmax(super().logits, axis=-1), super().logits.shape[-1])
+    return _mode.detach() + super().logits - super().logits.detach()
+
+  def sample(self, sample_shape=(), seed=None):
+    if seed is not None:
+      raise ValueError('need to check')
+    sample = super().sample(sample_shape)
+    probs = super().probs
+    while len(probs.shape) < len(sample.shape):
+      probs = probs[None]
+    sample += probs - probs.detach()
+    return sample
+
+
+class ContDist:
+
+  def __init__(self, dist=None):
+    super().__init__()
+    self._dist = dist
+    self.mean = dist.mean
+
+  def __getattr__(self, name):
+    return getattr(self._dist, name)
+
+  def entropy(self):
+    return self._dist.entropy()
+
+  def mode(self):
+    return self._dist.mean
+
+  def sample(self, sample_shape=()):
+    return self._dist.rsample(sample_shape)
+
+  def log_prob(self, x):
+    return self._dist.log_prob(x)
