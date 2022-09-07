@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import distributions as torchd
 
 from .timeemb_loss import TimeEmbLoss
+import models.gpt_utils as tools
 
 
 class VAELoss(TimeEmbLoss):
@@ -44,7 +45,8 @@ class VAELoss(TimeEmbLoss):
         # ip < ie
         for ie in range(1, self.n_crops):  # future encoding
             future_index = indices[:, ie]
-            s_pred_future, stoch_post, stats_post, stats_prior = student.module.predictor.future_embgpt(s_pred[:, ie], f_x=s_pred[:, ], f_idx=future_index)
+            s_pred_future, stoch_post, stats_post, stats_prior = \
+                student.module.predictor.future_embgpt(s_pred[:, ie], f_x=s_pred[:, ], f_idx=future_index)
             s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
             for ip in range(0, ie): #future_prediction from past
@@ -60,8 +62,9 @@ class VAELoss(TimeEmbLoss):
         # ip < ie
         for ie in range(1, self.n_crops):  # future encoding
             future_index = indices[:, ie].unsqueeze(1)
-            t_pred_future = teacher.predictor.future_embgpt(t_pred[:, :ie], f_idx=future_index)
-            t_pred_future_logits = teacher.headprob(t_pred_future)
+            t_pred_future, stoch_post, stats_post, stats_prior = \
+                teacher.predictor.future_embgpt(t_pred[:, :ie], f_idx=future_index)
+            t_pred_future_logits = teacher.headprob(teacher.head(t_pred_future))
             t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
             for ip in range(0, ie): #future_prediction from past
                 loss = -torch.sum(t_pred_future_proba[:, ip] * torch.log(s_enc_proba[:, ie]), dim=-1)
@@ -69,6 +72,11 @@ class VAELoss(TimeEmbLoss):
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
+
+    def get_dist(self, state, dtype=None):
+        logit = state['logit']
+        dist = torchd.independent.Independent(tools.OneHotDist(logit), 1)
+        return dist
 
     def kl_loss(self, post, prior, forward, balance, free, scale):
         kld = torchd.kl.kl_divergence

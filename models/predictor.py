@@ -4,7 +4,7 @@ from torch import distributions as torchd
 
 import torch.nn.functional as F
 from utils.utils import trunc_normal_
-import gpt_utils as tools
+import models.gpt_utils as tools
 
 
 class DINOHead(nn.Module):
@@ -101,14 +101,16 @@ class MLPfeaturePredictor(nn.Module):
         return x
 
 
-class MLPfeaturePredictorTimeEmb(nn.Module):
+class MLPVAEPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, **kwargs):
         super().__init__()
-        self.mlp_post = DINOHead(2*n_embd)
-        self.mlp_prior = DINOHead(2 * n_embd)
-
         self._stoch = 32
         self._discrete = 32
+        self._hidden = 256
+
+        self.mlp_post = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
+        self.mlp_prior = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
+
         self.predictor = DINOHead(n_embd + self._stoch * self._discrete)
         self.wpe = nn.Embedding(block_size, n_embd)
 
@@ -147,11 +149,11 @@ class MLPfeaturePredictorTimeEmb(nn.Module):
         return out, stoch_post, stats_post, stats_prior
 
 
-class MLPVAEPredictor(nn.Module):
+class MLPVAE2FoldPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=4, **kwargs):
         super().__init__()
         self.wpe = nn.Embedding(block_size, n_embd)
-        self.future_embgpt = MLPfeaturePredictorTimeEmb(n_embd)
+        self.future_embgpt = MLPVAEPredictor(n_embd)
 
     def forward(self, x, indices=None):
         pos = self.wpe(indices)

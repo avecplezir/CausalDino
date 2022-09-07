@@ -1,7 +1,7 @@
 
 
 PROJECT_PATH="$HOME/CausalDino"
-DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
+DATA_PATH="/mnt/data/UCF101"
 EXP_NAME="ucf101_tiny_tepp"
 SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 PORT='1024'
