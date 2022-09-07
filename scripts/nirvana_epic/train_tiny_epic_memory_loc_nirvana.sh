@@ -31,6 +31,7 @@ python -m torch.distributed.launch \
   --use_wandb True \
   --loss MemoryLoss \
   --maxlen 128 \
+  --block_size 128 \
   --CE_fe_c 1. \
   --CE_ef_c 0.5 \
   --CE_ee_c 0.5 \
