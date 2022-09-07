@@ -661,13 +661,15 @@ def undo_normalize(tensor, mean, std):
 
 
 class VideoDataAugmentationDINO(object):
-    def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4), local_crops_number=8):
+    def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4),
+                 local_crops_number=8, n_global_views=2, size=224):
         self.global_crops_scale = global_crops_scale
         self.local_crops_scale = local_crops_scale
         self.local_crops_number = local_crops_number
 
         self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
-        self.size = 224
+        self.size = size
+        self.n_global_views = n_global_views
 
     @staticmethod
     def flip_and_color_jitter(frames):
@@ -746,7 +748,15 @@ class VideoDataAugmentationDINO(object):
             if image.dtype == torch.uint8:
                 image = image.float()
                 image = image / 255.0
-            crops = [self.global_transform1(image), self.global_transform2(image)]
+            if self.n_global_views == 2:
+                crops = [self.global_transform1(image), self.global_transform2(image)]
+            else:
+                crops = []
+                for _ in range(self.n_global_views):
+                    if random.randint(0, 1):
+                        crops.append(self.global_transform1(image))
+                    else:
+                        crops.append(self.global_transform2(image))
             for _ in range(self.local_crops_number):
                 crops.append(self.local_transform(image))
         return crops

@@ -49,8 +49,6 @@ class MemoryLoss(TEPPLoss):
 
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
-        print('memory', memory_enc.shape)
-        print('memory_mask', memory_mask.shape)
 
         CE_fe = self.compute_loss_fe(memory_enc, t_enc_proba, student, t_indices)
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, teacher, t_indices, temp)

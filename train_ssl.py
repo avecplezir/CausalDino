@@ -550,12 +550,11 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                     fp16_scaler, args, cfg=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
-    for it, (images, indices, video_idx, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+    for it, (images, indices, video_indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         if args.continuous:
             def all_unique(item):
                 return len(set(item)) == len(item)
-            # print('video_idx', video_idx)
-            # assert all_unique(video_idx), 'videos in the batch are not unique!'
+            assert all_unique(video_indices), 'videos in the batch are not unique!'
         # update step for wandb
         it = len(data_loader) * epoch + it  # global training iteration
         step += args.batch_size
@@ -574,7 +573,8 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             student_output = student(images, indices=indices)
             teacher_output = teacher(images[:args.n_global_views], indices=indices)  # only the 2 global views pass through the teacher
-            loss, dict_losses = dino_loss(student_output, teacher_output, epoch, student=student, teacher=teacher)
+            loss, dict_losses = dino_loss(student_output, teacher_output, epoch,
+                                          student=student, teacher=teacher, video_indices=video_indices)
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)

@@ -32,7 +32,9 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --dataset KineticsEvents \
+  --dataset EpicNFEvents \
+  --sampling_rate 10 \
+  --continuous True \
   --local_crops_number 0 \
   --n_global_views 1 \
   --freeze_last_layer 1 \
