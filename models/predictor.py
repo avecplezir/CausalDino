@@ -152,10 +152,13 @@ class MLPVAEPredictor(nn.Module):
 class MLPVAE2FoldPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=4, **kwargs):
         super().__init__()
+        print('n_embd', n_embd)
+        print('block_size', block_size)
         self.wpe = nn.Embedding(block_size, n_embd)
-        self.future_embgpt = MLPVAEPredictor(n_embd)
+        self.future_embgpt = MLPVAEPredictor(n_embd=n_embd, block_size=block_size, **kwargs)
 
     def forward(self, x, indices=None):
+        print('indices', indices.shape)
         pos = self.wpe(indices)
         x = x + pos
         return x

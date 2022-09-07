@@ -200,7 +200,7 @@ class GPTFutureTimeEmb(GPT):
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
 
-        t_f = future_index.size(1)
+        t_f = 1
         # forward the GPT model itself
         tok_emb = x  # token embeddings of shape (b, t, n_embd)
         future_pos_emb = self.transformer.wpe(future_index.unsqueeze(1))  # position embeddings of shape (1, t, n_embd)
