@@ -65,8 +65,9 @@ class EpicEvents(torch.utils.data.Dataset):
                 self.index2clip_video[idx] = clip_idx, video_idx
                 idx += 1
 
-        vc = np.array(self._video_clip_size)
-        print('video_clip_size stats, mean, std, max, min', vc.mean(), vc.std(), vc.max(), vc.min())
+        if self._video_clip_size:
+            vc = np.array(self._video_clip_size)
+            print('video_clip_size stats, mean, std, max, min', vc.mean(), vc.std(), vc.max(), vc.min())
 
     def __getitem__(self, index):
 

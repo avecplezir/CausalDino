@@ -7,7 +7,7 @@ VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
 PORT='1024'
 
-EXP_NAME="tiny_epic_memory"
+EXP_NAME="tiny_epic_memory_loc"
 
 cd "$PROJECT_PATH" || exit
 
@@ -35,18 +35,18 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --maxlen 64 \
+  --maxlen 128 \
   --CE_fe_c 1. \
-  --CE_ef_c 1. \
-  --CE_ee_c 0. \
+  --CE_ef_c 0.5 \
+  --CE_ee_c 0.5 \
   --dataset EpicNFEvents \
   --sampling_rate 10 \
   --num_workers 10 \
   --continuous True \
-  --local_crops_number 0 \
-  --n_global_views 1 \
+  --local_crops_number 8 \
+  --n_global_views 2 \
   --freeze_last_layer 1 \
-  --global_crops_scale 0.14 1 \
+  --global_crops_scale 0.4 1 \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \
