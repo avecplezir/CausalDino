@@ -207,7 +207,11 @@ class GPTFutureTimeEmb(GPT):
         x = torch.cat([future_pos_emb, tok_emb], 1)
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type)
-        x = nn.functional.normalize(x, dim=-1, p=2)
+
+        if self.layer_norm:
+            x = self.transformer.ln_f(x)
+        else:
+            x = nn.functional.normalize(x, dim=-1, p=2)
 
         # return all tokens except the conditioning
         return x[:, t_f:]

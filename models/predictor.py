@@ -102,16 +102,19 @@ class MLPfeaturePredictor(nn.Module):
 
 
 class MLPVAEPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=None, **kwargs):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
         super().__init__()
         self._stoch = 32
         self._discrete = 32
-        self._hidden = 256
+        self._hidden = n_embd
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
 
         self.mlp_post = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
         self.mlp_prior = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
 
-        self.predictor = DINOHead(n_embd + self._stoch * self._discrete)
+        self.predictor = DINOHead(n_embd + self._stoch * self._discrete, bottleneck_dim=self._hidden)
         self.wpe = nn.Embedding(block_size, n_embd)
 
         self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
@@ -133,32 +136,42 @@ class MLPVAEPredictor(nn.Module):
         return {'logit': logit}
 
     def forward(self, x, f_x=None, f_idx=None, **kwargs):
-        x_post = self.mlp_post(torch.cat([f_x, x], 1))
+
+        f_x = f_x.unsqueeze(1)
+        f_idx = f_idx.unsqueeze(1)
+        print('f_x, f_idx, f_pos_enc, x', f_x.shape, f_idx.shape, x.shape)
+        x_post = self.mlp_post(torch.cat([f_x, x], -1))
+        print('x_post', x_post.shape)
         stats_post = self._suff_stats_layer('ims', x_post)
         stoch_post = self.get_dist(stats_post).sample()
+        print('stoch_post', stoch_post.shape)
 
         fp_emb = self.wpe(f_idx)
-        x_prior = self.mlp_prior(torch.cat([fp_emb, x], 1))
+        x_prior = self.mlp_prior(torch.cat([fp_emb, x], -1))
+        print('x_prior', x_prior.shape)
         stats_prior = self._suff_stats_layer('ims', x_prior)
 
         shape = list(stoch_post.shape[:-2]) + [self._stoch * self._discrete]
+        print('shape', shape)
         stoch_post = stoch_post.reshape(shape)
-        out = self.predictor(torch.cat([stoch_post, x], 1))
-        out = nn.functional.normalize(out, dim=-1, p=2)
+        print('stoch_post 2', stoch_post.shape)
+        out = self.predictor(torch.cat([stoch_post, x], -1))
+        print('out', out.shape)
+        if self.layer_norm:
+            out = self.ln_f(out)
+        else:
+            out = nn.functional.normalize(out, dim=-1, p=2)
 
         return out, stoch_post, stats_post, stats_prior
 
 
 class MLPVAE2FoldPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=4, **kwargs):
+    def __init__(self, n_embd=256, block_size=4, layer_norm=False, **kwargs):
         super().__init__()
-        print('n_embd', n_embd)
-        print('block_size', block_size)
         self.wpe = nn.Embedding(block_size, n_embd)
-        self.future_embgpt = MLPVAEPredictor(n_embd=n_embd, block_size=block_size, **kwargs)
+        self.future_embgpt = MLPVAEPredictor(n_embd=n_embd, block_size=block_size, layer_norm=layer_norm, **kwargs)
 
     def forward(self, x, indices=None):
-        print('indices', indices.shape)
         pos = self.wpe(indices)
         x = x + pos
         return x
