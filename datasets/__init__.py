@@ -5,8 +5,8 @@ from .ucf101 import UCF101, UCFReturnIndexDataset
 from .hmdb51 import HMDB51, HMDBReturnIndexDataset
 from .kinetics_events import KineticsEvents
 from .ucf101_events import UCF101Events, UCFEventsReturnIndexDataset
-from .epic_events import EpicEvents, ContinuousRandomSampler, ContinuousBeg2EndSampler
-from .epic_Nevents import EpicNEvents
+from .epic_events import EpicEvents, ContinuousRandomSampler, ContinuousBeg2EndSampler, ContinuousBeg2EndHardSampler
+from .epic_Nevents import EpicNEvents, EpicNFEvents
 
 # from .minerl import MineRL
 # from .ssv2 import Ssv2  # noqa

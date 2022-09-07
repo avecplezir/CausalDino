@@ -244,7 +244,7 @@ def train_svt(args):
                       extension=args.video_extension, level=args.dataset_level,
                       pseudo_length=args.pseudo_length)
     if args.continuous:
-        sampler = datasets.ContinuousBeg2EndSampler(dataset, batch_size=args.batch_size)
+        sampler = datasets.ContinuousBeg2EndHardSampler(dataset, batch_size=args.batch_size)
     else:
         sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
@@ -406,6 +406,7 @@ def train_svt(args):
         start_video_idx=dataset._start_video_idx if args.continuous else None,
         video_clip_size=dataset._video_clip_size if args.continuous else None,
         index2clip_video=dataset.index2clip_video if args.continuous else None,
+        batch_size=args.batch_size_per_gpu,
     ).cuda()
 
     # ============ preparing optimizer ... ============

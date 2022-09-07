@@ -40,7 +40,7 @@ class FeatureLoss(DINOLoss):
             self.memory = None
             self.init_memory(video_clip_size=video_clip_size, batch_size=batch_size)
 
-    def init_memory(self, video_clip_size=None):
+    def init_memory(self, video_clip_size=None, batch_size=None, **kwargs):
         # self.register_buffer("memory", -torch.ones(sum(video_clip_size)))
         self.memory = -np.ones(sum(video_clip_size))
 

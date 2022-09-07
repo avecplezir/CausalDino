@@ -164,7 +164,7 @@ class EpicNFEvents(EpicNEvents):
                                                          global_crops_scale=self.cfg.global_crops_scale,
                                                          n_global_views=self.cfg.n_global_views,
                                                          )
-                frames = augmentation(frames, from_list=False)
+                frames = augmentation(frames[0], from_list=False)
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 
