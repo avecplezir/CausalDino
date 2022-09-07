@@ -31,7 +31,7 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb True \
-  --loss TEPPMemoryLoss \
+  --loss MemoryLoss \
   --dataset KineticsEvents \
   --local_crops_number 0 \
   --n_global_views 1 \
