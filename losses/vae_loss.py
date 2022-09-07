@@ -81,7 +81,7 @@ class VAELoss(TimeEmbLoss):
         dist = torchd.independent.Independent(tools.OneHotDist(logit), 1)
         return dist
 
-    def kl_loss(self, post, prior, forward=False, balance=0.8, free=0.):
+    def kl_loss(self, post, prior, forward=False, balance=0.8):
         kld = torchd.kl.kl_divergence
         dist = lambda x: self.get_dist(x)
         sg = lambda x: {k: v.detach() for k, v in x.items()}
@@ -91,7 +91,5 @@ class VAELoss(TimeEmbLoss):
         value_lhs = kld(dist(lhs), dist(sg(rhs)))
         value_rhs = kld(dist(sg(lhs)), dist(rhs))
 
-        loss_lhs = torch.maximum(torch.mean(value_lhs), torch.Tensor([free])[0])
-        loss_rhs = torch.maximum(torch.mean(value_rhs), torch.Tensor([free])[0])
-        loss = mix * loss_lhs + (1 - mix) * loss_rhs
-        return loss
+        loss = mix * value_lhs + (1 - mix) * value_rhs
+        return loss.mean()
