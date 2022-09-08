@@ -28,7 +28,7 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --maxlen 16 \
+  --maxlen 8 \
   --CE_fe_c 1. \
   --CE_ef_c 0.5 \
   --CE_ee_c 0.5 \
