@@ -101,6 +101,7 @@ class EpicNEvents(EpicEvents):
                 n_parts=self.cfg.n_parts,
                 random_sampling=self.cfg.random_sampling,
                 mode='ordered',
+                temporal_aug_memory=self.cfg.temporal_aug_memory
             )
         except Exception as e:
             print(
@@ -145,7 +146,10 @@ class EpicNFEvents(EpicNEvents):
                                                          global_crops_scale=self.cfg.global_crops_scale,
                                                          n_global_views=self.cfg.n_global_views,
                                                          )
-                frames = augmentation(frames[0], from_list=False)
+                if self.cfg.temporal_aug_memory:
+                    frames = augmentation(frames, from_list=True)
+                else:
+                    frames = augmentation(frames[0], from_list=False)
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 

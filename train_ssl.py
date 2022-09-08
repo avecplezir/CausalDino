@@ -209,6 +209,8 @@ def get_args_parser():
     parser.add_argument('--maxlen', type=int, default=8,
                         help="""max len in memory""")
     parser.add_argument('--kl_balance', default=0.8, type=float, help='kl balance in VAE loss')
+    parser.add_argument('--temporal_aug_memory', type=utils.bool_flag, default=False,
+                        help="""Whether to use continuous sampler""")
 
     return parser
 
@@ -242,6 +244,7 @@ def train_svt(args):
     config.global_size = args.global_size
     config.temporal_aug = (args.loss == "DINOLoss")
     config.global_crops_scale = args.global_crops_scale
+    config.temporal_aug_memory = args.temporal_aug_memory
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
