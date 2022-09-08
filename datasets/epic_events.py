@@ -292,7 +292,7 @@ class ContinuousBeg2EndHardSampler(ContinuousBeg2EndSampler):
         current_choices = set(current_choices)
         current_choices_np = np.array(list(current_choices))
         offset = full_indices.difference(current_choices)
-        while True:
+        for _ in range(len(self)):
             for idx, video_idx in enumerate(current_choices_np):
                 try:
                     yield next(iters[video_idx])

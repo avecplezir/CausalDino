@@ -35,12 +35,12 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --maxlen 64 \
+  --maxlen 16 \
   --CE_fe_c 1. \
   --CE_ef_c 1. \
   --CE_ee_c 0. \
   --dataset EpicNFEvents \
-  --sampling_rate 10 \
+  --sampling_rate 5 \
   --num_workers 10 \
   --continuous True \
   --local_crops_number 0 \
