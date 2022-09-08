@@ -1,7 +1,8 @@
 
 
 PROJECT_PATH="$HOME/CausalDino"
-DATA_PATH="/mnt/data/UCF101"
+DATA_PATH_VAL="/mnt/data/UCF101"
+DATA_PATH="/mnt/data/ucf101/videos/JumpRope"
 EXP_NAME="ucf101_tiny_memory"
 SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 PORT='1024'
@@ -22,7 +23,7 @@ python -m torch.distributed.launch \
   --master_port="$PORT" \
   train_ssl.py \
   --data_path "${DATA_PATH}" \
-  --val_data_dir "${DATA_PATH}" \
+  --val_data_dir "${DATA_PATH_VAL}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
