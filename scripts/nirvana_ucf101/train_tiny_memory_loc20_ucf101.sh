@@ -1,7 +1,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="ucf101_tiny_memory_nirvana"
+EXP_NAME="ucf101_tiny_memory_loc20_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -36,8 +36,8 @@ python -m torch.distributed.launch \
   --sampling_rate 20 \
   --num_workers 10 \
   --continuous True \
-  --local_crops_number 0 \
-  --n_global_views 1 \
+  --local_crops_number 8 \
+  --n_global_views 2 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --weight_decay_end 0.1 \
