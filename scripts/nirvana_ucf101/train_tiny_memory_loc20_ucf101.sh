@@ -28,10 +28,10 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --maxlen 4 \
+  --maxlen 8 \
   --CE_fe_c 1. \
-  --CE_ef_c 1. \
-  --CE_ee_c 0. \
+  --CE_ef_c 0.5 \
+  --CE_ee_c 0.5 \
   --dataset EpicNFEvents \
   --sampling_rate 20 \
   --num_workers 10 \
@@ -39,7 +39,7 @@ python -m torch.distributed.launch \
   --local_crops_number 8 \
   --n_global_views 2 \
   --freeze_last_layer 1 \
-  --global_crops_scale 0.14 1 \
+  --global_crops_scale 0.4 1 \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \
