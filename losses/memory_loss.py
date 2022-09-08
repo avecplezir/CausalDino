@@ -67,7 +67,7 @@ class MemoryLoss(TEPPLoss):
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
-        return total_loss, {'CE': total_loss,
+        return total_loss, {'CE': total_loss / (self.args.CE_fe_c + self.args.CE_ef_c + self.args.CE_ee_c),
                             'CE_fe': CE_fe,
                             'CE_ef': CE_ef,
                             'CE_ee': CE_ee,
