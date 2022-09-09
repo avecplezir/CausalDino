@@ -34,8 +34,7 @@ python -m torch.distributed.launch \
   --loss MemoryLoss \
   --maxlen 8 \
   --CE_fe_c 0. \
-  --CE_ef_c 0.2 \
-  --CE_ee_c 0.8 \
+  --memory_balance_loss True \
   --dataset EpicNFEvents \
   --temporal_aug_memory True \
   --num_workers 10 \
