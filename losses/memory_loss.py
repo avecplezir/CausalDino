@@ -56,9 +56,10 @@ class MemoryLoss(TEPPLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
-        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, t_indices)
-        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, teacher, t_indices, temp)
-        CE_ee = self.dino_loss(t_enc_proba, s_enc_proba)
+        indices = torch.arange(memory_enc.size(1)).unsqueeze(1).repeat(memory_enc.size(0), 1).to(memory_enc.device)
+        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, indices) if self.args.CE_fe_c else 0.
+        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, teacher, indices, temp) if self.args.CE_ef_c else 0.
+        CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
 
@@ -80,7 +81,7 @@ class MemoryLoss(TEPPLoss):
     def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, indices):
         # print('compute_loss_fe')
         # print('memory_enc, t_enc_proba', memory_enc.shape, t_enc_proba.shape)
-        s_pred_future = student.module.predictor(memory_enc)
+        s_pred_future = student.module.predictor(memory_enc, indices=indices)
         # print('s_pred_future', s_pred_future.shape)
         s_pred_future_logits = student.module.head(s_pred_future)
         # print('s_pred_future_logits', s_pred_future_logits.shape)
@@ -99,7 +100,7 @@ class MemoryLoss(TEPPLoss):
     def compute_loss_ef(self, s_enc_proba, memory_enc, memory_mask, teacher, indices, temp):
         # print('compute_loss_ef')
         # print('memory_enc, s_enc_proba', memory_enc.shape, s_enc_proba.shape)
-        t_pred_future = teacher.predictor(memory_enc)
+        t_pred_future = teacher.predictor(memory_enc, indices=indices)
         # print('t_pred_future', t_pred_future.shape)
         t_pred_future_logits = teacher.head(t_pred_future)
         # print('t_pred_future_logits', t_pred_future_logits.shape)

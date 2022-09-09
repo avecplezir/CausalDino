@@ -100,6 +100,33 @@ class MLPfeaturePredictor(nn.Module):
         x = nn.functional.normalize(x, dim=-1, p=2)
         return x
 
+class MLPPosPredictor(nn.Module):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+        super().__init__()
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
+        self.predictor = DINOHead(n_embd, bottleneck_dim=n_embd, nlayers=2)
+        self.wpe = nn.Embedding(block_size, n_embd)
+
+    def forward(self, x, indices=None, **kwargs):
+        fp_emb = self.wpe(indices)
+        out = self.predictor(torch.cat([fp_emb, x], -1))
+
+        if self.layer_norm:
+            out = self.ln_f(out)
+        else:
+            out = nn.functional.normalize(out, dim=-1, p=2)
+
+        return out
+
+class Identity(nn.Module):
+    def __init__(self,  **kwargs):
+        super().__init__()
+
+    def forward(self, x, **kwargs):
+        return x
 
 class MLPVAEPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
