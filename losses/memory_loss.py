@@ -72,6 +72,7 @@ class MemoryLoss(TEPPLoss):
                             'CE_fe': CE_fe,
                             'CE_ef': CE_ef,
                             'CE_ee': CE_ee,
+                            'memory_mask_sum': memory_mask.sum(),
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
