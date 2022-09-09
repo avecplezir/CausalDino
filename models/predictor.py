@@ -107,7 +107,7 @@ class MLPPosPredictor(nn.Module):
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
-        self.predictor = DINOHead(n_embd, bottleneck_dim=n_embd, nlayers=2)
+        self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=2)
         self.wpe = nn.Embedding(block_size, n_embd)
 
     def forward(self, x, indices=None, **kwargs):

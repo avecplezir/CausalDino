@@ -56,7 +56,7 @@ class MemoryLoss(TEPPLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
-        indices = torch.arange(memory_enc.size(1)).unsqueeze(1).repeat(memory_enc.size(0), 1).to(memory_enc.device)
+        indices = torch.arange(memory_enc.size(0)).unsqueeze(1).repeat(1, memory_enc.size(1)).to(memory_enc.device)
         CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, indices) if self.args.CE_fe_c else 0.
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, teacher, indices, temp) if self.args.CE_ef_c else 0.
         CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
