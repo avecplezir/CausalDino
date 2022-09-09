@@ -1,7 +1,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="ucf101_tiny_memory_loc30_nirvana"
+EXP_NAME="ucf101_tiny_memory_loc_nm_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -28,10 +28,10 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --maxlen 8 \
+  --maxlen 4 \
   --CE_fe_c 0. \
-  --CE_ef_c 0.2 \
-  --CE_ee_c 0.8 \
+  --CE_ef_c 0. \
+  --CE_ee_c 1. \
   --dataset EpicNFEvents \
   --temporal_aug_memory True \
   --num_workers 10 \
@@ -42,6 +42,7 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.4 1 \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperMemory \
-  --predictor Identity \
   --random_sampling False \
   --video_extension avi
+
+

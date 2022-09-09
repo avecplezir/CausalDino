@@ -1,7 +1,7 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 DATA_PATH="$INPUT_PATH/UCF101"
-EXP_NAME="ucf101_tiny_memory_loc30_nirvana"
+EXP_NAME="ucf101_tiny_memory_loc_id2_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -28,8 +28,8 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryLoss \
-  --maxlen 8 \
-  --CE_fe_c 0. \
+  --maxlen 4 \
+  --CE_fe_c 1. \
   --CE_ef_c 0.2 \
   --CE_ee_c 0.8 \
   --dataset EpicNFEvents \
