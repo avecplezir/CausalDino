@@ -59,9 +59,9 @@ class MemoryLoss(TEPPLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
-        indices = torch.arange(memory_enc.size(1)).flip([0]).unsqueeze(0).repeat(memory_enc.size(0), 1).to(memory_enc.device)
-        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, indices) if self.args.CE_fe_c else 0.
-        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp) if self.args.CE_ef_c else 0.
+        pos_indices = self.get_pos_indices(memory_enc)
+        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices) if self.args.CE_fe_c else 0.
+        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, pos_indices, temp) if self.args.CE_ef_c else 0.
         CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
 
         memory_size = memory_mask.sum(-1).mean()
@@ -89,10 +89,15 @@ class MemoryLoss(TEPPLoss):
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
 
-    def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, indices):
+    def get_pos_indices(self, memory_enc):
+        indices = torch.arange(memory_enc.size(1)).flip([0]).unsqueeze(0).repeat(memory_enc.size(0), 1).to(
+        memory_enc.device)
+        return indices
+
+    def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
         # print('compute_loss_fe')
         # print('memory_enc, t_enc_proba', memory_enc.shape, t_enc_proba.shape)
-        s_pred_future = student.module.predictor(memory_enc, indices=indices)
+        s_pred_future = student.module.predictor(memory_enc, indices=pos_indices)
         # print('s_pred_future', s_pred_future.shape)
         if self.args.teacher_pred_head:
             s_pred_future_logits = teacher.head(s_pred_future)
@@ -111,14 +116,14 @@ class MemoryLoss(TEPPLoss):
         total_loss = (memory_mask * loss).sum() / mask_sum
         return total_loss
 
-    def compute_loss_ef(self, s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp):
+    def compute_loss_ef(self, s_enc_proba, memory_enc, memory_mask, student, teacher, pos_indices, temp):
         # print('compute_loss_ef')
         # print('memory_enc, s_enc_proba', memory_enc.shape, s_enc_proba.shape)
-        t_pred_future = teacher.predictor(memory_enc, indices=indices)
+        t_pred_future = teacher.predictor(memory_enc, indices=pos_indices)
         # print('t_pred_future', t_pred_future.shape)
         t_pred_future_logits = teacher.head(t_pred_future)
         # print('t_pred_future_logits', t_pred_future_logits.shape)
-        t_pred_future_proba = F.softmax((t_pred_future_logits - self.center) / temp, dim=-1)
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
         # print('s_enc_proba', s_enc_proba.shape)
         s_enc_log = torch.log(s_enc_proba).mean(1, keepdim=True)
         # print('s_enc_log', s_enc_log.shape)
@@ -127,6 +132,8 @@ class MemoryLoss(TEPPLoss):
         mask_sum = memory_mask.sum() + 1e-16
         # print('mask_sum', mask_sum)
         total_loss = (memory_mask * loss).sum() / mask_sum
+
+        self.update_centers(None, t_pred_future_logits, None)
         return total_loss
 
     def dino_loss(self, t_enc_proba, s_enc_proba):

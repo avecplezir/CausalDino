@@ -92,8 +92,10 @@ class FeatureLoss(DINOLoss):
     @torch.no_grad()
     def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
         # update batch centers
-        batch_center = self.get_batch_center(t_enc_logits)
-        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+
+        if t_enc_logits is not None:
+            batch_center = self.get_batch_center(t_enc_logits)
+            self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
         if t_pred_future_logits is not None:
             batch_center_pred_future = self.get_batch_center(t_pred_future_logits)

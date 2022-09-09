@@ -62,6 +62,9 @@ class CausalSelfAttention(nn.Module):
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
 
+        if attn_type == 'single':
+            q = q[:, :, -1:]
+
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         if attn_type == 'causal':
@@ -98,8 +101,14 @@ class Block(nn.Module):
         self.mlpf = lambda x: m.dropout(m.c_proj(m.act(m.c_fc(x))))  # MLP forward
 
     def forward(self, x, attn_type='causal', mask=None):
-        x = x + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
-        x = x + self.mlpf(self.ln_2(x))
+        if attn_type == 'single':
+            y = x[:, :-1]
+            x = x[:, -1:] + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
+            x = x + self.mlpf(self.ln_2(x))
+            x = torch.cat([y, x], 1)
+        else:
+            x = x + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
+            x = x + self.mlpf(self.ln_2(x))
         return x
 
 
@@ -124,7 +133,8 @@ class GPT(nn.Module):
     """ GPT Language Model """
 
     def __init__(self, n_embd=256, block_size=4,
-                 model_type='gpt-micro-256-half', layer_norm=False):
+                 model_type='gpt-micro-256-half', layer_norm=False,
+                 maskemb=False):
         super().__init__()
         config = get_default_config()
         config.block_size = block_size
@@ -144,6 +154,7 @@ class GPT(nn.Module):
                                        'gpt-nano': dict(n_layer=3, n_head=3, n_embd=n_embd),
                                        'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=n_embd),
                                        'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=n_embd),
+                                       'gpt': dict(n_layer=8, n_head=8, n_embd=n_embd),
                                        'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=n_embd),
                                    }[config.model_type])
 
@@ -152,6 +163,10 @@ class GPT(nn.Module):
             drop=nn.Dropout(config.embd_pdrop),
             h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
         ))
+
+        self.maskemb = maskemb
+        if self.maskemb:
+            self.wme = nn.Embedding(2, config.n_embd)
 
         self.layer_norm = layer_norm
         if self.layer_norm:
@@ -188,6 +203,10 @@ class GPT(nn.Module):
         tok_emb = x  # token embeddings of shape (b, t, n_embd)
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
+
+        if self.maskemb:
+            x = x + self.wme(mask)
+
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)
 
