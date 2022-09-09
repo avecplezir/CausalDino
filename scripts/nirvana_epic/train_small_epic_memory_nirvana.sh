@@ -37,6 +37,7 @@ python -m torch.distributed.launch \
   --saveckp_freq 10 \
   --loss MemoryLoss \
   --teacher_pred_head True \
+  --temporal_aug_memory True \
   --maxlen 8 \
   --block_size 8 \
   --CE_fe_c 1. \
