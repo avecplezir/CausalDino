@@ -217,6 +217,8 @@ def get_args_parser():
                         help="""Whether to use teacher prediction head in memory loss""")
     parser.add_argument('--teacher_enc_pred_head', type=utils.bool_flag, default=False,
                         help="""Whether to use teacher prediction head in memory loss in encoder""")
+    parser.add_argument('--masking_ratio', default=0.2, type=float, help='ratio of zero in mask for bert-like loss')
+
 
     return parser
 
@@ -258,7 +260,7 @@ def train_svt(args):
                       extension=args.video_extension, level=args.dataset_level,
                       pseudo_length=args.pseudo_length)
     if args.continuous:
-        sampler = datasets.ContinuousBeg2EndHardSampler(dataset, batch_size=args.batch_size)
+        sampler = datasets.ContinuousBeg2EndHardSampler(dataset, batch_size=args.batch_size, world_size=args.world_size)
     else:
         sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(

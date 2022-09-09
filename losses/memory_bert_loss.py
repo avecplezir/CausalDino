@@ -8,60 +8,16 @@ from .memory_loss import MemoryLoss
 
 
 class MemoryBertLoss(MemoryLoss):
-    def forward(self, student_output, teacher_output, epoch, student=None, teacher=None,
-                video_indices=None, **kwargs):
-        """
-        Cross-entropy between softmax outputs of the teacher and student networks.
-        """
-
-        s_enc, s_enc_logits, s_indices = student_output
-        t_enc, t_enc_logits, t_indices = teacher_output
-
-        temp = self.teacher_temp_schedule[epoch]
-
-        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
-        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
-
-        if not self.memory:
-            print('add first memory!') #ToDo: fix this trick
-            self.add_memory(t_enc[:, 0])
-        self.remove_memory(video_indices)
-        memory_enc, memory_mask = self.retrieve_memory()
-
-        indices = torch.arange(memory_enc.size(1)).flip([0]).unsqueeze(0).repeat(memory_enc.size(0), 1).to(memory_enc.device)
-        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, indices) if self.args.CE_fe_c else 0.
-        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp) if self.args.CE_ef_c else 0.
-        CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
-
-        memory_size = memory_mask.sum(-1).mean()
-        if self.args.memory_balance_loss:
-            total = memory_size + (self.n_crops - 1)
-            CE_ef_c = (self.n_crops - 1) / total
-            CE_ee_c = memory_size / total
-            total_loss = self.args.CE_fe_c * CE_fe + CE_ef_c * CE_ef + CE_ee_c * CE_ee
-        else:
-            total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
-
-        self.add_memory(t_enc[:, 0])
-        self.update_centers(t_enc_logits, None, None)
-        time_entropy = self.time_entropy(t_enc_proba)
-        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
-
-        return total_loss, {'CE': total_loss / (self.args.CE_fe_c + self.args.CE_ef_c + self.args.CE_ee_c),
-                            'CE_fe': CE_fe,
-                            'CE_ef': CE_ef,
-                            'CE_ee': CE_ee,
-                            'memory_size': memory_size,
-                            'entropy': self.entropy(self.center),
-                            'batch_time_entropy': time_entropy,
-                            'dirac_entropy': dirac_entropy,
-                            'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
-                            }
+    def get_mask(self, indices, masking_ratio=0.2):
+        rand = torch.rand(indices.shape)
+        mask_arr = rand > masking_ratio
+        return mask_arr
 
     def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, indices):
+        token_mask = self.get_mask(indices, masking_ratio=self.args.masking_ratio)
         # print('compute_loss_fe')
         # print('memory_enc, t_enc_proba', memory_enc.shape, t_enc_proba.shape)
-        s_pred_future = student.module.predictor(memory_enc, indices=indices)
+        s_pred_future = student.module.predictor(memory_enc, indices=indices, token_mask=token_mask)
         # print('s_pred_future', s_pred_future.shape)
         if self.args.teacher_pred_head:
             print('teacher_pred_head!')
@@ -82,9 +38,10 @@ class MemoryBertLoss(MemoryLoss):
         return total_loss
 
     def compute_loss_ef(self, s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp):
+        token_mask = None
         # print('compute_loss_ef')
         # print('memory_enc, s_enc_proba', memory_enc.shape, s_enc_proba.shape)
-        t_pred_future = teacher.predictor(memory_enc, indices=indices)
+        t_pred_future = teacher.predictor(memory_enc, indices=indices, token_mask=token_mask)
         # print('t_pred_future', t_pred_future.shape)
         t_pred_future_logits = teacher.head(t_pred_future)
         # print('t_pred_future_logits', t_pred_future_logits.shape)
@@ -97,19 +54,4 @@ class MemoryBertLoss(MemoryLoss):
         mask_sum = memory_mask.sum() + 1e-16
         # print('mask_sum', mask_sum)
         total_loss = (memory_mask * loss).sum() / mask_sum
-        return total_loss
-
-    def dino_loss(self, t_enc_proba, s_enc_proba):
-        total_loss = 0
-        n_loss_terms = 0
-        for iq in range(self.n_global_views):
-            for v in range(self.n_crops):
-                if v == iq:
-                    # we skip cases where student and teacher operate on the same view
-                    continue
-                loss = torch.sum(-t_enc_proba[:, iq] * torch.log(s_enc_proba[:, v]), dim=-1)
-                total_loss += loss.mean()
-                n_loss_terms += 1
-        n_loss_terms = max(1, n_loss_terms)
-        total_loss /= n_loss_terms
         return total_loss

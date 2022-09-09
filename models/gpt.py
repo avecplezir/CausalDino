@@ -53,7 +53,7 @@ class CausalSelfAttention(nn.Module):
         self.n_head = config.n_head
         self.n_embd = config.n_embd
 
-    def forward(self, x, attn_type='causal'):
+    def forward(self, x, attn_type='causal', mask=None):
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -66,6 +66,10 @@ class CausalSelfAttention(nn.Module):
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         if attn_type == 'causal':
             att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
+
+        if mask is not None:
+            att = att.masked_fill(mask == 0, float('-inf'))
+
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)
         y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
@@ -93,8 +97,8 @@ class Block(nn.Module):
         m = self.mlp
         self.mlpf = lambda x: m.dropout(m.c_proj(m.act(m.c_fc(x))))  # MLP forward
 
-    def forward(self, x, attn_type='causal'):
-        x = x + self.attn(self.ln_1(x), attn_type=attn_type)
+    def forward(self, x, attn_type='causal', mask=None):
+        x = x + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
         x = x + self.mlpf(self.ln_2(x))
         return x
 
@@ -173,7 +177,7 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
 
-    def forward(self, x, indices=None, attn_type='causal', **kwargs):
+    def forward(self, x, indices=None, attn_type='causal', mask=None, **kwargs):
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
@@ -185,7 +189,7 @@ class GPT(nn.Module):
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
-            x = block(x, attn_type=attn_type)
+            x = block(x, attn_type=attn_type, mask=mask)
 
         if self.layer_norm:
             x = self.transformer.ln_f(x)

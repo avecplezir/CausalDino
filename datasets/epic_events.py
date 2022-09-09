@@ -247,11 +247,12 @@ class ContinuousRandomSampler(ContinuousSampler):
 
 
 class ContinuousBeg2EndSampler(ContinuousSampler):
-    def __init__(self, data_source, batch_size=None):
+    def __init__(self, data_source, batch_size=None, world_size=None):
         super().__init__(data_source)
         self.data_source = data_source
         self.batch_size = batch_size
         self.epoch = 0
+        self.world_size = world_size
 
     def __iter__(self):
         iters = [iter(range(self.data_source._start_video_idx[i],
@@ -278,6 +279,13 @@ class ContinuousBeg2EndSampler(ContinuousSampler):
                     replacement_idx = np.random.choice(list(offset), replace=False)
                     current_choices.add(replacement_idx)
                     offset.remove(replacement_idx)
+
+    def __len__(self):
+        """
+        Returns:
+            (int): the number of videos in the dataset.
+        """
+        return int(sum(self.data_source._video_clip_size) // self.world_size)
 
 
 class ContinuousBeg2EndHardSampler(ContinuousBeg2EndSampler):
