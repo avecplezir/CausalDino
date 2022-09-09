@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="small_epic_nirvana"
+EXP_NAME="small_epic400_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -29,11 +29,10 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_deit_small_patch16_224 \
   --do_eval True \
-  --eval_freq 1 \
-  --epochs 20 \
-  --warmup_epochs 5 \
+  --eval_freq 10 \
+  --epochs 400 \
+  --warmup_epochs 80 \
   --weight_decay_end 0.1 \
-  --saveckp_freq 10 \
   --n_global_views 2 \
   --n_parts 11 \
   --use_wandb True \

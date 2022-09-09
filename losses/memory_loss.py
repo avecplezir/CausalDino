@@ -95,7 +95,6 @@ class MemoryLoss(TEPPLoss):
         s_pred_future = student.module.predictor(memory_enc, indices=indices)
         # print('s_pred_future', s_pred_future.shape)
         if self.args.teacher_pred_head:
-            print('teacher_pred_head!')
             s_pred_future_logits = teacher.head(s_pred_future)
         else:
             s_pred_future_logits = student.module.head(s_pred_future)
