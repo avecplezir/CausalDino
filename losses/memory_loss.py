@@ -56,7 +56,7 @@ class MemoryLoss(TEPPLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
-        indices = torch.arange(memory_enc.size(0)).unsqueeze(1).repeat(1, memory_enc.size(1)).to(memory_enc.device)
+        indices = torch.arange(memory_enc.size(1)).flip([0]).unsqueeze(0).repeat(memory_enc.size(0), 1).to(memory_enc.device)
         CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, indices) if self.args.CE_fe_c else 0.
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp) if self.args.CE_ef_c else 0.
         CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
@@ -103,7 +103,7 @@ class MemoryLoss(TEPPLoss):
         # print('t_enc_proba 2', t_enc_proba.shape)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
         # print('loss', loss.shape, memory_mask.shape)
-        mask_sum = max(memory_mask.sum().item(), 1)
+        mask_sum = memory_mask.sum() + 1e-16
         # print('memory_mask', memory_mask)
         # print('mask_sum', mask_sum)
         total_loss = (memory_mask * loss).sum() / mask_sum
@@ -122,7 +122,7 @@ class MemoryLoss(TEPPLoss):
         # print('s_enc_log', s_enc_log.shape)
         loss = -torch.sum(t_pred_future_proba * s_enc_log, dim=-1)
         # print('loss', loss.shape, memory_mask.shape)
-        mask_sum = max(memory_mask.sum().item(), 1)
+        mask_sum = memory_mask.sum() + 1e-16
         # print('mask_sum', mask_sum)
         total_loss = (memory_mask * loss).sum() / mask_sum
         return total_loss
