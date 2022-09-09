@@ -1,30 +1,29 @@
+#!/bin/bash
 
-
-PROJECT_PATH="$HOME/CausalDino"
-DATA_PATH="/mnt/data/UCF101"
-EXP_NAME="ucf101_tiny_memory_loc_id"
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
+VAL_DATA_PATH="$INPUT_PATH/UCF101"
+DATA_PATH="$INPUT_PATH/videos_256"
+EXP_NAME="tiny_epic_memory_loc_id_nirvana"
 PORT='1024'
-
 
 cd "$PROJECT_PATH" || exit
 
 if [ ! -d "checkpoints/$EXP_NAME" ]; then
-  mkdir "checkpoints/$EXP_NAME"
+  mkdir -p "checkpoints/$EXP_NAME"
 fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
-export CUDA_VISIBLE_DEVICES=1
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
   --master_port="$PORT" \
   train_ssl.py \
   --data_path "${DATA_PATH}" \
-  --val_data_dir "${DATA_PATH}" \
+  --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
-  --video_extension avi \
+  --video_extension MP4 \
+  --dataset_level 3 \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \

@@ -24,6 +24,7 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
+  --video_extension avi \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \
@@ -48,5 +49,4 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperMemory \
   --predictor MLPPosPredictor \
   --random_sampling False \
-  --video_extension avi
 

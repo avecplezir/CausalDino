@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_memory_loc_nirvana"
+EXP_NAME="tiny_epic_memory_loc_ta2_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -22,6 +22,8 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
+  --video_extension MP4 \
+  --dataset_level 3 \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \
@@ -36,7 +38,6 @@ python -m torch.distributed.launch \
   --CE_ef_c 0.5 \
   --CE_ee_c 0.5 \
   --dataset EpicNFEvents \
-  --num_workers 10 \
   --continuous True \
   --local_crops_number 8 \
   --n_global_views 2 \
@@ -46,5 +47,4 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \
   --random_sampling False \
-  --video_extension MP4 \
-  --dataset_level 3 \
+
