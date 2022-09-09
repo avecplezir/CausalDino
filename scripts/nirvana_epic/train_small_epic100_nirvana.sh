@@ -29,7 +29,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --model_name get_deit_small_patch16_224 \
   --do_eval True \
-  --eval_freq 1 \
+  --eval_freq 5 \
   --epochs 100 \
   --warmup_epochs 20 \
   --weight_decay_end 0.1 \
