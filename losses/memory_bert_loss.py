@@ -4,38 +4,10 @@ import torch
 import torch.nn.functional as F
 from collections import deque
 
-from .te_pp_loss import TEPPLoss
+from .memory_loss import MemoryLoss
 
 
-class MemoryLoss(TEPPLoss):
-    def init_memory(self, batch_size=None, **kwargs):
-        self.memory = deque(maxlen=self.args.maxlen)
-        self.memory_mask = deque(maxlen=self.args.maxlen)
-        self.current_video_indices = -torch.ones(batch_size)
-
-    def add_memory(self, values):
-        # print('add_memory values', values.shape)
-        self.memory.append(values.detach())
-        self.memory_mask.append(torch.ones(self.batch_size).to(values.device))
-        # print('add_memory self.memory_mask', self.memory_mask)
-
-    def remove_memory(self, video_indices):
-        # print('self.current_video_indices', self.current_video_indices)
-        # print('video_indices', video_indices)
-        new_video_indices = ~(self.current_video_indices == video_indices)
-        # print('new_video_indices', new_video_indices)
-        self.current_video_indices = video_indices
-        # print('before remove_memory self.memory_mask', self.memory_mask)
-        for idx in torch.arange(self.batch_size)[new_video_indices]:
-            # print('remove_memory idx', idx)
-            for i in range(len(self.memory)):
-                self.memory[i][idx] = torch.zeros_like(self.memory[i][idx])
-                self.memory_mask[i][idx] = 0
-        # print('remove_memory self.memory_mask', self.memory_mask)
-
-    def retrieve_memory(self, ):
-        return torch.stack(list(self.memory), 1), torch.stack(list(self.memory_mask), 1)
-
+class MemoryBertLoss(MemoryLoss):
     def forward(self, student_output, teacher_output, epoch, student=None, teacher=None,
                 video_indices=None, **kwargs):
         """

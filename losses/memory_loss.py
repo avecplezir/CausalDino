@@ -48,7 +48,7 @@ class MemoryLoss(TEPPLoss):
         temp = self.teacher_temp_schedule[epoch]
 
         if self.args.teacher_enc_pred_head:
-            s_enc_logits = teacher_output.head(s_enc)
+            s_enc_logits = teacher.head(s_enc)
 
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
