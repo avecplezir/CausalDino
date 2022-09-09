@@ -61,7 +61,13 @@ class MemoryLoss(TEPPLoss):
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, teacher, indices, temp) if self.args.CE_ef_c else 0.
         CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
 
-        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
+        if self.args.memory_balance_loss:
+            total = memory_mask.mean() + (self.n_crops - 1)
+            CE_ef_c = (self.n_crops - 1) / total
+            CE_ee_c = memory_mask.mean() / total
+            total_loss = self.args.CE_fe_c * CE_fe + CE_ef_c * CE_ef + CE_ee_c * CE_ee
+        else:
+            total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
 
         self.add_memory(t_enc[:, 0])
         self.update_centers(t_enc_logits, None, None)
@@ -72,7 +78,7 @@ class MemoryLoss(TEPPLoss):
                             'CE_fe': CE_fe,
                             'CE_ef': CE_ef,
                             'CE_ee': CE_ee,
-                            'memory_mask_sum': memory_mask.sum(),
+                            'memory_mask_mean': memory_mask.mean(),
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,

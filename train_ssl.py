@@ -211,6 +211,8 @@ def get_args_parser():
     parser.add_argument('--kl_balance', default=0.8, type=float, help='kl balance in VAE loss')
     parser.add_argument('--temporal_aug_memory', type=utils.bool_flag, default=False,
                         help="""Whether to use continuous sampler""")
+    parser.add_argument('--memory_balance_loss', type=utils.bool_flag, default=False,
+                        help="""Whether to use memory balancing""")
 
     return parser
 
