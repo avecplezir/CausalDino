@@ -213,6 +213,8 @@ def get_args_parser():
                         help="""Whether to use continuous sampler""")
     parser.add_argument('--memory_balance_loss', type=utils.bool_flag, default=False,
                         help="""Whether to use memory balancing""")
+    parser.add_argument('--teacher_pred_head', type=utils.bool_flag, default=False,
+                        help="""Whether to use teacher prediction head in memory loss""")
 
     return parser
 

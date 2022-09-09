@@ -57,8 +57,8 @@ class MemoryLoss(TEPPLoss):
         memory_enc, memory_mask = self.retrieve_memory()
 
         indices = torch.arange(memory_enc.size(0)).unsqueeze(1).repeat(1, memory_enc.size(1)).to(memory_enc.device)
-        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, indices) if self.args.CE_fe_c else 0.
-        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, teacher, indices, temp) if self.args.CE_ef_c else 0.
+        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, indices) if self.args.CE_fe_c else 0.
+        CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp) if self.args.CE_ef_c else 0.
         CE_ee = self.dino_loss(t_enc_proba, s_enc_proba) if self.args.CE_ee_c else 0.
 
         memory_size = memory_mask.sum(-1).mean()
@@ -86,12 +86,16 @@ class MemoryLoss(TEPPLoss):
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
 
-    def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, indices):
+    def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, indices):
         # print('compute_loss_fe')
         # print('memory_enc, t_enc_proba', memory_enc.shape, t_enc_proba.shape)
         s_pred_future = student.module.predictor(memory_enc, indices=indices)
         # print('s_pred_future', s_pred_future.shape)
-        s_pred_future_logits = student.module.head(s_pred_future)
+        if self.args.teacher_pred_head:
+            print('teacher_pred_head!')
+            s_pred_future_logits = teacher.head(s_pred_future)
+        else:
+            s_pred_future_logits = student.module.head(s_pred_future)
         # print('s_pred_future_logits', s_pred_future_logits.shape)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
         # print('t_enc_proba', t_enc_proba.shape)
@@ -105,7 +109,7 @@ class MemoryLoss(TEPPLoss):
         total_loss = (memory_mask * loss).sum() / mask_sum
         return total_loss
 
-    def compute_loss_ef(self, s_enc_proba, memory_enc, memory_mask, teacher, indices, temp):
+    def compute_loss_ef(self, s_enc_proba, memory_enc, memory_mask, student, teacher, indices, temp):
         # print('compute_loss_ef')
         # print('memory_enc, s_enc_proba', memory_enc.shape, s_enc_proba.shape)
         t_pred_future = teacher.predictor(memory_enc, indices=indices)
