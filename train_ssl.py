@@ -215,6 +215,8 @@ def get_args_parser():
                         help="""Whether to use memory balancing""")
     parser.add_argument('--teacher_pred_head', type=utils.bool_flag, default=False,
                         help="""Whether to use teacher prediction head in memory loss""")
+    parser.add_argument('--teacher_enc_pred_head', type=utils.bool_flag, default=False,
+                        help="""Whether to use teacher prediction head in memory loss in encoder""")
 
     return parser
 
