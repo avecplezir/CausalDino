@@ -19,7 +19,9 @@ python -m torch.distributed.launch \
   --nproc_per_node=2 \
   --master_port="$PORT" \
   train_ssl.py \
-  --arch "timesformer" \
+   --arch "timesformer" \
+   --video_extension MP4 \
+  --dataset_level 3 \
   --batch_size_per_gpu 16 \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
@@ -36,8 +38,6 @@ python -m torch.distributed.launch \
   --n_parts 11 \
   --use_wandb True \
   --loss DINOLoss \
-  --dataset Kinetics \
-  --video_extension MP4 \
-  --dataset_level 3 \
-  --pseudo_length 239789
+  --dataset EpicEvents \
+
 
