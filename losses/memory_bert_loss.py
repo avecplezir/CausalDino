@@ -61,17 +61,19 @@ class MemoryBertLoss(MemoryLoss):
         len_keep = int(L * (1 - mask_ratio))
 
         noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
+        print('mask g mask', mask)
         noise = noise * mask
 
         # sort noise for each sample
         ids_shuffle = torch.argsort(noise, dim=1, descending=True)  # descend: large is keep, small is remove
-        ids_restore = torch.argsort(ids_shuffle, dim=1, descending=True)
+        ids_restore = torch.argsort(ids_shuffle, dim=1, descending=False)
 
         # generate the binary mask: 1 is keep, 0 is remove
         mask = torch.zeros([N, L], device=x.device)
         mask[:, :len_keep] = 1
         # unshuffle to get the binary mask
         mask = torch.gather(mask, dim=1, index=ids_restore)
+        print('mask g 2', mask)
 
         x_masked = x * mask.unsqueeze(-1)
         return x_masked, mask
@@ -79,7 +81,7 @@ class MemoryBertLoss(MemoryLoss):
     def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
         memory_enc_masked, token_memory_mask = self.random_masking(memory_enc, memory_mask,
                                                                    mask_ratio=self.args.masking_ratio)
-        s_pred_future = student.module.predictor(memory_enc_masked, indices=pos_indices, token_mask=token_memory_mask,
+        s_pred_future = student.module.predictor(memory_enc_masked, indices=pos_indices, mask=token_memory_mask,
                                                  attn_type='all')
         s_pred_future_logits = student.module.head(s_pred_future)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
@@ -87,10 +89,12 @@ class MemoryBertLoss(MemoryLoss):
         mask = (~token_memory_mask.bool()) * memory_mask
         # print('token_memory_mask sum', token_memory_mask.sum(-1))
         # print('~token_memory_mask', (~token_memory_mask.bool()).long())
-        # print('token_memory_mask', token_memory_mask)
-        # print('memory_mask', memory_mask)
-        # print('mask', mask)
+        print('token_memory_mask', token_memory_mask)
+        print('memory_mask', memory_mask)
+        print('mask', mask)
         mask_sum = mask.sum() + 1e-16
+        print('mask_sum', mask_sum)
+        print('mask, loss', mask.shape, loss.shape)
         total_loss = (mask * loss).sum() / mask_sum
 
         return total_loss

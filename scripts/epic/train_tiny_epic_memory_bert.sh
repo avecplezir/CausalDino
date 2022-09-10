@@ -35,7 +35,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb True \
+  --use_wandb False \
   --loss MemoryBertLoss \
   --masking_ratio 0.5 \
   --maxlen 8 \

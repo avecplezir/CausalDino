@@ -68,10 +68,17 @@ class CausalSelfAttention(nn.Module):
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         if attn_type == 'causal':
+            print('causal!')
             att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
 
         if mask is not None:
-            att = att.masked_fill(mask == 0, float('-inf'))
+            # print('mask!')
+            # print('gpt mask, att', mask.shape, att.shape)
+            if mask.size(1) > 8:
+                mask = (mask.unsqueeze(1) * mask.unsqueeze(2)).unsqueeze(1)
+                print('mask', mask.shape)
+                print('mask', mask[0, 0])
+                att = att.masked_fill(mask == 0, float('-inf'))
 
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)
@@ -197,7 +204,7 @@ class GPT(nn.Module):
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
 
-        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  if indices is None else indices # shape (1, t)
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
 
         # forward the GPT model itself
         tok_emb = x  # token embeddings of shape (b, t, n_embd)
