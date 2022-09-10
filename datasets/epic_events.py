@@ -247,12 +247,13 @@ class ContinuousRandomSampler(ContinuousSampler):
 
 
 class ContinuousBeg2EndSampler(ContinuousSampler):
-    def __init__(self, data_source, batch_size=None, world_size=None):
+    def __init__(self, data_source, batch_size=None, world_size=None, verbose=False):
         super().__init__(data_source)
         self.data_source = data_source
         self.batch_size = batch_size
         self.epoch = 0
         self.world_size = world_size
+        self.verbose = verbose
 
     def __iter__(self):
         iters = [iter(range(self.data_source._start_video_idx[i],
@@ -270,7 +271,8 @@ class ContinuousBeg2EndSampler(ContinuousSampler):
                 try:
                     yield next(iters[video_idx])
                 except StopIteration:
-                    print(f'StopIteration, redefining iterator for {video_idx} video')
+                    if self.verbose:
+                        print(f'StopIteration, redefining iterator for {video_idx} video')
                     iters[video_idx] = iter(range(self.data_source._start_video_idx[video_idx],
                                                               self.data_source._start_video_idx[video_idx] +
                                                               self.data_source._video_clip_size[video_idx]))
@@ -306,7 +308,8 @@ class ContinuousBeg2EndHardSampler(ContinuousBeg2EndSampler):
                 try:
                     yield next(iters[video_idx])
                 except StopIteration:
-                    print(f'StopIteration, redefining iterator for {video_idx} video')
+                    if self.verbose:
+                        print(f'StopIteration, redefining iterator for {video_idx} video')
                     iters[video_idx] = iter(range(self.data_source._start_video_idx[video_idx],
                                                   self.data_source._start_video_idx[video_idx] +
                                                   self.data_source._video_clip_size[video_idx]))
