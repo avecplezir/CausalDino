@@ -37,11 +37,9 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb False \
   --loss MemoryBertLoss \
-  --masking_ratio 0.5 \
-  --maxlen 8 \
-  --CE_fe_c 1. \
-  --CE_ef_c 1. \
-  --CE_ee_c 0. \
+  --masking_ratio 0.8 \
+  --maxlen 64 \
+  --block_size 64 \
   --dataset EpicNFEvents \
   --sampling_rate 5 \
   --num_workers 10 \

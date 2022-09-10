@@ -72,13 +72,8 @@ class CausalSelfAttention(nn.Module):
             att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
 
         if mask is not None:
-            # print('mask!')
-            # print('gpt mask, att', mask.shape, att.shape)
-            if mask.size(1) > 8:
-                mask = (mask.unsqueeze(1) * mask.unsqueeze(2)).unsqueeze(1)
-                print('mask', mask.shape)
-                print('mask', mask[0, 0])
-                att = att.masked_fill(mask == 0, float('-inf'))
+            mask = mask[:, None, None, :]
+            att = att.masked_fill(mask == 0, float('-inf'))
 
         att = F.softmax(att, dim=-1)
         att = self.attn_dropout(att)

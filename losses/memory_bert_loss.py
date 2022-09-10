@@ -51,17 +51,20 @@ class MemoryBertLoss(MemoryLoss):
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
 
-    def random_masking(self, x, mask, mask_ratio):
+    def random_masking(self, x, mask, mask_ratio, keeplast=False):
         """
         Perform per-sample random masking by per-sample shuffling.
         Per-sample shuffling is done by argsort random noise.
         x: [N, L, D], sequence
         """
         N, L, D = x.shape  # batch, length, dim
-        len_keep = int(L * (1 - mask_ratio))
+        len_keep = max(int(L * (1 - mask_ratio)), 1)
+        # print('len_keep', len_keep)
 
         noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
-        print('mask g mask', mask)
+        if keeplast:
+            noise[:, -1:] = 1
+        # print('mask g mask', mask)
         noise = noise * mask
 
         # sort noise for each sample
@@ -73,28 +76,26 @@ class MemoryBertLoss(MemoryLoss):
         mask[:, :len_keep] = 1
         # unshuffle to get the binary mask
         mask = torch.gather(mask, dim=1, index=ids_restore)
-        print('mask g 2', mask)
+        # print('mask g 2', mask)
 
         x_masked = x * mask.unsqueeze(-1)
         return x_masked, mask
 
     def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
         memory_enc_masked, token_memory_mask = self.random_masking(memory_enc, memory_mask,
-                                                                   mask_ratio=self.args.masking_ratio)
+                                                                   mask_ratio=self.args.masking_ratio, keeplast=True)
         s_pred_future = student.module.predictor(memory_enc_masked, indices=pos_indices, mask=token_memory_mask,
                                                  attn_type='all')
         s_pred_future_logits = student.module.head(s_pred_future)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
         mask = (~token_memory_mask.bool()) * memory_mask
-        # print('token_memory_mask sum', token_memory_mask.sum(-1))
-        # print('~token_memory_mask', (~token_memory_mask.bool()).long())
-        print('token_memory_mask', token_memory_mask)
-        print('memory_mask', memory_mask)
-        print('mask', mask)
+        # print('(~token_memory_mask.bool()).long()', (~token_memory_mask.bool()).long())
+        # print('memory_mask', memory_mask)
+        # print('mask', mask)
         mask_sum = mask.sum() + 1e-16
-        print('mask_sum', mask_sum)
-        print('mask, loss', mask.shape, loss.shape)
+        # print('mask_sum', mask_sum)
+        # print('mask, loss', mask.shape, loss.shape)
         total_loss = (mask * loss).sum() / mask_sum
 
         return total_loss
