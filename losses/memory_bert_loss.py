@@ -42,7 +42,7 @@ class MemoryBertLoss(MemoryLoss):
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
-        return total_loss, {'CE': total_loss / (self.args.CE_fe_c + self.args.CE_ef_c + self.args.CE_ee_c),
+        return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
                             'memory_size': memory_size,
                             'entropy': self.entropy(self.center),
