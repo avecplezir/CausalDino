@@ -218,7 +218,8 @@ def get_args_parser():
     parser.add_argument('--teacher_enc_pred_head', type=utils.bool_flag, default=False,
                         help="""Whether to use teacher prediction head in memory loss in encoder""")
     parser.add_argument('--masking_ratio', default=0.2, type=float, help='ratio of zero in mask for bert-like loss')
-
+    parser.add_argument('--memory_offset', type=int, default=0,
+                        help="""offset in memory loss""")
 
     return parser
 
