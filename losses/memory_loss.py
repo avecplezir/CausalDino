@@ -110,8 +110,8 @@ class MemoryLoss(TEPPLoss):
         # print('t_enc_proba 2', t_enc_proba.shape)
 
         if self.args.memory_offset:
-            s_pred_future_proba = s_pred_future_proba[:, self.args.memory_offset:]
-            memory_mask = memory_mask[:, self.args.memory_offset:]
+            s_pred_future_proba = s_pred_future_proba[:, -self.args.memory_offset:]
+            memory_mask = memory_mask[:, -self.args.memory_offset:]
 
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
         # print('loss', loss.shape, memory_mask.shape)
@@ -133,8 +133,8 @@ class MemoryLoss(TEPPLoss):
         s_enc_log = torch.log(s_enc_proba).mean(1, keepdim=True)
         # print('s_enc_log', s_enc_log.shape)
         if self.args.memory_offset:
-            s_enc_log = s_enc_log[:, self.args.memory_offset:]
-            memory_mask = memory_mask[:, self.args.memory_offset:]
+            s_enc_log = s_enc_log[:, -self.args.memory_offset:]
+            memory_mask = memory_mask[:, -self.args.memory_offset:]
 
         loss = -torch.sum(t_pred_future_proba * s_enc_log, dim=-1)
         # print('loss', loss.shape, memory_mask.shape)
