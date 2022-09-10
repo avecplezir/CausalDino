@@ -130,12 +130,13 @@ class MemoryLoss(TEPPLoss):
         # print('t_pred_future_logits', t_pred_future_logits.shape)
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
         # print('s_enc_proba', s_enc_proba.shape)
-        s_enc_log = torch.log(s_enc_proba).mean(1, keepdim=True)
-        # print('s_enc_log', s_enc_log.shape)
+
         if self.args.memory_offset:
-            s_enc_log = s_enc_log[:, -self.args.memory_offset:]
+            t_pred_future_proba = t_pred_future_proba[:, -self.args.memory_offset:]
             memory_mask = memory_mask[:, -self.args.memory_offset:]
 
+        s_enc_log = torch.log(s_enc_proba).mean(1, keepdim=True)
+        # print('s_enc_log', s_enc_log.shape)
         loss = -torch.sum(t_pred_future_proba * s_enc_log, dim=-1)
         # print('loss', loss.shape, memory_mask.shape)
         mask_sum = memory_mask.sum() + 1e-16

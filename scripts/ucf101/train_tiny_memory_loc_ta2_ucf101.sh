@@ -30,12 +30,12 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb True \
+  --use_wandb False \
   --loss MemoryLoss \
   --maxlen 8 \
   --CE_fe_c 1. \
-  --CE_ef_c 0.5 \
-  --CE_ee_c 1. \
+  --CE_ef_c 1. \
+  --CE_ee_c 0. \
   --dataset EpicNFEvents \
   --temporal_aug_memory True \
   --num_workers 10 \
