@@ -51,6 +51,7 @@ class MemoryLoss(TEPPLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
+
         pos_indices = self.get_pos_indices(memory_enc)
         CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices) if self.args.CE_fe_c else 0.
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, pos_indices, temp) if self.args.CE_ef_c else 0.
@@ -65,8 +66,7 @@ class MemoryLoss(TEPPLoss):
         else:
             total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
 
-        # self.add_memory(t_enc[:, 0])
-        self.add_memory(t_enc[:, 3])
+        self.add_memory(t_enc[:, 0])
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
