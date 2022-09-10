@@ -16,11 +16,11 @@ class TimeEmbLoss(FeatureLoss):
 
         temp = self.teacher_temp_schedule[epoch]
 
-        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
+        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1) if self.args.CE_ef_c else 0
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, t_indices)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, t_indices, temp)
+        CE_fe = self.compute_loss_fe(s_pred, t_enc_proba, student, t_indices) if self.args.CE_fe_c else 0
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred, teacher, t_indices, temp) if self.args.CE_ef_c else 0
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 

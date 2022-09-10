@@ -51,7 +51,6 @@ class MemoryLoss(TEPPLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
-
         pos_indices = self.get_pos_indices(memory_enc)
         CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices) if self.args.CE_fe_c else 0.
         CE_ef = self.compute_loss_ef(s_enc_proba, memory_enc, memory_mask, student, teacher, pos_indices, temp) if self.args.CE_ef_c else 0.
