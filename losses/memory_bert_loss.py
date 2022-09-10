@@ -24,7 +24,7 @@ class MemoryBertLoss(MemoryLoss):
         memory_enc, memory_mask = self.retrieve_memory()
 
         memory_enc = torch.cat([memory_enc, s_enc[:, :1]], 1)
-        memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])])
+        memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
         pos_indices = self.get_pos_indices(memory_enc)
 
         temp = self.teacher_temp_schedule[epoch]
@@ -65,40 +65,31 @@ class MemoryBertLoss(MemoryLoss):
 
         # sort noise for each sample
         ids_shuffle = torch.argsort(noise, dim=1, descending=True)  # descend: large is keep, small is remove
-        ids_restore = torch.argsort(ids_shuffle, dim=1)
+        ids_restore = torch.argsort(ids_shuffle, dim=1, descending=True)
 
-        # generate the binary mask: 0 is keep, 1 is remove
+        # generate the binary mask: 1 is keep, 0 is remove
         mask = torch.zeros([N, L], device=x.device)
-        mask[:, :len_keep] = 0
+        mask[:, :len_keep] = 1
         # unshuffle to get the binary mask
         mask = torch.gather(mask, dim=1, index=ids_restore)
 
-        print('ids_restore', ids_restore.shape)
-
-        x_masked = x * mask
+        x_masked = x * mask.unsqueeze(-1)
         return x_masked, mask
 
     def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
-        print('memory_enc', memory_enc.shape)
-        print('memory_mask', memory_mask.shape)
-        print('t_enc_proba', t_enc_proba.shape)
-        print('pos_indices', pos_indices.shape)
         memory_enc_masked, token_memory_mask = self.random_masking(memory_enc, memory_mask,
                                                                    mask_ratio=self.args.masking_ratio)
-        print('token_memory_mask, memory_enc_masked', token_memory_mask.shape, memory_enc_masked.shape)
         s_pred_future = student.module.predictor(memory_enc_masked, indices=pos_indices, token_mask=token_memory_mask,
                                                  attn_type='all')
-        print('s_pred_future', s_pred_future.shape)
         s_pred_future_logits = student.module.head(s_pred_future)
-        print('s_pred_future_logits', s_pred_future_logits.shape)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
-        print('loss', loss.shape)
-
-        mask = token_memory_mask * memory_mask
-        print('token_memory_mask', token_memory_mask)
-        print('memory_mask', memory_mask)
-        print('mask', mask)
+        mask = (~token_memory_mask.bool()) * memory_mask
+        # print('token_memory_mask sum', token_memory_mask.sum(-1))
+        # print('~token_memory_mask', (~token_memory_mask.bool()).long())
+        # print('token_memory_mask', token_memory_mask)
+        # print('memory_mask', memory_mask)
+        # print('mask', mask)
         mask_sum = mask.sum() + 1e-16
         total_loss = (mask * loss).sum() / mask_sum
 
