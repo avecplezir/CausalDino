@@ -36,7 +36,6 @@ python -m torch.distributed.launch \
   --maxlen 127 \
   --block_size 128 \
   --dataset EpicNFEvents \
-  --num_workers 10 \
   --continuous True \
   --local_crops_number 0 \
   --n_global_views 1 \
