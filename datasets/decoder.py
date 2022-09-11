@@ -437,6 +437,7 @@ def decode_events(
     temporal_aug=False,
     local_crops_number=8,
     temporal_aug_memory=False,
+    shuffle=False,
 ):
     """
     Decode the video and perform temporal sampling.
@@ -543,5 +544,12 @@ def decode_events(
             samples.append(cur_local)
 
         frames = [*samples]
+
+    if shuffle:
+        indices_for_suffle = np.random.shuffle(np.arange(len(frames)))
+        print('indices_for_suffle', indices_for_suffle)
+        frames = np.array(frames)[indices_for_suffle]
+        indices = indices[indices_for_suffle]
+        print('suffled pos indices', indices)
 
     return frames, indices
