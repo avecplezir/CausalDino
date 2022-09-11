@@ -23,16 +23,17 @@ class MemoryBertLoss(MemoryLoss):
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
-        memory_enc = torch.cat([memory_enc, s_enc[:, :1]], 1)
+        s_memory_enc = torch.cat([memory_enc, s_enc[:, :1]], 1)
+        t_memory_enc = torch.cat([memory_enc, t_enc[:, :1]], 1)
         memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
         pos_indices = self.get_pos_indices(memory_enc)
 
         temp = self.teacher_temp_schedule[epoch]
 
-        t_enc_logits = teacher.head(memory_enc)
+        t_enc_logits = teacher.head(t_memory_enc)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        CE_fe = self.compute_loss_fe(memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices)
+        CE_fe = self.compute_loss_fe(s_memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices)
 
         total_loss = CE_fe
         memory_size = memory_mask.sum(-1).mean()

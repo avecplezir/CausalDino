@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_memory_bert5_nirvana"
+EXP_NAME="tiny_epic_memory_bert85_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -32,7 +32,7 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --loss MemoryBertLoss \
-  --masking_ratio 0.5 \
+  --masking_ratio 0.15 \
   --maxlen 64 \
   --block_size 65 \
   --dataset EpicNFEvents \
