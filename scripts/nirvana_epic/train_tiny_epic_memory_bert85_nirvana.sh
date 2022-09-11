@@ -33,7 +33,7 @@ python -m torch.distributed.launch \
   --use_wandb True \
   --loss MemoryBertLoss \
   --masking_ratio 0.15 \
-  --maxlen 64 \
+  --maxlen 16 \
   --block_size 65 \
   --dataset EpicNFEvents \
   --continuous True \
