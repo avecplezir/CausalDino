@@ -534,8 +534,8 @@ def decode_events(
             indices = sorted(indices)
             indices = np.array([idx for idx in indices])
         else:
-            local_width = max_len // (num_clips_global + 1)
-            indices = np.arange(0, num_clips_global)
+            local_width = max_len // (num_clips_global + local_crops_number + 1)
+            indices = np.arange(0, num_clips_global + local_crops_number)
 
         start_idx = random.randint(0, local_width - 1)
         for idx in indices:

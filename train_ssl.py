@@ -425,6 +425,7 @@ def train_svt(args):
         warmup_teacher_temp_epochs=args.warmup_teacher_temp_epochs,
         nepochs=args.epochs,
         n_global_views=args.n_global_views,
+        local_crops_number=args.local_crops_number,
         args=args,
         start_video_idx=dataset._start_video_idx if args.continuous else None,
         video_clip_size=dataset._video_clip_size if args.continuous else None,

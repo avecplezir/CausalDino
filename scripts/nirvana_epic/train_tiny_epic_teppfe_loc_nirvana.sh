@@ -32,9 +32,10 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --weight_decay_end 0.1 \
   --use_wandb True \
-  --loss TEPPLoss \
+  --loss TEPPLocLoss \
   --local_crops_number 8 \
   --n_global_views 2 \
+  --teacher_views 10 \
   --local_first True \
   --global_crops_scale 0.4 1 \
   --weight_decay_end 0.1 \

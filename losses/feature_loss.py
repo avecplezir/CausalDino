@@ -12,7 +12,7 @@ class FeatureLoss(DINOLoss):
     def __init__(self, out_dim, ncrops, warmup_teacher_temp, teacher_temp,
                  warmup_teacher_temp_epochs, nepochs, student_temp=0.1,
                  center_momentum=0.9, args=None, n_global_views=None,
-                 start_video_idx=None, video_clip_size=None, index2clip_video=None,
+                 local_crops_number=None,
                  batch_size=None,
                  **kwargs):
         super(DINOLoss, self).__init__()
@@ -21,6 +21,7 @@ class FeatureLoss(DINOLoss):
         self.n_crops = ncrops
         self.args = args
         self.n_global_views = n_global_views
+        self.local_crops_number = local_crops_number
         self.batch_size = batch_size
         self.register_buffer("center", torch.zeros(1, 1, out_dim))
         self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
@@ -34,23 +35,8 @@ class FeatureLoss(DINOLoss):
         ))
 
         if self.args.continuous:
-            self.start_video_idx = start_video_idx
-            self.video_clip_size = video_clip_size
-            self.index2clip_video = index2clip_video
             self.memory = None
-            self.init_memory(video_clip_size=video_clip_size, batch_size=batch_size)
-
-    def init_memory(self, video_clip_size=None, batch_size=None, **kwargs):
-        # self.register_buffer("memory", -torch.ones(sum(video_clip_size)))
-        self.memory = -np.ones(sum(video_clip_size))
-
-    def add_memory(self, keys, values):
-        if self.args.continuous:
-            self.memory[keys] = values
-
-    def retrieve_memory(self, keys):
-        if self.args.continuous:
-            return self.memory[keys]
+            self.init_memory(batch_size=batch_size)
 
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
