@@ -768,13 +768,15 @@ class VideoDataAugmentationDINO(object):
 class VideoDataAugmentationEvents(object):
     def __init__(self, global_crops_scale=(0.4, 1.0), local_crops_scale=(0.05, 0.4),
                  local_crops_number=6,
-                 n_global_views=2, size=224):
+                 n_global_views=2, size=224,
+                 local_first=False):
         self.global_crops_scale = global_crops_scale
         self.local_crops_scale = local_crops_scale
         self.local_crops_number = local_crops_number
         self.n_global_views = n_global_views
         self.size = size
         self.local_size = 96
+        self.local_first = local_first
 
         self.gaussian_kernel = GaussianBlur((3, 3), (1.5, 1.5))
 
@@ -843,15 +845,22 @@ class VideoDataAugmentationEvents(object):
             crops = [self.no_aug(x) for x in image]
         elif from_list:
             image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
-            # structer['l']*self.local_crops_number + ['g']*self.n_global_views
-            # crops = [self.global_transform1(image[0]), self.global_transform2(image[1])]
             crops = []
-            for local_image in image:
-                if random.randint(0, 1):
-                    crops.append(self.global_transform1(local_image))
-                else:
-                    crops.append(self.global_transform2(local_image))
-            # for i in range(self.local_crops_number):
-            #     idx = int(i % len(image))
-            #     crops.append(self.local_transform(image[idx]))
+            if self.local_first:
+                for loc_idx in range(self.local_crops_number):
+                    crops.append(self.local_transform(image[loc_idx]))
+                    print('loc_idx', loc_idx)
+                for gl_idx in range(self.local_crops_number, len(image)):
+                    print('gl_idx', gl_idx)
+                    if random.randint(0, 1):
+                        crops.append(self.global_transform1(image[gl_idx]))
+                    else:
+                        crops.append(self.global_transform2(image[gl_idx]))
+            else:
+                for local_image in image:
+                    if random.randint(0, 1):
+                        crops.append(self.global_transform1(local_image))
+                    else:
+                        crops.append(self.global_transform2(local_image))
+
         return crops

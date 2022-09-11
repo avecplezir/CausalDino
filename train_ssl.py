@@ -222,7 +222,8 @@ def get_args_parser():
                         help="""offset in memory loss""")
     parser.add_argument('--teacher_views', type=int, default=None,
                         help="""number of views to pass to teacher""")
-
+    parser.add_argument('--local_first', type=utils.bool_flag, default=False,
+                        help="""Whether to apply local transformation first in augmentation""")
 
     return parser
 
@@ -257,6 +258,7 @@ def train_svt(args):
     config.temporal_aug = (args.loss == "DINOLoss")
     config.global_crops_scale = args.global_crops_scale
     config.temporal_aug_memory = args.temporal_aug_memory
+    config.local_first = args.local_first
     args.teacher_views = args.n_global_views if args.teacher_views is None else args.teacher_views
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)

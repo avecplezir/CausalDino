@@ -154,6 +154,7 @@ class EpicEvents(torch.utils.data.Dataset):
                 augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
                                                            local_crops_number=self.cfg.local_crops_number,
                                                            global_crops_scale=self.cfg.global_crops_scale,
+                                                           local_first=self.cfg.local_first,
                                                            )
                 frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
