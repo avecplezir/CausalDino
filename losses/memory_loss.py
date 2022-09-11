@@ -47,7 +47,8 @@ class MemoryLoss(TEPPLoss):
 
         if not self.memory:
             print('add first memory!') #ToDo: fix this trick
-            self.add_memory(t_enc[:, 0])
+            self.memory_idx = 2
+            self.add_memory(t_enc[:, self.memory_idx])
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()
 
@@ -65,7 +66,7 @@ class MemoryLoss(TEPPLoss):
         else:
             total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef + self.args.CE_ee_c * CE_ee
 
-        self.add_memory(t_enc[:, 0])
+        self.add_memory(t_enc[:, self.memory_idx])
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
