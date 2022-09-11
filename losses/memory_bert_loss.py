@@ -26,7 +26,7 @@ class MemoryBertLoss(MemoryLoss):
         s_memory_enc = torch.cat([memory_enc, s_enc[:, :1]], 1)
         t_memory_enc = torch.cat([memory_enc, t_enc[:, :1]], 1)
         memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
-        pos_indices = self.get_pos_indices(memory_enc)
+        pos_indices = self.get_pos_indices(t_memory_enc)
 
         temp = self.teacher_temp_schedule[epoch]
 

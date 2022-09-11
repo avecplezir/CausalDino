@@ -220,6 +220,9 @@ def get_args_parser():
     parser.add_argument('--masking_ratio', default=0.2, type=float, help='ratio of masked tokens for bert-like loss')
     parser.add_argument('--memory_offset', type=int, default=0,
                         help="""offset in memory loss""")
+    parser.add_argument('--teacher_views', type=int, default=None,
+                        help="""number of views to pass to teacher""")
+
 
     return parser
 
@@ -254,6 +257,7 @@ def train_svt(args):
     config.temporal_aug = (args.loss == "DINOLoss")
     config.global_crops_scale = args.global_crops_scale
     config.temporal_aug_memory = args.temporal_aug_memory
+    args.teacher_views = args.n_global_views if args.teacher_views is None else args.teacher_views
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
@@ -590,7 +594,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             student_output = student(images, indices=indices)
-            teacher_output = teacher(images[:args.n_global_views], indices=indices)  # only the 2 global views pass through the teacher
+            teacher_output = teacher(images[:args.teacher_views], indices=indices)  # only the 2 global views pass through the teacher
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch,
                                           student=student, teacher=teacher, video_indices=video_indices)
 
