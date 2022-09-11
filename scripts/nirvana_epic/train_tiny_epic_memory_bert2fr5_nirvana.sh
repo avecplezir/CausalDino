@@ -40,6 +40,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 1 \
   --freeze_last_layer 5 \
+  --num_workers 16 \
   --global_crops_scale 0.14 1 \
   --weight_decay_end 0.1 \
   --wrapper MultiCropWrapperMemory \
