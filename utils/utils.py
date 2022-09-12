@@ -922,8 +922,8 @@ class MultiCropWrapperMemorySaver(nn.Module):
     concatenated features.
     """
     def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
-                 batch_size=None, **kwargs):
-        super(MultiCropWrapperMemory, self).__init__()
+                 batch_size=None, maxlen=None, **kwargs):
+        super(MultiCropWrapperMemorySaver, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
             backbone.fc, backbone.head = nn.Identity(), nn.Identity()
@@ -932,14 +932,15 @@ class MultiCropWrapperMemorySaver(nn.Module):
         self.predictor = predictor
         self.predictor_past = predictor_past
         self.headprob = headprob
+        self.maxlen = maxlen
 
         self.memory_idx = 0
         self.memory = None
         self.init_memory(batch_size=batch_size)
 
     def init_memory(self, batch_size=None, **kwargs):
-        self.memory = deque(maxlen=self.args.maxlen)
-        self.memory_mask = deque(maxlen=self.args.maxlen)
+        self.memory = deque(maxlen=self.maxlen)
+        self.memory_mask = deque(maxlen=self.maxlen)
         self.current_video_indices = -torch.ones(batch_size)
 
     def add_memory(self, values):

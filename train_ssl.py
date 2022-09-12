@@ -381,6 +381,7 @@ def train_svt(args):
          return_prediction_logits=args.return_prediction_logits,
          n_global_views=args.n_global_views,
          batch_size=args.batch_size_per_gpu,
+         maxlen=args.maxlen,
          )
     teacher = Wrapper(
         teacher,
@@ -395,6 +396,7 @@ def train_svt(args):
         return_prediction_logits=args.return_prediction_logits,
         n_global_views=args.n_global_views,
         batch_size=args.batch_size_per_gpu,
+        maxlen=args.maxlen,
     )
 
     # move networks to gpu
