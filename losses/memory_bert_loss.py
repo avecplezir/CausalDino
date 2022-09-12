@@ -83,15 +83,19 @@ class MemoryBertLoss(MemoryLoss):
     def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
         memory_enc_masked, token_memory_mask = self.random_masking(memory_enc, memory_mask,
                                                                    mask_ratio=self.args.masking_ratio, keeplast=True)
+        mask = (~token_memory_mask.bool()) * memory_mask
+        mask_sum = max(mask.sum().item(), 1)
+
+        memory_enc_masked = mask_sum * memory_enc_masked
         s_pred_future = student.module.predictor(memory_enc_masked, indices=pos_indices, mask=token_memory_mask,
                                                  attn_type='all')
         s_pred_future_logits = student.module.head(s_pred_future)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
-        mask = (~token_memory_mask.bool()) * memory_mask
-        # mask_sum = mask.sum() + 1e-16
-        # total_loss = (mask * loss).sum() / mask_sum
-        total_loss = (mask * loss).sum()
+
+
+        total_loss = (mask * loss).sum() / mask_sum
+        # total_loss = (mask * loss).sum()
         return total_loss
 
 

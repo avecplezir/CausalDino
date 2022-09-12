@@ -207,7 +207,7 @@ class GPT(nn.Module):
         x = self.transformer.drop(tok_emb + pos_emb)
 
         if self.maskemb:
-            x = x + self.wme(mask)
+            x = x + (mask-1)*self.wme(mask)
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)
