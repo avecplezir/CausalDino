@@ -12,9 +12,11 @@ import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from torch import distributions as torchd
 from torch.distributions.categorical import Categorical
 
 from .gpt_utils import CfgNode as CN
+import models.gpt_utils as tools
 
 
 # -----------------------------------------------------------------------------
@@ -264,11 +266,119 @@ class GPT2FoldMemoryPredictor(nn.Module):
         return x
 
 
-class GPTVAEPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=4, **kwargs):
+class GPTVAE(GPT):
+    def __init__(self, n_embd=256, block_size=4,
+                 model_type='gpt-micro-256-half', layer_norm=False,
+                 maskemb=False):
         super().__init__()
-        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half')
-        self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half')
+        config = get_default_config()
+        config.block_size = block_size
+        config.model_type = model_type
+        assert config.block_size is not None
+        self.block_size = config.block_size
 
-    def forward(self, x, indices=None):
-        return self.gpt(x, indices=indices)
+        type_given = config.model_type is not None
+        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
+        assert type_given ^ params_given  # exactly one of these (XOR)
+        print('config.model_type', config.model_type)
+        if type_given:
+            # translate from model_type to detailed configuration
+            config.merge_from_dict({
+                                       'gpt-mini': dict(n_layer=6, n_head=6, n_embd=n_embd),
+                                       'gpt-micro': dict(n_layer=4, n_head=4, n_embd=n_embd),
+                                       'gpt-nano': dict(n_layer=3, n_head=3, n_embd=n_embd),
+                                       'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=n_embd),
+                                       'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=n_embd),
+                                       'gpt': dict(n_layer=8, n_head=8, n_embd=n_embd),
+                                       'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=n_embd),
+                                   }[config.model_type])
+
+        self.transformer = nn.ModuleDict(dict(
+            wpe=nn.Embedding(config.block_size, config.n_embd),
+            drop=nn.Dropout(config.embd_pdrop),
+            h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+        ))
+
+        self.maskemb = maskemb
+        if self.maskemb:
+            self.wme = nn.Embedding(2, config.n_embd)
+
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.transformer.ln_f = nn.LayerNorm(config.n_embd)
+
+        self._stoch = 32
+        self._discrete = 32
+        self._hidden = n_embd
+
+        self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
+        self._obs_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
+        self.post2gpt = nn.Linear(self._hidden + self._stoch * self._discrete, self._hidden)
+
+        # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
+        self.apply(self._init_weights)
+        for pn, p in self.named_parameters():
+            if pn.endswith('c_proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
+
+        # report number of parameters (note we don't count the decoder parameters in lm_head)
+        n_params = sum(p.numel() for p in self.transformer.parameters())
+        print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
+
+    def forward(self, x, indices=None, **kwargs):
+        print('x in, indices', x.shape, indices.shape)
+        device = x.device
+        b, t = x.size()[:2]
+        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
+
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
+
+        # forward the GPT model itself
+        tok_emb = x  # token embeddings of shape (b, t, n_embd)
+        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+
+        # post
+        x_post = x
+        for block in self.transformer.h:
+            x_post = block(x_post, attn_type='all')
+        x_post = self.transformer.ln_f(x_post)
+        print('x_post', x_post.shape)
+        stats_post = self._suff_stats_layer('obs', x_post)
+
+        # prior
+        x_prior = x
+        for block in self.transformer.h:
+            x_prior = block(x_prior, attn_type='causal')
+        x_prior = self.transformer.ln_f(x_prior)
+        print('x_prior', x_prior.shape)
+        stats_prior = self._suff_stats_layer('ims', x_prior)
+
+        # sample posterior and transform it to feed to gpt
+        stoch_post = self.get_dist(stats_post).sample()
+        shape = list(stoch_post.shape[:-2]) + [self._stoch * self._discrete]
+        stoch_post = stoch_post.reshape(shape)
+
+        # prediction
+        x = self.post2gpt(torch.cat([x, stoch_post], -1))
+        print('predictoin x', x.shape)
+        for block in self.transformer.h:
+            x = block(x, attn_type='causal')
+        out = self.transformer.ln_f(x)
+
+        return out, stoch_post, stats_post, stats_prior
+
+    def get_dist(self, state, dtype=None):
+        logit = state['logit']
+        dist = torchd.independent.Independent(tools.OneHotDist(logit), 1)
+        return dist
+
+    def _suff_stats_layer(self, name, x):
+        if name == 'ims':
+            x = self._ims_stat_layer(x)
+        elif name == 'obs':
+            x = self._obs_stat_layer(x)
+        else:
+            raise NotImplementedError
+        logit = x.reshape(list(x.shape[:-1]) + [self._stoch, self._discrete])
+        return {'logit': logit}
