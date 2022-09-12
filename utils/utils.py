@@ -1003,7 +1003,8 @@ class MultiCropWrapperMemorySaver(nn.Module):
             m_logits = self.head(memory_enc)
             m_pred = self.predictor(memory_enc, indices=pos_indices)
             m_pred_logits = self.head(m_pred)
-            return m_logits, m_pred_logits, memory_mask
+            m_pred_past_logits = None
+            return m_logits, m_pred_logits, m_pred_past_logits, memory_mask
         else:
             return self.head(output)
 

@@ -1,4 +1,4 @@
-__all__ = ['FeatureLoss', 'FeatureLossAllPairs']
+__all__ = ['FeatureLoss', 'FeatureLossAllPairs', 'FeatureLossMemory']
 
 import torch
 import torch.nn.functional as F
@@ -42,8 +42,8 @@ class FeatureLoss(DINOLoss):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        s_enc_logits, s_pred_future_logits, s_pred_past_logits, s_indices = student_output
-        t_enc_logits, t_pred_future_logits, t_pred_past_logits, t_indices = teacher_output
+        s_enc_logits, s_pred_future_logits, s_pred_past_logits, _ = student_output
+        t_enc_logits, t_pred_future_logits, t_pred_past_logits, _ = teacher_output
 
         temp = self.teacher_temp_schedule[epoch]
 
@@ -159,3 +159,52 @@ class FeatureLossAllPairs(FeatureLoss):
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
+
+
+class FeatureLossMemory(FeatureLoss):
+    def forward(self, student_output, teacher_output, epoch, **kwargs):
+        """
+        Cross-entropy between softmax outputs of the teacher and student networks.
+        """
+        s_enc_logits, s_pred_future_logits, s_pred_past_logits, memory_mask = student_output
+        t_enc_logits, t_pred_future_logits, t_pred_past_logits, memory_mask = teacher_output
+
+        temp = self.teacher_temp_schedule[epoch]
+
+        s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
+
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
+        t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
+
+        CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba, memory_mask) if self.args.CE_fe_c else 0.
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba, memory_mask) if self.args.CE_ef_c else 0.
+
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
+
+        self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
+        time_entropy = self.time_entropy(t_enc_proba)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
+
+        return total_loss, {'CE': total_loss,
+                            'CE_fe': CE_fe,
+                            'CE_ef': CE_ef,
+                            'entropy': self.entropy(self.center),
+                            'batch_time_entropy': time_entropy,
+                            'dirac_entropy': dirac_entropy,
+                            'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
+                            }
+
+    def compute_loss_fe(self, s_pred_future_proba, t_enc_proba, memory_mask):
+        loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
+        mask_sum = memory_mask.sum() + 1e-16
+        total_loss = (memory_mask * loss).sum() / mask_sum
+        return total_loss
+
+    def compute_loss_ef(self, s_enc_proba, t_pred_future_proba, memory_mask):
+        loss = -torch.sum(t_pred_future_proba * torch.log(s_enc_proba), dim=-1)
+        mask_sum = memory_mask.sum() + 1e-16
+        total_loss = (memory_mask * loss).sum() / mask_sum
+        return total_loss
+
+

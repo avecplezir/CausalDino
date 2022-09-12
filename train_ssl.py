@@ -360,8 +360,8 @@ def train_svt(args):
     # multi-crop wrapper handles forward with inputs of different resolutions
     Wrapper = getattr(utils, args.wrapper)
     print('Wrapper', Wrapper)
-    n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory'] else 256
-    layer_norm = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory'] else False
+    n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
+    layer_norm = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
     print('n_embd', n_embd)
     print('layer_norm', layer_norm)
     student = Wrapper(student,

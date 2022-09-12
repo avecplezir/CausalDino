@@ -130,6 +130,29 @@ class MLPPosPredictor(nn.Module):
         return out
 
 
+class MLPPastPredictor(nn.Module):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+        super().__init__()
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
+        self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=3)
+        self.wpe = nn.Embedding(block_size, n_embd)
+
+    def forward(self, x, indices=None, **kwargs):
+        x = x.repeat(1, indices.size(1), 1)
+        fp_emb = self.wpe(indices)
+        out = self.predictor(torch.cat([fp_emb, x], -1))
+
+        if self.layer_norm:
+            out = self.ln_f(out)
+        else:
+            out = nn.functional.normalize(out, dim=-1, p=2)
+
+        return out
+
+
 class Identity(nn.Module):
     def __init__(self,  **kwargs):
         super().__init__()

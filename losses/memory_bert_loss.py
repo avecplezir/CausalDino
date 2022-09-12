@@ -60,12 +60,10 @@ class MemoryBertLoss(MemoryLoss):
         """
         N, L, D = x.shape  # batch, length, dim
         len_keep = max(int(L * (1 - mask_ratio)), 1)
-        # print('len_keep', len_keep)
 
         noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
         if keeplast:
             noise[:, -1:] = 1
-        # print('mask g mask', mask)
         noise = noise * mask
 
         # sort noise for each sample
@@ -77,7 +75,6 @@ class MemoryBertLoss(MemoryLoss):
         mask[:, :len_keep] = 1
         # unshuffle to get the binary mask
         mask = torch.gather(mask, dim=1, index=ids_restore)
-        # print('mask g 2', mask)
 
         x_masked = x * mask.unsqueeze(-1)
         return x_masked, mask
@@ -91,14 +88,9 @@ class MemoryBertLoss(MemoryLoss):
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
         mask = (~token_memory_mask.bool()) * memory_mask
-        # print('(~token_memory_mask.bool()).long()', (~token_memory_mask.bool()).long())
-        # print('memory_mask', memory_mask)
-        # print('mask', mask)
-        mask_sum = mask.sum() + 1e-16
-        # print('mask_sum', mask_sum)
-        # print('mask, loss', mask.shape, loss.shape)
-        total_loss = (mask * loss).sum() / mask_sum
-
+        # mask_sum = mask.sum() + 1e-16
+        # total_loss = (mask * loss).sum() / mask_sum
+        total_loss = (mask * loss).sum()
         return total_loss
 
 
