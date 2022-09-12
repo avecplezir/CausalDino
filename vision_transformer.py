@@ -279,8 +279,13 @@ class DINOHead(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        x = self.mlp(x)
-        x = nn.functional.normalize(x, dim=-1, p=2)
+        b, t, emb = x.size()
+        if len(x.size()) == 3:
+            out = x.reshape(b*t, emb)
+        out = self.mlp(out)
+        if len(x.size()) == 3:
+            out = out.reshape(b, t, -1)
+        x = nn.functional.normalize(out, dim=-1, p=2)
         if self.skip_last:
             return x
         x = self.last_layer(x)
