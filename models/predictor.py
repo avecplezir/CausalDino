@@ -283,9 +283,8 @@ class MLPVAE2Predictor(nn.Module):
     def forward(self, x, indices=None, f_x=None, **kwargs):
 
         t = x.size(1)
-        f_x = f_x.unsqueeze(1).repeat(1, t, 1)
+        f_x = f_x.repeat(1, t, 1)
         delta_pos = self.wpe(indices)
-        print('x, f_x, delta_pos', x.shape, f_x.shape, delta_pos.shape)
         x_post = self.mlp_post(torch.cat([f_x, x, delta_pos], -1))
         stats_post = self._suff_stats_layer('obs', x_post)
         stoch_post = self.get_dist(stats_post).sample()
