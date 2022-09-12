@@ -70,7 +70,6 @@ class CausalSelfAttention(nn.Module):
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         if attn_type == 'causal':
-            print('causal!')
             att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
 
         if mask is not None:
@@ -326,7 +325,6 @@ class GPTVAE(GPT):
         print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
 
     def forward(self, x, indices=None, **kwargs):
-        print('x in, indices', x.shape, indices.shape)
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
@@ -343,7 +341,6 @@ class GPTVAE(GPT):
         for block in self.transformer.h:
             x_post = block(x_post, attn_type='all')
         x_post = self.transformer.ln_f(x_post)
-        print('x_post', x_post.shape)
         stats_post = self._suff_stats_layer('obs', x_post)
 
         # prior
@@ -351,7 +348,6 @@ class GPTVAE(GPT):
         for block in self.transformer.h:
             x_prior = block(x_prior, attn_type='causal')
         x_prior = self.transformer.ln_f(x_prior)
-        print('x_prior', x_prior.shape)
         stats_prior = self._suff_stats_layer('ims', x_prior)
 
         # sample posterior and transform it to feed to gpt
@@ -361,7 +357,6 @@ class GPTVAE(GPT):
 
         # prediction
         x = self.post2gpt(torch.cat([x, stoch_post], -1))
-        print('predictoin x', x.shape)
         for block in self.transformer.h:
             x = block(x, attn_type='causal')
         out = self.transformer.ln_f(x)
