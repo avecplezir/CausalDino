@@ -45,4 +45,4 @@ python -m torch.distributed.launch \
   --skip_last True \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
-  --return_pred_out False \
+  --return_pred_out True \

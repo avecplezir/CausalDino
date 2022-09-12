@@ -517,13 +517,13 @@ def train_svt(args):
     print('step', step)
 
     if args.do_eval and args.do_eval_before_train:
-        # if args.eval_dataset:
-        #     val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
+        if args.eval_dataset:
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
         if args.eval_dataset2:
             val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone,
                                   opt=args, return_pred_out=args.return_pred_out)
         if utils.is_main_process():
-            # print('val_stats', val_stats)
+            print('val_stats', val_stats)
             print('val_stats mean', val_stats2)
             if args.use_wandb:
                 wandb.log({'knn/' + key: value for key, value in val_stats.items()}, step=step)
