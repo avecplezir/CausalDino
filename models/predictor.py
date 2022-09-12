@@ -93,7 +93,7 @@ class LinearPredictor(nn.Module):
 class MLPfeaturePredictor(nn.Module):
     def __init__(self, n_embd=256, layer_norm=False, **kwargs):
         super().__init__()
-        self.mlp = DINOHead(n_embd)
+        self.mlp = DINOHead(n_embd, bottleneck_dim=n_embd)
         self.layer_norm = layer_norm
         if self.layer_norm:
             print('layer norm in predictor!')
