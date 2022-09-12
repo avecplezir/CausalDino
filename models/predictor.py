@@ -153,12 +153,12 @@ class MLPPastPredictor(nn.Module):
         return out
 
 
-def MLPBYOL(dim, projection_size, hidden_size=4096):
+def MLPBYOL(n_embd, hidden_size=4096):
     return nn.Sequential(
-        nn.Linear(dim, hidden_size),
+        nn.Linear(n_embd, hidden_size),
         nn.BatchNorm1d(hidden_size),
-        nn.ReLU(inplace=True),
-        nn.Linear(hidden_size, projection_size)
+        nn.GELU(),
+        nn.Linear(hidden_size, n_embd)
     )
 
 
