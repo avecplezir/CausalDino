@@ -246,3 +246,60 @@ class HeadProba(nn.Module):
         return x
 
 
+class MLPVAE2Predictor(nn.Module):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+        super().__init__()
+        self._stoch = 32
+        self._discrete = 32
+        self._hidden = n_embd
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
+        self.mlp_post = DINOHead(3 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
+        self.mlp_prior = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
+
+        self.predictor = DINOHead(n_embd + self._stoch * self._discrete, bottleneck_dim=self._hidden)
+        self.wpe = nn.Embedding(block_size, n_embd)
+
+        self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
+        self._obs_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
+
+    def get_dist(self, state, dtype=None):
+        logit = state['logit']
+        dist = torchd.independent.Independent(tools.OneHotDist(logit), 1)
+        return dist
+
+    def _suff_stats_layer(self, name, x):
+        if name == 'ims':
+            x = self._ims_stat_layer(x)
+        elif name == 'obs':
+            x = self._obs_stat_layer(x)
+        else:
+            raise NotImplementedError
+        logit = x.reshape(list(x.shape[:-1]) + [self._stoch, self._discrete])
+        return {'logit': logit}
+
+    def forward(self, x, indices=None, f_x=None, **kwargs):
+
+        t = x.size(1)
+        f_x = f_x.unsqueeze(1).repeat(1, t, 1)
+        delta_pos = self.wpe(indices)
+        print('x, f_x, delta_pos', x.shape, f_x.shape, delta_pos.shape)
+        x_post = self.mlp_post(torch.cat([f_x, x, delta_pos], -1))
+        stats_post = self._suff_stats_layer('obs', x_post)
+        stoch_post = self.get_dist(stats_post).sample()
+
+        x_prior = self.mlp_prior(torch.cat([x, delta_pos], -1))
+        stats_prior = self._suff_stats_layer('ims', x_prior)
+
+        shape = list(stoch_post.shape[:-2]) + [self._stoch * self._discrete]
+        stoch_post = stoch_post.reshape(shape)
+        out = self.predictor(torch.cat([x, stoch_post], -1))
+
+        if self.layer_norm:
+            out = self.ln_f(out)
+        else:
+            out = nn.functional.normalize(out, dim=-1, p=2)
+
+        return out, stoch_post, stats_post, stats_prior

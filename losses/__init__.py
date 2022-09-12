@@ -7,5 +7,5 @@ from .te_pp_loss import TEPPLoss
 from .vae_loss import VAELoss
 from .memory_loss import MemoryLoss
 from .memory_bert_loss import MemoryBertLoss
-from .memory_past_loss import MemoryPastLoss
+from .memory_past_loss import MemoryPastLoss, MemoryVAELoss
 from .tepp_loc_loss import TEPPLocLoss
