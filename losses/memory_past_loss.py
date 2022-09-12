@@ -7,7 +7,8 @@ from .memory_bert_loss import MemoryBertLoss
 
 
 class MemoryPastLoss(MemoryBertLoss):
-       def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
+   def compute_loss_fe(self, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
+        memory_mask[:, -1] = 0
         s_pred_future = student.module.predictor(memory_enc, indices=pos_indices)
         s_pred_future_logits = student.module.head(s_pred_future)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
