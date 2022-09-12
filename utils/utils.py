@@ -957,6 +957,11 @@ class MultiCropWrapperMemorySaver(nn.Module):
     def retrieve_memory(self, ):
         return torch.stack(list(self.memory), 1), torch.stack(list(self.memory_mask), 1)
 
+    def get_pos_indices(self, memory_enc):
+        indices = torch.arange(memory_enc.size(1)).flip([0]).unsqueeze(0).repeat(memory_enc.size(0), 1).to(
+        memory_enc.device)
+        return indices
+
     def forward(self, x, indices=None, video_indices=None, **kwargs):
         # convert to list
         if not isinstance(x, list):
@@ -993,9 +998,10 @@ class MultiCropWrapperMemorySaver(nn.Module):
             self.add_memory(x_enc[:, 0])
             memory_enc = torch.cat([memory_enc, x_enc[:, :1]], 1)
             memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
+            pos_indices = self.get_pos_indices(memory_enc)
 
             m_logits = self.head(memory_enc)
-            m_pred = self.predictor(memory_enc)
+            m_pred = self.predictor(memory_enc, indices=pos_indices)
             m_pred_logits = self.head(m_pred)
             return m_logits, m_pred_logits, memory_mask
         else:
