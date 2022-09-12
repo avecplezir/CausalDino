@@ -50,3 +50,4 @@ python -m torch.distributed.launch \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
   --return_pred_out True \
+  --do_eval_before_train True \
