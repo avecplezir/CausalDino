@@ -140,8 +140,8 @@ class MLPPastPredictor(nn.Module):
         self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=3)
         self.wpe = nn.Embedding(block_size, n_embd)
 
-    def forward(self, x, memory=None, indices=None, **kwargs):
-        x = x.repeat(1, indices.size(1), 1)
+    def forward(self, x, indices=None, **kwargs):
+        x = x[:, -1:].repeat(1, indices.size(1), 1)
         fp_emb = self.wpe(indices)
         out = self.predictor(torch.cat([fp_emb, x], -1))
 

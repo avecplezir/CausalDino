@@ -194,6 +194,8 @@ def get_args_parser():
                         help="""Whether to use continuous sampler""")
     parser.add_argument('--return_prediction_logits', type=utils.bool_flag, default=True,
                         help="""Whether to return logits with prediction""")
+    parser.add_argument('--return_enc_logits', type=utils.bool_flag, default=True,
+                        help="""Whether to return logits of encoding""")
     parser.add_argument('--pseudo_length', type=int, default=None,
                         help="""pseudo_length of the dataset""")
     parser.add_argument('--sampling_rate', type=int, default=32,
@@ -379,6 +381,7 @@ def train_svt(args):
                                        layer_norm=layer_norm) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
+         return_enc_logits=args.return_enc_logits,
          n_global_views=args.n_global_views,
          batch_size=args.batch_size_per_gpu,
          maxlen=args.maxlen,
@@ -395,6 +398,7 @@ def train_svt(args):
                                       layer_norm=layer_norm) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
+        return_enc_logits=args.return_enc_logits,
         n_global_views=args.n_global_views,
         batch_size=args.batch_size_per_gpu,
         maxlen=args.maxlen,

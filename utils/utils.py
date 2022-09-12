@@ -870,7 +870,8 @@ class MultiCropWrapperMemory(nn.Module):
     concatenate all the output features and run the head forward on these
     concatenated features.
     """
-    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None, **kwargs):
+    def __init__(self, backbone, head, predictor, predictor_past=None,
+                 headprob=None, return_enc_logits=True, **kwargs):
         super(MultiCropWrapperMemory, self).__init__()
         # disable layers dedicated to ImageNet labels classification
         if hasattr(backbone, 'fc'):
@@ -880,6 +881,7 @@ class MultiCropWrapperMemory(nn.Module):
         self.predictor = predictor
         self.predictor_past = predictor_past
         self.headprob = headprob
+        self.return_enc_logits = return_enc_logits
 
     def forward(self, x, indices=None, **kwargs):
         # convert to list
@@ -907,7 +909,8 @@ class MultiCropWrapperMemory(nn.Module):
         if self.training:
             enc_list = output.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
-            return x_enc, self.head(x_enc), indices
+            x_enc_logits = self.head(x_enc) if self.return_enc_logits else None
+            return x_enc, x_enc_logits, indices
         else:
             return self.head(output)
 

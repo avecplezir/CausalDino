@@ -14,8 +14,8 @@ class MemoryBertLoss(MemoryLoss):
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
 
-        s_enc, _, s_indices = student_output
-        t_enc, _, t_indices = teacher_output
+        s_enc, _, _ = student_output
+        t_enc, _, _ = teacher_output
 
         if not self.memory:
             print('add first memory!') #ToDo: fix this trick
@@ -34,6 +34,7 @@ class MemoryBertLoss(MemoryLoss):
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
         CE_fe = self.compute_loss_fe(s_memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices)
+        # CE_ee = self.dino_loss(t_enc_proba[:], s_memory_enc) if self.args.CE_ee_c else 0.
 
         total_loss = CE_fe
         memory_size = memory_mask.sum(-1).mean()

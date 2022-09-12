@@ -36,7 +36,7 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb False \
-  --loss FeatureLossMemory \
+  --loss MemoryPastLoss \
   --maxlen 16 \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
@@ -48,6 +48,7 @@ python -m torch.distributed.launch \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
   --weight_decay_end 0.1 \
-  --wrapper MultiCropWrapperMemorySaver \
+  --wrapper MultiCropWrapperMemory \
+  --return_enc_logits False \
   --predictor MLPPastPredictor \
   --random_sampling False \
