@@ -1,4 +1,4 @@
-__all__ = ['FeatureLoss']
+__all__ = ['FeatureLoss', 'FeatureLossAllPairs']
 
 import torch
 import torch.nn.functional as F
@@ -45,8 +45,6 @@ class FeatureLoss(DINOLoss):
         s_enc_logits, s_pred_future_logits, s_pred_past_logits, s_indices = student_output
         t_enc_logits, t_pred_future_logits, t_pred_past_logits, t_indices = teacher_output
 
-        # retrieved_memories = self.retrieve_memory(t_indices.cpu().numpy())
-
         temp = self.teacher_temp_schedule[epoch]
 
         s_enc_proba = F.softmax(s_enc_logits / self.student_temp, dim=-1)
@@ -55,12 +53,10 @@ class FeatureLoss(DINOLoss):
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
         t_pred_future_proba = F.softmax((t_pred_future_logits - self.predict_future_center) / temp, dim=-1)
 
-        CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba)
-        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba)
+        CE_fe = self.compute_loss_fe(s_pred_future_proba, t_enc_proba) if self.args.CE_fe_c else 0.
+        CE_ef = self.compute_loss_ef(s_enc_proba, t_pred_future_proba) if self.args.CE_ef_c else 0.
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
-
-        # self.add_memory(t_indices.view(-1).cpu().numpy(), t_enc_logits.argmax(dim=-1).view(-1).cpu().numpy())
 
         self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
         time_entropy = self.time_entropy(t_enc_proba)
@@ -133,3 +129,33 @@ class FeatureLoss(DINOLoss):
         batch_center = batch_center / (b * t * dist.get_world_size())
         return batch_center
 
+
+class FeatureLossAllPairs(FeatureLoss):
+    def compute_loss_fe(self, s_pred_future_proba, t_enc_proba):
+        total_loss = 0
+        n_loss_terms = 0
+        for ip in range(0, self.n_global_views): #future_prediction from past
+            for ie in range(0, self.n_crops): #future encoding
+                if ip == ie:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        return total_loss
+
+    def compute_loss_ef(self, s_enc_proba, t_pred_future_proba):
+        total_loss = 0
+        n_loss_terms = 0
+        # ip < ie
+        for ip in range(0, self.n_global_views): #future_prediction from past
+            for ie in range(0, self.n_crops): #future encoding
+                if ip == ie:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = -torch.sum(t_pred_future_proba[:, ip] * torch.log(s_enc_proba[:, ie]), dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        return total_loss

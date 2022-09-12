@@ -1,31 +1,29 @@
+#!/bin/bash
 
-
-PROJECT_PATH="$HOME/CausalDino"
-DATA_PATH="/mnt/data/ucf101/videos_256p_dense_cache"
-EXP_NAME="ucf101_tiny_pp"
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
+VAL_DATA_PATH="$INPUT_PATH/UCF101"
+DATA_PATH="$INPUT_PATH/videos_256"
+EXP_NAME="tiny_epic_mem_gl_nirvana"
 PORT='1024'
-
 
 cd "$PROJECT_PATH" || exit
 
 if [ ! -d "checkpoints/$EXP_NAME" ]; then
-  mkdir "checkpoints/$EXP_NAME"
+  mkdir -p "checkpoints/$EXP_NAME"
 fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
-export CUDA_VISIBLE_DEVICES=1
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
   --master_port="$PORT" \
   train_ssl.py \
   --data_path "${DATA_PATH}" \
-  --val_data_dir "${DATA_PATH}" \
+  --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
-  --video_extension avi \
-  --dataset_level 2 \
+  --video_extension MP4 \
+  --dataset_level 3 \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \
@@ -33,17 +31,22 @@ python -m torch.distributed.launch \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb True \
-  --loss FeatureLoss \
-  --dataset KineticsEvents \
+  --loss MemoryLoss \
+  --maxlen 8 \
+  --block_size 8 \
+  --memory_offset 0 \
+  --teacher_pred_head True \
+  --CE_fe_c 1. \
+  --CE_ef_c 0. \
+  --CE_ee_c 0. \
+  --dataset EpicNFEvents \
+  --continuous True \
   --local_crops_number 0 \
-  --n_global_views 4 \
+  --n_global_views 2 \
   --freeze_last_layer 1 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperPredictorProjector \
-  --predictor GPT \
-  --headproba HeadProba \
-  --skip_last True \
+  --weight_decay_end 0.1 \
+  --wrapper MultiCropWrapperMemory \
+  --predictor MLPPosPredictor \
   --random_sampling False \
-  --CE_fe_c 0.5 \
-  --CE_ef_c 0.5 \
 

@@ -47,7 +47,7 @@ class MemoryLoss(TEPPLoss):
 
         if not self.memory:
             print('add first memory!') #ToDo: fix this trick
-            self.memory_idx = 2
+            self.memory_idx = 0
             self.add_memory(t_enc[:, self.memory_idx])
         self.remove_memory(video_indices)
         memory_enc, memory_mask = self.retrieve_memory()

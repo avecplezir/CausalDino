@@ -91,14 +91,22 @@ class LinearPredictor(nn.Module):
 
 
 class MLPfeaturePredictor(nn.Module):
-    def __init__(self, n_embd=256, **kwargs):
+    def __init__(self, n_embd=256, layer_norm=False, **kwargs):
         super().__init__()
         self.mlp = DINOHead(n_embd)
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            print('layer norm in predictor!')
+            self.ln_f = nn.LayerNorm(n_embd)
 
     def forward(self, x, **kwargs):
-        x = self.mlp(x)
-        x = nn.functional.normalize(x, dim=-1, p=2)
-        return x
+        out = self.mlp(x)
+        if self.layer_norm:
+            out = self.ln_f(out)
+        else:
+            out = nn.functional.normalize(out, dim=-1, p=2)
+        return out
+
 
 class MLPPosPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
@@ -121,12 +129,14 @@ class MLPPosPredictor(nn.Module):
 
         return out
 
+
 class Identity(nn.Module):
     def __init__(self,  **kwargs):
         super().__init__()
 
     def forward(self, x, **kwargs):
         return x
+
 
 class MLPVAEPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
