@@ -106,13 +106,34 @@ class MLPPastPredictor(nn.Module):
         return out
 
 
-def MLPBYOL(n_embd, hidden_size=4096):
-    return nn.Sequential(
-        nn.Linear(n_embd, hidden_size),
-        nn.BatchNorm1d(hidden_size),
-        nn.GELU(),
-        nn.Linear(hidden_size, n_embd)
-    )
+class MLPBYOL(nn.Module):
+    def __init__(self, n_embd, hidden_size=4096, layer_norm=None, **kwargs):
+        super().__init__()
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
+        self.mlp = nn.Sequential(
+                    nn.Linear(n_embd, hidden_size),
+                    nn.BatchNorm1d(hidden_size),
+                    nn.GELU(),
+                    nn.Linear(hidden_size, n_embd)
+                )
+
+    def forward(self, x):
+        b, t, emb = x.size()
+        if len(x.size()) == 3:
+            out = x.reshape(b * t, emb)
+        out = self.mlp(out)
+        if len(x.size()) == 3:
+            out = out.reshape(b, t, -1)
+
+        if self.layer_norm:
+            out = self.ln_f(out)
+        else:
+            out = nn.functional.normalize(out, dim=-1, p=2)
+
+        return out
 
 
 class Identity(nn.Module):
