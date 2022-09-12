@@ -595,7 +595,6 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        # indices = torch.stack([idx.cuda(non_blocking=True) for idx in indices], -1)
         indices = indices.cuda(non_blocking=True)
 
         # teacher and student forward passes + compute dino loss

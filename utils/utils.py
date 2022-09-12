@@ -933,6 +933,7 @@ class MultiCropWrapperMemorySaver(nn.Module):
         self.predictor_past = predictor_past
         self.headprob = headprob
         self.maxlen = maxlen
+        self.batch_size = batch_size
 
         self.memory_idx = 0
         self.memory = None
@@ -993,16 +994,17 @@ class MultiCropWrapperMemorySaver(nn.Module):
             if not self.memory:
                 print('add first memory!')  # ToDo: fix this trick
                 self.add_memory(x_enc[:, self.memory_idx])
+                self.current_video_indices = self.current_video_indices.to(video_indices.device)
             self.remove_memory(video_indices)
 
             memory_enc, memory_mask = self.retrieve_memory()
             self.add_memory(x_enc[:, 0])
-            memory_enc = torch.cat([memory_enc, x_enc[:, :1]], 1)
-            memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
+            # memory_enc = torch.cat([memory_enc, x_enc[:, :1]], 1)
+            # memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
             pos_indices = self.get_pos_indices(memory_enc)
 
             m_logits = self.head(memory_enc)
-            m_pred = self.predictor(memory_enc, indices=pos_indices)
+            m_pred = self.predictor(x_enc, memory=memory_enc, indices=pos_indices)
             m_pred_logits = self.head(m_pred)
             m_pred_past_logits = None
             return m_logits, m_pred_logits, m_pred_past_logits, memory_mask

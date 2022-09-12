@@ -38,6 +38,9 @@ class FeatureLoss(DINOLoss):
             self.memory = None
             self.init_memory(batch_size=batch_size)
 
+    def init_memory(self, batch_size=None):
+        pass
+
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
