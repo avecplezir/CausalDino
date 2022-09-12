@@ -3,5 +3,5 @@ from .swin_transformer import SwinTransformer3D
 from .s3d import S3D
 from .predictor import MLPPredictor, OneLayerPredictor, LinearPredictor, MLPfeaturePredictor, HeadProba, \
     MLPVAE2FoldPredictor, Identity, MLPPosPredictor, MLPPastPredictor, MLPVAE2Predictor
-from .gpt import GPT, GPTFutureTimeEmb, GPT2FoldPredictor
+from .gpt import GPT, GPTFutureTimeEmb, GPT2FoldPredictor, GPTVAE
 # from .mae import m
