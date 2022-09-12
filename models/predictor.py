@@ -153,6 +153,15 @@ class MLPPastPredictor(nn.Module):
         return out
 
 
+def MLPBYOL(dim, projection_size, hidden_size=4096):
+    return nn.Sequential(
+        nn.Linear(dim, hidden_size),
+        nn.BatchNorm1d(hidden_size),
+        nn.ReLU(inplace=True),
+        nn.Linear(hidden_size, projection_size)
+    )
+
+
 class Identity(nn.Module):
     def __init__(self,  **kwargs):
         super().__init__()
