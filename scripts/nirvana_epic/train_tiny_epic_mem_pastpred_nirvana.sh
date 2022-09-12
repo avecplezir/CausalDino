@@ -36,7 +36,7 @@ python -m torch.distributed.launch \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
   --dataset EpicNFEvents \
-  --num_workers 10 \
+  --num_workers 20 \
   --continuous True \
   --local_crops_number 0 \
   --n_global_views 1 \

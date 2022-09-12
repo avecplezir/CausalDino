@@ -35,13 +35,13 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb False \
+  --use_wandb True \
   --loss MemoryVAELoss \
   --maxlen 16 \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
   --dataset EpicNFEvents \
-  --num_workers 10 \
+  --num_workers 20 \
   --continuous True \
   --local_crops_number 0 \
   --n_global_views 1 \
