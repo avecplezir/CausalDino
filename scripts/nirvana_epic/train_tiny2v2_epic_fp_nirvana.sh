@@ -35,6 +35,7 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --global_crops_scale 0.14 1 \
   --n_parts 11 \
+  --num_workers 20 \
   --use_wandb True \
   --loss FeatureLossAllPairs \
   --dataset EpicEvents \
