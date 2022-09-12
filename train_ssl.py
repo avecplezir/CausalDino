@@ -382,6 +382,7 @@ def train_svt(args):
          n_global_views=args.n_global_views,
          batch_size=args.batch_size_per_gpu,
          maxlen=args.maxlen,
+         student=True,
          )
     teacher = Wrapper(
         teacher,
@@ -397,6 +398,7 @@ def train_svt(args):
         n_global_views=args.n_global_views,
         batch_size=args.batch_size_per_gpu,
         maxlen=args.maxlen,
+        student=False,
     )
 
     # move networks to gpu
@@ -599,8 +601,9 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
+            teacher_output = teacher(images[:args.teacher_views], indices=indices,
+                                     video_indices=video_indices)  # only the 2 global views pass through the teacher
             student_output = student(images, indices=indices, video_indices=video_indices)
-            teacher_output = teacher(images[:args.teacher_views], indices=indices, video_indices=video_indices)  # only the 2 global views pass through the teacher
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch,
                                           student=student, teacher=teacher, video_indices=video_indices)
 
