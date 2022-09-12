@@ -226,6 +226,8 @@ def get_args_parser():
                         help="""number of views to pass to teacher""")
     parser.add_argument('--local_first', type=utils.bool_flag, default=False,
                         help="""Whether to apply local transformation first in augmentation""")
+    parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False,
+                        help="""Whether return prediction in teacher for eval""")
 
     return parser
 
@@ -518,7 +520,8 @@ def train_svt(args):
         if args.eval_dataset:
             val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
         if args.eval_dataset2:
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone,
+                                  opt=args, return_pred_out=args.return_pred_out)
         if utils.is_main_process():
             print('val_stats', val_stats)
             print('val_stats mean', val_stats2)
@@ -663,12 +666,12 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}, step
 
 
-def eval_knn(train_loader, test_loader, train_dataset, test_dataset, model, opt):
+def eval_knn(train_loader, test_loader, train_dataset, test_dataset, model, opt, return_pred_out=False):
     model.eval()  # teacher model already on eval
     print("Extracting features for train set...")
-    train_features = extract_features(model, train_loader)
+    train_features = extract_features(model, train_loader, return_pred_out=return_pred_out)
     print("Extracting features for val set...")
-    test_features = extract_features(model, test_loader)
+    test_features = extract_features(model, test_loader, return_pred_out=return_pred_out)
 
     if utils.get_rank() == 0:
         train_features = nn.functional.normalize(train_features, dim=1, p=2)

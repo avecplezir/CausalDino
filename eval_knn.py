@@ -91,7 +91,7 @@ def extract_feature_pipeline(args):
 
 
 @torch.no_grad()
-def extract_features(model, data_loader):
+def extract_features(model, data_loader, return_pred_out=False):
     metric_logger = utils.MetricLogger(delimiter="  ")
     features = None
     for samples, index in metric_logger.log_every(data_loader, 10):
@@ -101,7 +101,7 @@ def extract_features(model, data_loader):
         index = index.cuda(non_blocking=True)
         b, num_views = index.size(0), len(samples)
         samples = torch.cat(samples, 0)
-        feats = model(samples).clone()
+        feats = model(samples, return_pred_out=return_pred_out).clone()
         if len(feats.shape) == 2:
             feats = torch.stack(feats.chunk(num_views, 0), 1)
         feats = feats.mean(1)

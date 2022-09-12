@@ -821,7 +821,7 @@ class MultiCropWrapperPredictorProjector(nn.Module):
         self.return_prediction_logits = return_prediction_logits
         self.n_global_views = n_global_views
 
-    def forward(self, x, indices=None, **kwargs):
+    def forward(self, x, indices=None, return_pred_out=False, **kwargs):
         # convert to list
         if not isinstance(x, list):
             x = [x]
@@ -858,7 +858,14 @@ class MultiCropWrapperPredictorProjector(nn.Module):
             else:
                 return x_enc_logits, pred_future, predict_past, indices
         else:
-            return self.headprob(self.head(output))
+            if return_pred_out:
+                enc_list = output.chunk(n_crops)
+                x_enc = torch.stack(enc_list, 1)
+                pred_future = self.predictor(x_enc[:, :self.n_global_views], indices=indices)
+                pred_future_logits = self.headprob(self.head(pred_future))
+                return pred_future_logits
+            else:
+                return self.headprob(self.head(output))
 
 
 class MultiCropWrapperMemory(nn.Module):
