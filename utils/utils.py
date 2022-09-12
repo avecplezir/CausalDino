@@ -912,6 +912,96 @@ class MultiCropWrapperMemory(nn.Module):
             return self.head(output)
 
 
+class MultiCropWrapperMemorySaver(nn.Module):
+    """
+    Perform forward pass separately on each resolution input.
+    The inputs corresponding to a single resolution are clubbed and single
+    forward is run on the same resolution inputs. Hence we do several
+    forward passes = number of different resolutions used. We then
+    concatenate all the output features and run the head forward on these
+    concatenated features.
+    """
+    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
+                 batch_size=None, **kwargs):
+        super(MultiCropWrapperMemory, self).__init__()
+        # disable layers dedicated to ImageNet labels classification
+        if hasattr(backbone, 'fc'):
+            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
+        self.backbone = backbone
+        self.head = head
+        self.predictor = predictor
+        self.predictor_past = predictor_past
+        self.headprob = headprob
+
+        self.memory_idx = 0
+        self.memory = None
+        self.init_memory(batch_size=batch_size)
+
+    def init_memory(self, batch_size=None, **kwargs):
+        self.memory = deque(maxlen=self.args.maxlen)
+        self.memory_mask = deque(maxlen=self.args.maxlen)
+        self.current_video_indices = -torch.ones(batch_size)
+
+    def add_memory(self, values):
+        self.memory.append(values.detach())
+        self.memory_mask.append(torch.ones(self.batch_size).to(values.device))
+
+    def remove_memory(self, video_indices):
+        new_video_indices = ~(self.current_video_indices == video_indices)
+        self.current_video_indices = video_indices
+        for idx in torch.arange(self.batch_size)[new_video_indices]:
+            for i in range(len(self.memory)):
+                self.memory[i][idx] = torch.zeros_like(self.memory[i][idx])
+                self.memory_mask[i][idx] = 0
+
+    def retrieve_memory(self, ):
+        return torch.stack(list(self.memory), 1), torch.stack(list(self.memory_mask), 1)
+
+    def forward(self, x, indices=None, video_indices=None, **kwargs):
+        # convert to list
+        if not isinstance(x, list):
+            x = [x]
+        n_crops = len(x)
+        idx_crops = torch.cumsum(torch.unique_consecutive(
+            torch.tensor([inp.shape[-1] for inp in x]),
+            return_counts=True,
+        )[1], 0)
+        start_idx = 0
+        for end_idx in idx_crops:
+            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
+            if start_idx == 0:
+                output = _out
+            else:
+                if isinstance(_out, tuple):
+                    output1 = torch.cat((output[0], _out[0]))
+                    output2 = torch.cat((output[1], _out[1]))
+                    output = (output1, output2)
+                else:
+                    output = torch.cat((output, _out))
+            start_idx = end_idx
+        # Run the head forward on the concatenated features.
+
+        if self.training:
+            enc_list = output.chunk(n_crops)
+            x_enc = torch.stack(enc_list, 1)
+            if not self.memory:
+                print('add first memory!')  # ToDo: fix this trick
+                self.add_memory(x_enc[:, self.memory_idx])
+            self.remove_memory(video_indices)
+
+            memory_enc, memory_mask = self.retrieve_memory()
+            self.add_memory(x_enc[:, 0])
+            memory_enc = torch.cat([memory_enc, x_enc[:, :1]], 1)
+            memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
+
+            m_logits = self.head(memory_enc)
+            m_pred = self.predictor(memory_enc)
+            m_pred_logits = self.head(m_pred)
+            return m_logits, m_pred_logits, memory_mask
+        else:
+            return self.head(output)
+
+
 def get_params_groups(model):
     regularized = []
     not_regularized = []
