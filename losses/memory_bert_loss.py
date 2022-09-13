@@ -1,4 +1,4 @@
-__all__ = ['MemoryBertLoss']
+__all__ = ['MemoryBertLoss', 'MemoryBert2Loss']
 
 import torch
 import torch.nn.functional as F
@@ -94,7 +94,62 @@ class MemoryBertLoss(MemoryLoss):
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
 
         total_loss = (mask * loss).sum() / mask_sum
-        # total_loss = (mask * loss).sum()
         return total_loss
 
+
+class MemoryBert2Loss(MemoryBertLoss):
+    def forward(self, student_output, teacher_output, epoch, student=None, teacher=None,
+                video_indices=None, **kwargs):
+        """
+        Cross-entropy between softmax outputs of the teacher and student networks.
+        """
+
+        s_enc, _, _ = student_output
+        t_enc, _, _ = teacher_output
+
+        if not self.memory:
+            print('add first memory!') #ToDo: fix this trick
+            self.add_memory(t_enc[:, -1])
+        self.remove_memory(video_indices)
+        self.add_memory(t_enc[:, -1])
+        memory_enc, memory_mask = self.retrieve_memory()
+
+        pos_indices = self.get_pos_indices(memory_enc)
+
+        temp = self.teacher_temp_schedule[epoch]
+
+        t_enc_logits = teacher.head(memory_enc)
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
+
+        CE_fe = self.compute_loss_fe(s_enc, memory_mask, t_enc_proba, student, teacher, pos_indices)
+        # CE_ee = self.dino_loss(t_enc_proba[:], s_memory_enc) if self.args.CE_ee_c else 0.
+
+        total_loss = CE_fe
+        memory_size = memory_mask.sum(-1).mean()
+
+
+        self.update_centers(t_enc_logits, None, None)
+        time_entropy = self.time_entropy(t_enc_proba)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
+
+        return total_loss, {'CE': total_loss,
+                            'CE_fe': CE_fe,
+                            'memory_size': memory_size,
+                            'entropy': self.entropy(self.center),
+                            'batch_time_entropy': time_entropy,
+                            'dirac_entropy': dirac_entropy,
+                            'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
+                            }
+
+    def compute_loss_fe(self, s_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
+        s_enc
+
+        s_pred_future = student.module.predictor(memory_enc_masked, indices=pos_indices, mask=token_memory_mask,
+                                                 attn_type='all')
+        s_pred_future_logits = student.module.head(s_pred_future)
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
+        loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
+
+        total_loss = (mask * loss).sum() / mask_sum
+        return total_loss
 

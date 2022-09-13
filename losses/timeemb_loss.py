@@ -66,3 +66,48 @@ class TimeEmbLoss(FeatureLoss):
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         return total_loss
+
+
+class TELOSS(FeatureLoss):
+    def forward(self, student_output, teacher_output, epoch, student=None, teacher=None, **kwargs):
+        """
+        Cross-entropy between softmax outputs of the teacher and student networks.
+        """
+        s_enc, _, _, _ = student_output
+        t_enc, _, _, t_indices = teacher_output
+
+        temp = self.teacher_temp_schedule[epoch]
+        t_enc_logits = teacher.head(teacher.predictor(s_enc, attn_type='id'))
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
+
+        CE_fe = self.compute_loss_fe(s_enc, t_enc_proba, student, t_indices) if self.args.CE_fe_c else 0
+
+        total_loss = CE_fe
+
+        self.update_centers(t_enc_logits, None, None)
+        time_entropy = self.time_entropy(t_enc_proba)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
+
+        return total_loss, {'CE': total_loss,
+                            'CE_fe': CE_fe,
+                            'entropy': self.entropy(self.center),
+                            'batch_time_entropy': time_entropy,
+                            'dirac_entropy': dirac_entropy,
+                            'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
+                            }
+
+    def compute_loss_fe(self, s_enc, t_enc_proba, student, indices):
+        total_loss = 0
+        n_loss_terms = 0
+        # ip < ie
+        for ie in range(1, self.n_global_views):  # future encoding
+            s_pred_future = student.head(student.module.predictor(s_enc[:, :ie], future_index=indices[:, ie],
+                                                                  indices=indices))
+            s_pred_future_logits = student.module.headprob(s_pred_future)
+            s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
+            for ip in range(0, ie): #future_prediction from past
+                loss = -torch.sum(t_enc_proba[:, ie] * torch.log(s_pred_future_proba[:, ip]), dim=-1)
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        return total_loss

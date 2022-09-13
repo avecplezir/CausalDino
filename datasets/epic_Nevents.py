@@ -191,15 +191,12 @@ class EpicBertEvents(EpicNEvents):
                 # T H W C -> T C H W.
                 frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
                 # Perform data augmentation.
-                augmentation = VideoDataAugmentationDINO(size=self.cfg.global_size,
-                                                         local_crops_number=self.cfg.local_crops_number,
-                                                         global_crops_scale=self.cfg.global_crops_scale,
-                                                         n_global_views=self.cfg.n_global_views,
-                                                         )
-                if self.cfg.temporal_aug_memory:
-                    frames = augmentation(frames, from_list=True)
-                else:
-                    frames = augmentation(frames[0], from_list=False)
+                augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                           local_crops_number=self.cfg.local_crops_number,
+                                                           global_crops_scale=self.cfg.global_crops_scale,
+                                                           n_global_views=self.cfg.n_global_views,
+                                                           )
+                frames = augmentation(frames, from_list=True)
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 

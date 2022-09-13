@@ -56,6 +56,9 @@ class CausalSelfAttention(nn.Module):
         self.n_embd = config.n_embd
 
     def forward(self, x, attn_type='causal', mask=None):
+        if attn_type == 'id':
+            return x
+
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -63,9 +66,6 @@ class CausalSelfAttention(nn.Module):
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
-
-        if attn_type == 'single':
-            q = q[:, :, -1:]
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
@@ -219,6 +219,39 @@ class GPT(nn.Module):
             x = nn.functional.normalize(x, dim=-1, p=2)
 
         return x
+
+
+class GPTFE(GPT):
+    def forward(self, x, indices=None, future_index=None, attn_type='causal'):
+        b, t = x.size()[:2]
+        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
+
+        device = x.device
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(
+            0) if indices is None else indices  # shape (1, t)
+        future_index = future_index.unsqueeze(1)
+        future_pos_emb = self.transformer.wpe(future_index)
+
+        mask_emb = self.wme(torch.zeros_like(future_index))
+        future_x = future_pos_emb + mask_emb
+
+        t_f = 1
+        # forward the GPT model itself
+        tok_emb = x  # token embeddings of shape (b, t, n_embd)
+        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+        # position embeddings of shape (1, t, n_embd)
+        x = torch.cat([future_x, x], 1)
+        for block in self.transformer.h:
+            x = block(x, attn_type=attn_type)
+
+        if self.layer_norm:
+            x = self.transformer.ln_f(x)
+        else:
+            x = nn.functional.normalize(x, dim=-1, p=2)
+
+        # return all tokens except the conditioning
+        return x[:, t_f:]
 
 
 class GPTFutureTimeEmb(GPT):
