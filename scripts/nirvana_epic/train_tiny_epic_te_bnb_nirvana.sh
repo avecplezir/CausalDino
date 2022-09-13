@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_te_nirvana"
+EXP_NAME="tiny_epic_te_bnb_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -45,4 +45,7 @@ python -m torch.distributed.launch \
   --random_sampling False \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
-
+  --use_bn_in_head True \
+  --use_bn_in_pred True \
+  --hidden_dim_in_pred 4096 \
+  --hidden_dim_in_head 2048 \
