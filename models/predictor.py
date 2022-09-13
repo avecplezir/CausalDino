@@ -116,6 +116,7 @@ class MLPBYOL(nn.Module):
             self.ln_f = nn.LayerNorm(n_embd)
 
         if use_bn:
+            print('predictor use_bn!')
             self.mlp = nn.Sequential(
                         nn.Linear(n_embd, hidden_dim),
                         nn.BatchNorm1d(hidden_dim),

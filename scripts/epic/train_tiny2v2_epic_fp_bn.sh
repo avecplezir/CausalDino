@@ -5,7 +5,7 @@ PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
-PORT='1025'
+PORT='1026'
 
 EXP_NAME="tiny2v2_epic_fp_bn"
 
