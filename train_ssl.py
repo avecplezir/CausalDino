@@ -270,7 +270,9 @@ def train_svt(args):
     config.global_crops_scale = args.global_crops_scale
     config.temporal_aug_memory = args.temporal_aug_memory
     config.local_first = args.local_first
+    config.block_size = args.block_size
     args.teacher_views = args.n_global_views if args.teacher_views is None else args.teacher_views
+
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]

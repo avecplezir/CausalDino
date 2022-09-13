@@ -166,3 +166,53 @@ class EpicNFEvents(EpicNEvents):
                     self._num_retries
                 )
             )
+
+class EpicBertEvents(EpicNEvents):
+    def __getitem__(self, index):
+        for i_try in range(self._num_retries):
+            try:
+                ancor, video_idx = self.index2clip_video[index]
+                left_limit = max(0, ancor-self.cfg.block_size)
+                right_limit = ancor
+                clip_idx = np.random.choice(np.arange(left_limit, right_limit),
+                                            size=self.cfg.n_global_views-1,
+                                            replace=False)
+
+                clip_idx = list(np.array(sorted(clip_idx)))
+                if not clip_idx:
+                    clip_idx = [ancor]
+
+                indices_sorted = clip_idx + [ancor]
+
+                frames = []
+                for i in range(self.cfg.n_global_views):
+                    frames.extend(self.get_event(indices_sorted[i], video_idx))
+
+                # T H W C -> T C H W.
+                frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+                # Perform data augmentation.
+                augmentation = VideoDataAugmentationDINO(size=self.cfg.global_size,
+                                                         local_crops_number=self.cfg.local_crops_number,
+                                                         global_crops_scale=self.cfg.global_crops_scale,
+                                                         n_global_views=self.cfg.n_global_views,
+                                                         )
+                if self.cfg.temporal_aug_memory:
+                    frames = augmentation(frames, from_list=True)
+                else:
+                    frames = augmentation(frames[0], from_list=False)
+                # T C H W -> C T H W.
+                frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+
+                return frames, indices_sorted, video_idx
+            except:
+                if i_try > self._num_retries // 2:
+                    # let's try another one
+                    index = index + 1
+                    continue
+
+        else:
+            raise RuntimeError(
+                "Failed to fetch video after {} retries.".format(
+                    self._num_retries
+                )
+            )

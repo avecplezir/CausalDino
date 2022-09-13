@@ -246,7 +246,7 @@ class GPTFutureTimeEmb(GPT):
 class GPT2FoldPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=4, **kwargs):
         super().__init__()
-        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half')
+        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half', layer_norm=True)
         self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half')
 
     def forward(self, x, indices=None):
