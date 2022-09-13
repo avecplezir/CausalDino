@@ -279,8 +279,8 @@ class DINOHead(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        b, t, emb = x.size()
         if len(x.size()) == 3:
+            b, t, emb = x.size()
             out = x.reshape(b*t, emb)
         out = self.mlp(out)
         if len(x.size()) == 3:
