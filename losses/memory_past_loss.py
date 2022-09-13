@@ -37,17 +37,15 @@ class MemoryVAELoss(MemoryBertLoss):
         memory_enc, memory_mask = self.retrieve_memory()
 
         s_memory_enc = torch.cat([memory_enc, s_enc[:, :1]], 1)
-        t_memory_enc = torch.cat([memory_enc, t_enc[:, :1]], 1)
         memory_mask = torch.cat([memory_mask, torch.ones_like(memory_mask[:, -1:])], 1)
-        pos_indices = self.get_pos_indices(t_memory_enc)
+        pos_indices = self.get_pos_indices(s_memory_enc)
 
         temp = self.teacher_temp_schedule[epoch]
 
-        t_enc_logits = teacher.head(t_memory_enc)
+        t_enc_logits = teacher.head(t_enc)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
         CE_fe, kl = self.compute_loss_fe(s_memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices)
-        # CE_ee = self.dino_loss(t_enc_proba[:], s_memory_enc) if self.args.CE_ee_c else 0.
 
         total_loss =self.args.CE_fe_c * CE_fe + self.args.kl_c * kl
         memory_size = memory_mask.sum(-1).mean()
@@ -74,6 +72,7 @@ class MemoryVAELoss(MemoryBertLoss):
         student.module.predictor(memory_enc, indices=pos_indices, f_x=memory_enc[:, -1:])
         s_pred_future_logits = student.module.head(s_pred_future)
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
+        print('t_enc_proba', t_enc_proba.shape, 's_pred_future_proba', s_pred_future_proba.shape)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
         mask_sum = memory_mask.sum() + 1e-16
         total_loss = (memory_mask * loss).sum() / mask_sum
