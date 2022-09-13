@@ -40,6 +40,7 @@ class DINOHead(nn.Module):
         out = self.mlp(out)
         if len(x.size()) == 3:
             out = out.reshape(b, t, -1)
+
         return out
 
 

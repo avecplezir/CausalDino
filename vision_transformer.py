@@ -285,8 +285,11 @@ class DINOHead(nn.Module):
         out = self.mlp(out)
         if len(x.size()) == 3:
             out = out.reshape(b, t, -1)
+
         x = nn.functional.normalize(out, dim=-1, p=2)
+
         if self.skip_last:
             return x
         x = self.last_layer(x)
+
         return x

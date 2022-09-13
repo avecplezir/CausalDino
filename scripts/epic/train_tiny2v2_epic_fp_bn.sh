@@ -30,6 +30,7 @@ python -m torch.distributed.launch \
   --exp_name $EXP_NAME \
   --video_extension MP4 \
   --dataset_level 3 \
+  --arch "timesformer" \
   --batch_size_per_gpu 32 \
   --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
