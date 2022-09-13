@@ -234,6 +234,7 @@ def get_args_parser():
                         help="""""")
     parser.add_argument('--use_bn_in_pred', type=utils.bool_flag, default=False,
                         help="""Whether to use batch norm in predictor""")
+    parser.add_argument('--loss_scale', default=1., type=float, help='loss scale coefficient')
 
 
     return parser
@@ -627,6 +628,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
             student_output = student(images, indices=indices, video_indices=video_indices)
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch,
                                           student=student, teacher=teacher, video_indices=video_indices)
+            loss = args.loss_scale * loss
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)
@@ -650,7 +652,8 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 param_norms = utils.clip_gradients(student, args.clip_grad)
             utils.cancel_gradients_last_layer(epoch, student,
                                               args.freeze_last_layer)
-            print('student.module.head.mlp', torch.norm(student.module.head.mlp[0].weight.grad))
+            print('student.module.head.mlp', student.module.head.mlp)
+            head_lin_gradnorm = torch.norm(student.module.head.mlp[0].weight.grad)
             fp16_scaler.step(optimizer)
             fp16_scaler.update()
 
@@ -665,6 +668,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
+        metric_logger.update(head_lin_gradnorm=head_lin_gradnorm)
         metric_logger.update(**dict_losses)
 
         if it % args.log_every == 0 and utils.is_main_process() and args.use_wandb:
@@ -672,6 +676,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 batch_loss=loss.item(),
                 lr=optimizer.param_groups[0]["lr"],
                 wd=optimizer.param_groups[0]["weight_decay"],
+                head_lin_gradnorm=head_lin_gradnorm,
                 **{f"batch_{key}": val for key, val in dict_losses.items()}, step=step,
             ))
 
