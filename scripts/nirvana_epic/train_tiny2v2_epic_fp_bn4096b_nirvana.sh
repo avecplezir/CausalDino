@@ -48,4 +48,4 @@ python -m torch.distributed.launch \
   --return_pred_out True \
   --use_bn_in_head True \
   --hidden_dim_in_pred 4096 \
-  --hidden_dim_in_head 4096 \
+  --hidden_dim_in_head 2048 \
