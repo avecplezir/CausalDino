@@ -46,4 +46,5 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperMemory \
   --predictor GPT \
   --random_sampling False \
+  --use_bn_in_head True \
 
