@@ -18,7 +18,7 @@ fi
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=2
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -30,12 +30,11 @@ python -m torch.distributed.launch \
   --video_extension MP4 \
   --dataset_level 3 \
   --arch "timesformer" \
-  --arch "timesformer" \
   --batch_size_per_gpu 32 \
   --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
-  --eval_freq 1 \
+  --eval_freq 5 \
   --weight_decay_end 0.1 \
   --use_wandb True \
   --loss TimeEmbLoss \
@@ -55,3 +54,5 @@ python -m torch.distributed.launch \
   --use_bn_in_pred True \
   --hidden_dim_in_pred 4096 \
   --hidden_dim_in_head 2048 \
+
+#  --num_workers 20 \
