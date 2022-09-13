@@ -7,7 +7,7 @@ VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
 PORT='1024'
 
-EXP_NAME="tiny2v2_epic_fprev"
+EXP_NAME="tiny2v2_epic_fprev_bnbyol"
 
 cd "$PROJECT_PATH" || exit
 
