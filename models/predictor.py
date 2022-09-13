@@ -121,10 +121,11 @@ class MLPBYOL(nn.Module):
                     nn.Linear(hidden_size, n_embd)
                 )
 
-    def forward(self, x):
-        b, t, emb = x.size()
+    def forward(self, x, **kwargs):
+        out = x
         if len(x.size()) == 3:
-            out = x.reshape(b * t, emb)
+            b, t, emb = x.size()
+            out = out.reshape(b * t, emb)
         out = self.mlp(out)
         if len(x.size()) == 3:
             out = out.reshape(b, t, -1)
