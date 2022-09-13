@@ -256,6 +256,7 @@ class DINOHead(nn.Module):
         else:
             layers = [nn.Linear(in_dim, hidden_dim)]
             if use_bn:
+                print('dinohead use_bn!')
                 layers.append(nn.BatchNorm1d(hidden_dim))
             layers.append(nn.GELU())
             for _ in range(nlayers - 2):

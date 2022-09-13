@@ -93,7 +93,6 @@ class MemoryBertLoss(MemoryLoss):
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
 
-
         total_loss = (mask * loss).sum() / mask_sum
         # total_loss = (mask * loss).sum()
         return total_loss

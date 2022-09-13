@@ -16,6 +16,7 @@ class DINOHead(nn.Module):
         else:
             layers = [nn.Linear(in_dim, hidden_dim)]
             if use_bn:
+                print('predictor use_bn!')
                 layers.append(nn.BatchNorm1d(hidden_dim))
             layers.append(nn.GELU())
             for _ in range(nlayers - 2):
@@ -45,9 +46,9 @@ class DINOHead(nn.Module):
 
 
 class MLPfeaturePredictor(nn.Module):
-    def __init__(self, n_embd=256, layer_norm=False, **kwargs):
+    def __init__(self, n_embd=256, layer_norm=False, use_bn=False, hidden_dim=2048, **kwargs):
         super().__init__()
-        self.mlp = DINOHead(n_embd, bottleneck_dim=n_embd)
+        self.mlp = DINOHead(n_embd, bottleneck_dim=n_embd, use_bn=use_bn, hidden_dim=hidden_dim)
         self.layer_norm = layer_norm
         if self.layer_norm:
             print('layer norm in predictor!')
@@ -85,13 +86,13 @@ class MLPPosPredictor(nn.Module):
 
 
 class MLPPastPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, use_bn=False, **kwargs):
         super().__init__()
         self.layer_norm = layer_norm
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
-        self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=3)
+        self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn)
         self.wpe = nn.Embedding(block_size, n_embd)
 
     def forward(self, x, indices=None, **kwargs):
@@ -108,18 +109,25 @@ class MLPPastPredictor(nn.Module):
 
 
 class MLPBYOL(nn.Module):
-    def __init__(self, n_embd, hidden_size=4096, layer_norm=None, **kwargs):
+    def __init__(self, n_embd, hidden_dim=4096, layer_norm=None, use_bn=True, **kwargs):
         super().__init__()
         self.layer_norm = layer_norm
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
-        self.mlp = nn.Sequential(
-                    nn.Linear(n_embd, hidden_size),
-                    nn.BatchNorm1d(hidden_size),
-                    nn.GELU(),
-                    nn.Linear(hidden_size, n_embd)
-                )
+        if use_bn:
+            self.mlp = nn.Sequential(
+                        nn.Linear(n_embd, hidden_dim),
+                        nn.BatchNorm1d(hidden_dim),
+                        nn.GELU(),
+                        nn.Linear(hidden_dim, n_embd)
+                    )
+        else:
+            self.mlp = nn.Sequential(
+                        nn.Linear(n_embd, hidden_dim),
+                        nn.GELU(),
+                        nn.Linear(hidden_dim, n_embd)
+                    )
 
     def forward(self, x, **kwargs):
         out = x
@@ -147,7 +155,8 @@ class Identity(nn.Module):
 
 
 class MLPVAEPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False,
+                 use_bn=False, hidden_dim=2048, **kwargs):
         super().__init__()
         self._stoch = 32
         self._discrete = 32
@@ -156,10 +165,11 @@ class MLPVAEPredictor(nn.Module):
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
-        self.mlp_post = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
-        self.mlp_prior = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2)
+        self.mlp_post = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2, use_bn=use_bn, hidden_dim=hidden_dim)
+        self.mlp_prior = DINOHead(2 * n_embd, bottleneck_dim=self._hidden, nlayers=2, use_bn=use_bn, hidden_dim=hidden_dim)
 
-        self.predictor = DINOHead(n_embd + self._stoch * self._discrete, bottleneck_dim=self._hidden)
+        self.predictor = DINOHead(n_embd + self._stoch * self._discrete, bottleneck_dim=self._hidden,
+                                  use_bn=use_bn, hidden_dim=hidden_dim)
         self.wpe = nn.Embedding(block_size, n_embd)
 
         self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
