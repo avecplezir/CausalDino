@@ -1,13 +1,10 @@
 #!/bin/bash
 
-SOURCE_CODE_PATH=$HOME
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
-VAL_DATA_PATH="/mnt/data/UCF101"
-DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
-PORT='1025'
-
-EXP_NAME="tiny2v2_epic_fp_bn2"
+VAL_DATA_PATH="$INPUT_PATH/UCF101"
+DATA_PATH="$INPUT_PATH/videos_256"
+EXP_NAME="tiny2v2_epic_fp_bn2048_nirvana"
+PORT='1024'
 
 cd "$PROJECT_PATH" || exit
 
@@ -17,8 +14,6 @@ fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
-
-export CUDA_VISIBLE_DEVICES=4
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -52,5 +47,5 @@ python -m torch.distributed.launch \
   --CE_ef_c 0. \
   --return_pred_out True \
   --use_bn_in_head True \
-  --hidden_dim_in_pred 2048 \
-  --hidden_dim_in_head 2048 \
+  --hidden_dim_in_pred 4096 \
+  --hidden_dim_in_head 4096 \
