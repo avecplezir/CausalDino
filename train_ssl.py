@@ -652,8 +652,8 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 param_norms = utils.clip_gradients(student, args.clip_grad)
             utils.cancel_gradients_last_layer(epoch, student,
                                               args.freeze_last_layer)
-            print('student.module.head.mlp', student.module.head.mlp)
-            head_lin_gradnorm = torch.norm(student.module.head.mlp[0].weight.grad)
+            # print('student.module.head.mlp', student.module.head.mlp)
+            head_gradnorm = {f'head_lin{i}_gradnorm': torch.norm(student.module.head.mlp[i].weight.grad) for i in range(0, 7, 3)}
             fp16_scaler.step(optimizer)
             fp16_scaler.update()
 
@@ -668,7 +668,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
-        metric_logger.update(head_lin_gradnorm=head_lin_gradnorm)
+        metric_logger.update(**head_gradnorm)
         metric_logger.update(**dict_losses)
 
         if it % args.log_every == 0 and utils.is_main_process() and args.use_wandb:
@@ -676,7 +676,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 batch_loss=loss.item(),
                 lr=optimizer.param_groups[0]["lr"],
                 wd=optimizer.param_groups[0]["weight_decay"],
-                head_lin_gradnorm=head_lin_gradnorm,
+                **head_gradnorm,
                 **{f"batch_{key}": val for key, val in dict_losses.items()}, step=step,
             ))
 
