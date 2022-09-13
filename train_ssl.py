@@ -518,9 +518,9 @@ def train_svt(args):
 
     if args.do_eval and args.do_eval_before_train:
         if args.eval_dataset:
-            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher_without_ddp.backbone, opt=args)
         if args.eval_dataset2:
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone,
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher_without_ddp.backbone,
                                   opt=args, return_pred_out=args.return_pred_out)
         if utils.is_main_process():
             print('val_stats', val_stats)
@@ -543,8 +543,8 @@ def train_svt(args):
 
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
-            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher.backbone, opt=args)
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher.backbone,
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher_without_ddp.backbone, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher_without_ddp.backbone,
                                   opt=args, return_pred_out=args.return_pred_out)
             if utils.is_main_process():
                 print('val_stats', val_stats)
