@@ -206,7 +206,7 @@ class VisionTransformer(nn.Module):
 
         return self.pos_drop(x)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         x = self.prepare_tokens(x)
         for blk in self.blocks:
             x = blk(x)
@@ -278,7 +278,7 @@ class DINOHead(nn.Module):
             if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         if len(x.size()) == 3:
             b, t, emb = x.size()
             out = x.reshape(b*t, emb)
