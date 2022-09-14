@@ -374,15 +374,15 @@ def train_svt(args):
     print('Wrapper', Wrapper)
     if args.student_prediction_type == 'predictor_first':
         n_embd = embed_dim
-        layer_norm = True
+        layer_norm_in_pred = True
     elif args.student_prediction_type == 'head_first':
         n_embd = 256
-        layer_norm = False
+        layer_norm_in_pred = False
     else:
         n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
-        layer_norm = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
+        layer_norm_in_pred = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
     print('n_embd', n_embd)
-    print('layer_norm', layer_norm)
+    print('layer_norm', layer_norm_in_pred)
     student = Wrapper(student,
          DINOHead(
              embed_dim,
@@ -394,9 +394,9 @@ def train_svt(args):
              hidden_dim=args.hidden_dim_in_head,
          ),
          predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                             layer_norm=layer_norm, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
+                             layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
          predictor_past=Predictor_past(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                             layer_norm=layer_norm, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
+                             layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
          return_enc_logits=args.return_enc_logits,
@@ -415,9 +415,9 @@ def train_svt(args):
                  use_bn=args.use_bn_in_head,
                  ),
         predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                            layer_norm=layer_norm, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
+                            layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
         predictor_past=Predictor_past(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                            layer_norm=layer_norm, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
+                            layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
         return_enc_logits=args.return_enc_logits,

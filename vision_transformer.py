@@ -247,9 +247,11 @@ def vit_base(patch_size=16, **kwargs):
 
 class DINOHead(nn.Module):
     def __init__(self, in_dim, out_dim, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
-                 bottleneck_dim=256, skip_last=False):
+                 bottleneck_dim=256, skip_last=False, layer_norm=False):
         super().__init__()
         self.skip_last = skip_last
+        self.layer_norm = layer_norm
+        print('self.layer_norm in dinohead', layer_norm)
         nlayers = max(nlayers, 1)
         if nlayers == 1:
             self.mlp = nn.Linear(in_dim, bottleneck_dim)
@@ -288,7 +290,10 @@ class DINOHead(nn.Module):
         if len(x.size()) == 3:
             out = out.reshape(b, t, -1)
 
-        x = nn.functional.normalize(out, dim=-1, p=2)
+        if self.layer_norm:
+            x = self.ln_f(out)
+        else:
+            x = nn.functional.normalize(out, dim=-1, p=2)
 
         if self.skip_last:
             return x
