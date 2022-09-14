@@ -33,7 +33,6 @@ from torchvision import models as torchvision_models
 
 from utils import utils
 import vision_transformer as vits
-from vision_transformer import DINOHead
 from models import SwinTransformer3D
 
 
@@ -391,10 +390,11 @@ def train_svt(args):
 
     DINOHead = models.__dict__[args.head]
     print('DINOHead', DINOHead)
+    print('embed_dim', embed_dim)
 
     student = Wrapper(student,
          DINOHead(
-             embed_dim=embed_dim,
+             n_embd=embed_dim,
              out_dim=args.out_dim,
              bottleneck_dim=args.bottleneck_dim,
              hidden_dim=args.hidden_dim_in_head,
@@ -417,7 +417,7 @@ def train_svt(args):
          )
     teacher = Wrapper(
         teacher,
-        DINOHead(embed_dim=embed_dim,
+        DINOHead(n_embd=embed_dim,
                  out_dim=args.out_dim,
                  bottleneck_dim=args.bottleneck_dim,
                  hidden_dim=args.hidden_dim_in_head,

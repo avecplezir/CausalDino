@@ -46,7 +46,7 @@ python -m torch.distributed.launch \
   --return_prediction_logits False \
   --predictor GPT2FoldPredictor \
   --headproba HeadProbal2Norm \
-  --head DINOHeadNl2 \
+  --head Projector \
   --random_sampling False \
   --CE_fe_c 1 \
   --CE_ef_c 0. \

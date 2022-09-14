@@ -33,7 +33,7 @@ class DINOHead(nn.Module):
             self.mlp = nn.Sequential(*layers)
 
         if self.layer_norm:
-            self.ln_f = nn.LayerNorm(n_embd)
+            self.ln_f = nn.LayerNorm(bottleneck_dim)
 
         self.apply(self._init_weights)
         if not skip_last:
@@ -49,15 +49,15 @@ class DINOHead(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x, **kwargs):
-        out = x
-        if len(x.size()) == 3:
+        reshape = (len(x.size()) == 3)
+        if reshape:
             b, t, emb = x.size()
-            out = out.reshape(b * t, emb)
-        out = self.mlp(out)
-        if len(x.size()) == 3:
-            out = out.reshape(b, t, -1)
+            x = x.reshape(b * t, emb)
+        x = self.mlp(x)
+        if reshape:
+            x = x.reshape(b, t, -1)
 
-        x = nn.functional.normalize(out, dim=-1, p=2)
+        x = nn.functional.normalize(x, dim=-1, p=2)
         x = self.last_layer(x)
 
         return x
@@ -71,19 +71,21 @@ class Projector(DINOHead):
                          skip_last=True, layer_norm=layer_norm, l2norm=l2norm)
 
     def forward(self, x, **kwargs):
-        out = x
-        if len(x.size()) == 3:
+        reshape = (len(x.size()) == 3)
+        if reshape:
             b, t, emb = x.size()
-            out = out.reshape(b * t, emb)
-        out = self.mlp(out)
-        if len(x.size()) == 3:
-            x = out.reshape(b, t, -1)
+            x = x.reshape(b * t, emb)
+        x = self.mlp(x)
+        if reshape:
+            x = x.reshape(b, t, -1)
 
         if self.layer_norm:
+            # print('prejector layer_norm!')
             x = self.ln_f(x)
 
         if self.l2norm:
-            x = nn.functional.normalize(out, dim=-1, p=2)
+            # print('prejector l2norm!')
+            x = nn.functional.normalize(x, dim=-1, p=2)
 
         return x
 
