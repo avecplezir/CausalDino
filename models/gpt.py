@@ -56,10 +56,12 @@ class CausalSelfAttention(nn.Module):
         self.n_embd = config.n_embd
 
     def forward(self, x, attn_type='causal', mask=None):
-        if attn_type == 'id':
-            return x
-
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)
+
+        assert attn_type in ['causal', 'all', 'id'], f'{attn_type} is not implemented!'
+
+        if attn_type == 'id':
+            mask = torch.eye(T).unsqueeze(0).repeat(B, 1)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
         q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
@@ -169,7 +171,7 @@ class GPT(nn.Module):
 
         self.maskemb = maskemb
         if self.maskemb:
-            self.wme = nn.Embedding(2, config.n_embd)
+            self.wme = nn.Embedding(1, config.n_embd)
 
         self.layer_norm = layer_norm
         if self.layer_norm:
@@ -199,16 +201,15 @@ class GPT(nn.Module):
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
 
         # forward the GPT model itself
-        tok_emb = x  # token embeddings of shape (b, t, n_embd)
+        tok_emb = mask.unsqueeze(-1) * x if mask is not None else x # token embeddings of shape (b, t, n_embd), we zero embeddings where mask value is zero
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
 
         if self.maskemb:
-            x = x + (mask-1)*self.wme(mask)
+            x = x + (mask-1)*self.wme(torch.zeros_like(mask)) #add mask emb where mask value is zero
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)
@@ -219,39 +220,6 @@ class GPT(nn.Module):
             x = nn.functional.normalize(x, dim=-1, p=2)
 
         return x
-
-
-class GPTFE(GPT):
-    def forward(self, x, indices=None, future_index=None, attn_type='causal'):
-        b, t = x.size()[:2]
-        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-
-        device = x.device
-        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(
-            0) if indices is None else indices  # shape (1, t)
-        future_index = future_index.unsqueeze(1)
-        future_pos_emb = self.transformer.wpe(future_index)
-
-        mask_emb = self.wme(torch.zeros_like(future_index))
-        future_x = future_pos_emb + mask_emb
-
-        t_f = 1
-        # forward the GPT model itself
-        tok_emb = x  # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
-        x = self.transformer.drop(tok_emb + pos_emb)
-        # position embeddings of shape (1, t, n_embd)
-        x = torch.cat([future_x, x], 1)
-        for block in self.transformer.h:
-            x = block(x, attn_type=attn_type)
-
-        if self.layer_norm:
-            x = self.transformer.ln_f(x)
-        else:
-            x = nn.functional.normalize(x, dim=-1, p=2)
-
-        # return all tokens except the conditioning
-        return x[:, t_f:]
 
 
 class GPTFutureTimeEmb(GPT):

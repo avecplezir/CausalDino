@@ -159,8 +159,6 @@ def get_args_parser():
     parser.add_argument('--loss', default=None, type=str, help="""Name of loss to train with.""")
     parser.add_argument('--dataset', default=None, type=str, help="""Name of dataset to train with.""")
     parser.add_argument('--use_wandb', type=utils.bool_flag, default=True, help="""Whether to log with wandb.""")
-    parser.add_argument('--skip_last', type=utils.bool_flag, default=False,
-                        help="""Whether to skip last layer in dino head.""")
     parser.add_argument("--n_parts", type=int, default=9, help="For how many parts initial video is divided")
     parser.add_argument("--n_global_views", type=int, default=2, help="Number of global views to sample")
     parser.add_argument('--random_sampling', type=utils.bool_flag, default=True, help="""Whether random sampling video chunks.""")
@@ -235,7 +233,8 @@ def get_args_parser():
     parser.add_argument('--use_bn_in_pred', type=utils.bool_flag, default=False,
                         help="""Whether to use batch norm in predictor""")
     parser.add_argument('--loss_scale', default=1., type=float, help='loss scale coefficient')
-
+    parser.add_argument('--teacher_prediction_type', default=None, type=str, help="""""")
+    parser.add_argument('--student_prediction_type', default=None, type=str, help="""""")
 
     return parser
 
@@ -273,7 +272,6 @@ def train_svt(args):
     config.local_first = args.local_first
     config.block_size = args.block_size
     args.teacher_views = args.n_global_views if args.teacher_views is None else args.teacher_views
-
 
     # config.DATA.PATH_PREFIX = os.path.dirname(args.data_path)
     Dataset = datasets.__dict__[args.dataset]
@@ -374,8 +372,15 @@ def train_svt(args):
     # multi-crop wrapper handles forward with inputs of different resolutions
     Wrapper = getattr(utils, args.wrapper)
     print('Wrapper', Wrapper)
-    n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
-    layer_norm = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
+    if args.student_prediction_type == 'predictor_first':
+        n_embd = embed_dim
+        layer_norm = True
+    elif args.student_prediction_type == 'head_first':
+        n_embd = 256
+        layer_norm = False
+    else:
+        n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
+        layer_norm = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
     print('n_embd', n_embd)
     print('layer_norm', layer_norm)
     student = Wrapper(student,
@@ -384,7 +389,7 @@ def train_svt(args):
              args.out_dim,
              use_bn=args.use_bn_in_head,
              norm_last_layer=args.norm_last_layer,
-             skip_last=args.skip_last,
+             skip_last=args.headproba,
              bottleneck_dim=args.bottleneck_dim,
              hidden_dim=args.hidden_dim_in_head,
          ),
@@ -404,7 +409,7 @@ def train_svt(args):
         teacher,
         DINOHead(embed_dim,
                  args.out_dim,
-                 skip_last=args.skip_last,
+                 skip_last=args.headproba,
                  bottleneck_dim=args.bottleneck_dim,
                  hidden_dim=args.hidden_dim_in_head,
                  use_bn=args.use_bn_in_head,

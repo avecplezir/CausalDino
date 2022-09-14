@@ -9,3 +9,5 @@ from .memory_loss import MemoryLoss
 from .memory_bert_loss import MemoryBertLoss
 from .memory_past_loss import MemoryPastLoss, MemoryVAELoss
 from .tepp_loc_loss import TEPPLocLoss
+from .bert_loss import BertLoss
+
