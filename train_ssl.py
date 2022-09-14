@@ -387,6 +387,7 @@ def train_svt(args):
     print('n_embd', n_embd)
     print('layer_norm_in_pred', args.layer_norm_in_pred)
     print('layer_norm_in_head', args.layer_norm_in_head)
+    print('l2norm_in_head', args.l2norm_in_head)
 
     DINOHead = models.__dict__[args.head]
     print('DINOHead', DINOHead)
