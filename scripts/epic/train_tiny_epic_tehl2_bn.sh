@@ -47,7 +47,6 @@ python -m torch.distributed.launch \
   --predictor GPT2FoldPredictor \
   --headproba HeadProbal2Norm \
   --head DINOHeadNl2 \
-  --skip_last True \
   --random_sampling False \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
