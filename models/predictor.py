@@ -8,15 +8,20 @@ import models.gpt_utils as tools
 
 
 class DINOHead(nn.Module):
-    def __init__(self, in_dim, use_bn=False, nlayers=3, hidden_dim=2048, bottleneck_dim=256):
+    def __init__(self, n_embd=0, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
+                 bottleneck_dim=256, skip_last=False, layer_norm=False, l2norm=False):
         super().__init__()
+        self.skip_last = skip_last
+        self.layer_norm = layer_norm
+        self.l2norm = l2norm
+        print('self.layer_norm in dinohead', layer_norm)
         nlayers = max(nlayers, 1)
         if nlayers == 1:
-            self.mlp = nn.Linear(in_dim, bottleneck_dim)
+            self.mlp = nn.Linear(n_embd, bottleneck_dim)
         else:
-            layers = [nn.Linear(in_dim, hidden_dim)]
+            layers = [nn.Linear(n_embd, hidden_dim)]
             if use_bn:
-                print('predictor use_bn!')
+                print('dinohead use_bn!')
                 layers.append(nn.BatchNorm1d(hidden_dim))
             layers.append(nn.GELU())
             for _ in range(nlayers - 2):
@@ -26,7 +31,16 @@ class DINOHead(nn.Module):
                 layers.append(nn.GELU())
             layers.append(nn.Linear(hidden_dim, bottleneck_dim))
             self.mlp = nn.Sequential(*layers)
+
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
         self.apply(self._init_weights)
+        if not skip_last:
+            self.last_layer = nn.utils.weight_norm(nn.Linear(bottleneck_dim, out_dim, bias=False))
+            self.last_layer.weight_g.data.fill_(1)
+            if norm_last_layer:
+                self.last_layer.weight_g.requires_grad = False
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -34,49 +48,44 @@ class DINOHead(nn.Module):
             if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
+        out = x
         if len(x.size()) == 3:
             b, t, emb = x.size()
-            out = x.reshape(b*t, emb)
+            out = out.reshape(b * t, emb)
         out = self.mlp(out)
         if len(x.size()) == 3:
             out = out.reshape(b, t, -1)
 
-        return out
+        x = nn.functional.normalize(out, dim=-1, p=2)
+        x = self.last_layer(x)
+
+        return x
 
 
-class MLPfeaturePredictor(nn.Module):
-    def __init__(self, n_embd=256, layer_norm=False, use_bn=False, hidden_dim=2048, **kwargs):
-        super().__init__()
-        self.mlp = DINOHead(n_embd, bottleneck_dim=n_embd, use_bn=use_bn, hidden_dim=hidden_dim)
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            print('layer norm in predictor!')
-            self.ln_f = nn.LayerNorm(n_embd)
-
-    def forward(self, x, **kwargs):
-        out = self.mlp(x)
-        if self.layer_norm:
-            out = self.ln_f(out)
-        else:
-            out = nn.functional.normalize(out, dim=-1, p=2)
-        return out
-
-
-class MLPFeatureNl2Predictor(nn.Module):
-    def __init__(self, n_embd=256, layer_norm=False, use_bn=False, hidden_dim=2048, **kwargs):
-        super().__init__()
-        self.mlp = DINOHead(n_embd, bottleneck_dim=n_embd, use_bn=use_bn, hidden_dim=hidden_dim)
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            print('layer norm in predictor!')
-            self.ln_f = nn.LayerNorm(n_embd)
+class Projector(DINOHead):
+    def __init__(self, n_embd, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
+                 bottleneck_dim=256, layer_norm=False, l2norm=False):
+        super().__init__(n_embd, n_embd, use_bn=use_bn, norm_last_layer=norm_last_layer,
+                         nlayers=nlayers, hidden_dim=hidden_dim, bottleneck_dim=bottleneck_dim,
+                         skip_last=True, layer_norm=layer_norm, l2norm=l2norm)
 
     def forward(self, x, **kwargs):
+        out = x
+        if len(x.size()) == 3:
+            b, t, emb = x.size()
+            out = out.reshape(b * t, emb)
+        out = self.mlp(out)
+        if len(x.size()) == 3:
+            x = out.reshape(b, t, -1)
+
         if self.layer_norm:
             x = self.ln_f(x)
-        out = self.mlp(x)
-        return out
+
+        if self.l2norm:
+            x = nn.functional.normalize(out, dim=-1, p=2)
+
+        return x
 
 
 class MLPPosPredictor(nn.Module):
@@ -86,18 +95,12 @@ class MLPPosPredictor(nn.Module):
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
-        self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=2)
+        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=2, layer_norm=layer_norm)
         self.wpe = nn.Embedding(block_size, n_embd)
 
     def forward(self, x, indices=None, **kwargs):
         fp_emb = self.wpe(indices)
         out = self.predictor(torch.cat([fp_emb, x], -1))
-
-        if self.layer_norm:
-            out = self.ln_f(out)
-        else:
-            out = nn.functional.normalize(out, dim=-1, p=2)
-
         return out
 
 
@@ -108,7 +111,7 @@ class MLPPastPredictor(nn.Module):
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
-        self.predictor = DINOHead(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn)
+        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn)
         self.wpe = nn.Embedding(block_size, n_embd)
 
     def forward(self, x, indices=None, **kwargs):
@@ -116,18 +119,15 @@ class MLPPastPredictor(nn.Module):
         fp_emb = self.wpe(indices)
         out = self.predictor(torch.cat([fp_emb, x], -1))
 
-        if self.layer_norm:
-            out = self.ln_f(out)
-        else:
-            out = nn.functional.normalize(out, dim=-1, p=2)
-
         return out
 
 
 class MLPBYOL(nn.Module):
-    def __init__(self, n_embd, hidden_dim=4096, layer_norm=None, use_bn=True, **kwargs):
+    def __init__(self, n_embd, hidden_dim=4096, layer_norm=None,
+                 l2norm=None, use_bn=True, **kwargs):
         super().__init__()
         self.layer_norm = layer_norm
+        self.l2norm = l2norm
         if self.layer_norm:
             self.ln_f = nn.LayerNorm(n_embd)
 
@@ -157,7 +157,8 @@ class MLPBYOL(nn.Module):
 
         if self.layer_norm:
             out = self.ln_f(out)
-        else:
+
+        if self.l2norm:
             out = nn.functional.normalize(out, dim=-1, p=2)
 
         return out

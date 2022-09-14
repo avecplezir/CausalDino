@@ -238,6 +238,8 @@ def get_args_parser():
     parser.add_argument('--student_prediction_type', default=None, type=str, help="""""")
     parser.add_argument('--layer_norm_in_pred', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--layer_norm_in_head', type=utils.bool_flag, default=False, help="""""")
+    parser.add_argument('--l2norm_in_head', type=utils.bool_flag, default=False, help="""""")
+    parser.add_argument('--l2norm_in_pred', type=utils.bool_flag, default=False, help="""""")
 
     return parser
 
@@ -386,19 +388,19 @@ def train_svt(args):
     print('layer_norm_in_pred', args.layer_norm_in_pred)
     print('layer_norm_in_head', args.layer_norm_in_head)
 
-    DINOHead = vits.__dict__[args.head]
+    DINOHead = models.__dict__[args.head]
     print('DINOHead', DINOHead)
 
     student = Wrapper(student,
          DINOHead(
-             embed_dim,
-             args.out_dim,
-             use_bn=args.use_bn_in_head,
-             norm_last_layer=args.norm_last_layer,
-             skip_last=args.headproba,
+             embed_dim=embed_dim,
+             out_dim=args.out_dim,
              bottleneck_dim=args.bottleneck_dim,
              hidden_dim=args.hidden_dim_in_head,
-             layer_norm=args.layer_norm_in_head
+             layer_norm=args.layer_norm_in_head,
+             use_bn=args.use_bn_in_head,
+             l2norm=args.l2norm_in_head,
+             norm_last_layer=args.norm_last_layer,
          ),
          predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                              layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
@@ -414,12 +416,13 @@ def train_svt(args):
          )
     teacher = Wrapper(
         teacher,
-        DINOHead(embed_dim,
-                 args.out_dim,
-                 skip_last=args.headproba,
+        DINOHead(embed_dim=embed_dim,
+                 out_dim=args.out_dim,
                  bottleneck_dim=args.bottleneck_dim,
                  hidden_dim=args.hidden_dim_in_head,
+                 layer_norm=args.layer_norm_in_head,
                  use_bn=args.use_bn_in_head,
+                 l2norm=args.l2norm_in_head,
                  ),
         predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                             layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
