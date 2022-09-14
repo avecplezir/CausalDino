@@ -138,8 +138,8 @@ class GPT(nn.Module):
     """ GPT Language Model """
 
     def __init__(self, n_embd=256, block_size=4,
-                 model_type='gpt-micro-256-half', layer_norm=False,
-                 maskemb=False):
+                 model_type='gpt-micro-256', layer_norm=False,
+                 maskemb=False, **kwargs):
         super().__init__()
         config = get_default_config()
         config.block_size = block_size

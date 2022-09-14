@@ -19,9 +19,9 @@ class BertLoss(FeatureLoss):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
             t_enc_logits = teacher.head(teacher.predictor(s_enc, attn_type='id'))
         elif self.args.teacher_prediction_type == 'predictor':
-            t_enc_logits = teacher.headproba(teacher.predictor(s_enc, attn_type='id'))
+            t_enc_logits = teacher.headprob(teacher.predictor(s_enc, attn_type='id'))
         elif self.args.teacher_prediction_type == 'head':
-            t_enc_logits = teacher.head(s_enc)
+            t_enc_logits = teacher.headprob(teacher.head(s_enc))
         else:
             assert 0, f'{self.args.teacher_prediction_type} not implemented!'
 
@@ -63,7 +63,7 @@ class BertLoss(FeatureLoss):
             if self.args.student_prediction_type == 'predictor_first':
                 s_pred_future = student.module.predictor(s_enc, indices=pos_indices, mask=mask,
                                                          attn_type='all')
-                s_pred_future_logits = student.module.head(s_pred_future)
+                s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
             elif self.args.student_prediction_type == 'head_first':
                 s_enc = student.module.head(s_enc)
                 s_pred_future_logits = student.module.predictor(s_enc,

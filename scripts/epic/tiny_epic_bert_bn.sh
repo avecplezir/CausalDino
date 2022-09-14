@@ -5,7 +5,7 @@ PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
 VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
-PORT='1024'
+PORT='1027'
 
 EXP_NAME="tiny_epic_bert_bn"
 
@@ -18,7 +18,7 @@ fi
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=0
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \

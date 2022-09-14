@@ -632,7 +632,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                                      video_indices=video_indices)  # only the 2 global views pass through the teacher
             student_output = student(images, indices=indices, video_indices=video_indices)
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch,
-                                          student=student, teacher=teacher, video_indices=video_indices)
+                                          student=student, teacher=teacher_without_ddp, video_indices=video_indices)
             loss = args.loss_scale * loss
 
         if not math.isfinite(loss.item()):
