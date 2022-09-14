@@ -63,6 +63,22 @@ class MLPfeaturePredictor(nn.Module):
         return out
 
 
+class MLPFeatureNl2Predictor(nn.Module):
+    def __init__(self, n_embd=256, layer_norm=False, use_bn=False, hidden_dim=2048, **kwargs):
+        super().__init__()
+        self.mlp = DINOHead(n_embd, bottleneck_dim=n_embd, use_bn=use_bn, hidden_dim=hidden_dim)
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            print('layer norm in predictor!')
+            self.ln_f = nn.LayerNorm(n_embd)
+
+    def forward(self, x, **kwargs):
+        if self.layer_norm:
+            x = self.ln_f(x)
+        out = self.mlp(x)
+        return out
+
+
 class MLPPosPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
         super().__init__()

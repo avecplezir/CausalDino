@@ -300,3 +300,18 @@ class DINOHead(nn.Module):
         x = self.last_layer(x)
 
         return x
+
+
+class DINOHeadNl2(DINOHead):
+    def forward(self, x, **kwargs):
+        if self.layer_norm:
+            x = self.ln_f(x)
+        out = x
+        if len(x.size()) == 3:
+            b, t, emb = x.size()
+            out = out.reshape(b*t, emb)
+        out = self.mlp(out)
+        if len(x.size()) == 3:
+            out = out.reshape(b, t, -1)
+
+        return out

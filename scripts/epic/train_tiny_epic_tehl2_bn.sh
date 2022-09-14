@@ -7,7 +7,7 @@ VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
 PORT='1024'
 
-EXP_NAME="tiny_epic_te_bn"
+EXP_NAME="tiny_epic_tehl2_bn"
 
 cd "$PROJECT_PATH" || exit
 
@@ -45,10 +45,13 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperGPT \
   --return_prediction_logits False \
   --predictor GPT2FoldPredictor \
-  --headproba HeadProba \
+  --headproba HeadProbal2Norm \
+  --head DINOHeadNl2 \
   --skip_last True \
   --random_sampling False \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
   --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
+  --layer_norm_in_pred False \
+  --layer_norm_in_head False \

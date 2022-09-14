@@ -106,14 +106,8 @@ class Block(nn.Module):
         self.mlpf = lambda x: m.dropout(m.c_proj(m.act(m.c_fc(x))))  # MLP forward
 
     def forward(self, x, attn_type='causal', mask=None):
-        if attn_type == 'single':
-            y = x[:, :-1]
-            x = x[:, -1:] + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
-            x = x + self.mlpf(self.ln_2(x))
-            x = torch.cat([y, x], 1)
-        else:
-            x = x + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
-            x = x + self.mlpf(self.ln_2(x))
+        x = x + self.attn(self.ln_1(x), attn_type=attn_type, mask=mask)
+        x = x + self.mlpf(self.ln_2(x))
         return x
 
 
@@ -216,8 +210,6 @@ class GPT(nn.Module):
 
         if self.layer_norm:
             x = self.transformer.ln_f(x)
-        else:
-            x = nn.functional.normalize(x, dim=-1, p=2)
 
         return x
 
@@ -237,33 +229,20 @@ class GPTFutureTimeEmb(GPT):
 
         if self.layer_norm:
             x = self.transformer.ln_f(x)
-        else:
-            x = nn.functional.normalize(x, dim=-1, p=2)
 
         # return all tokens except the conditioning
         return x[:, t_f:]
 
 
 class GPT2FoldPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=4, **kwargs):
+    def __init__(self, n_embd=256, block_size=4, layer_norm=False, **kwargs):
         super().__init__()
-        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half', layer_norm=True)
-        self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half')
+        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half', layer_norm=False)
+        self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half',
+                                              layer_norm=layer_norm)
 
     def forward(self, x, indices=None):
         return self.gpt(x, indices=indices)
-
-
-class GPT2FoldMemoryPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=4, **kwargs):
-        super().__init__()
-        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half')
-        self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half')
-
-    def forward(self, x, indices=None, f_idx=None):
-        x = self.gpt(x, indices=indices)
-        x = self.future_embgpt(x, future_index=f_idx)
-        return x
 
 
 class GPTVAE(GPT):

@@ -165,6 +165,7 @@ def get_args_parser():
     parser.add_argument('--predictor', default=None, type=str, help="""Name of predictor to train with.""")
     parser.add_argument('--predictor_past', default=None, type=str, help="""Name of predictor Inverse to train with.""")
     parser.add_argument('--headproba', default=None, type=str, help="""Name of probability head to train with.""")
+    parser.add_argument('--head', default='DINOHead', type=str, help="""Name of head to train with.""")
     parser.add_argument('--wrapper', default='MultiCropWrapper', type=str, help="""Name of wrapper to train with.""")
     parser.add_argument('--argmax', type=utils.bool_flag, default=False,
                         help="""Whether to find inv with argmax.""")
@@ -235,6 +236,8 @@ def get_args_parser():
     parser.add_argument('--loss_scale', default=1., type=float, help='loss scale coefficient')
     parser.add_argument('--teacher_prediction_type', default=None, type=str, help="""""")
     parser.add_argument('--student_prediction_type', default=None, type=str, help="""""")
+    parser.add_argument('--layer_norm_in_pred', type=utils.bool_flag, default=False, help="""""")
+    parser.add_argument('--layer_norm_in_head', type=utils.bool_flag, default=False, help="""""")
 
     return parser
 
@@ -374,19 +377,18 @@ def train_svt(args):
     print('Wrapper', Wrapper)
     if args.student_prediction_type == 'predictor_first':
         n_embd = embed_dim
-        layer_norm_in_pred = True
     elif args.student_prediction_type == 'head_first':
         n_embd = 256
-        layer_norm_in_pred = False
     else:
         n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
-        layer_norm_in_pred = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
-    layer_norm_in_pred = args.layer_norm_in_pred if args.layer_norm_in_pred else layer_norm_in_pred
-    layer_norm_in_head = args.layer_norm_in_head if args.layer_norm_in_head else False
 
     print('n_embd', n_embd)
-    print('layer_norm_in_pred', layer_norm_in_pred)
-    print('layer_norm_in_head', layer_norm_in_head)
+    print('layer_norm_in_pred', args.layer_norm_in_pred)
+    print('layer_norm_in_head', args.layer_norm_in_head)
+
+    DINOHead = vits.__dict__[args.head]
+    print('DINOHead', DINOHead)
+
     student = Wrapper(student,
          DINOHead(
              embed_dim,
@@ -396,12 +398,12 @@ def train_svt(args):
              skip_last=args.headproba,
              bottleneck_dim=args.bottleneck_dim,
              hidden_dim=args.hidden_dim_in_head,
-             layer_norm=layer_norm_in_head
+             layer_norm=args.layer_norm_in_head
          ),
          predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                             layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
+                             layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
          predictor_past=Predictor_past(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                             layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
+                             layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
          return_enc_logits=args.return_enc_logits,
@@ -420,9 +422,9 @@ def train_svt(args):
                  use_bn=args.use_bn_in_head,
                  ),
         predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                            layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
+                            layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
         predictor_past=Predictor_past(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
-                            layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
+                            layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor_past else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
         return_enc_logits=args.return_enc_logits,
