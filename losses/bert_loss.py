@@ -48,7 +48,7 @@ class BertLoss(FeatureLoss):
         masks = []
         for idx in range(1, 2 ** T - 1):
             mask = list(binT(idx))
-            if sum(mask) < 3:
+            if sum(mask) < 6:
                 masks.append(mask)
         masks = np.array(masks, dtype=int)
         return torch.tensor(masks).to(pos_indices.device)
@@ -57,7 +57,7 @@ class BertLoss(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         masks = self.generate_masks(pos_indices)
-        print('masks', masks)
+        # print('masks', masks)
         for mask in masks:
             mask = mask.unsqueeze(0)
             if self.args.student_prediction_type == 'predictor_first':
