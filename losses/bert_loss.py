@@ -47,7 +47,7 @@ class BertLoss(FeatureLoss):
         binT = lambda x: ''.join(reversed([str((x >> i) & 1) for i in range(T)]))
         masks = []
         for idx in range(1, 2 ** T - 1):
-            masks.append(binT(idx))
+            masks.append(list(binT(idx)))
         masks = np.array(masks, dtype=int)
         return torch.tensor(masks).to(pos_indices.device)
 
@@ -63,19 +63,18 @@ class BertLoss(FeatureLoss):
             if self.args.student_prediction_type == 'predictor_first':
                 s_pred_future = student.module.predictor(s_enc, indices=pos_indices, mask=mask,
                                                          attn_type='all')
-                s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
+                s_pred_future_logits = student.module.head(s_pred_future)
             elif self.args.student_prediction_type == 'head_first':
                 s_enc = student.module.head(s_enc)
-                s_pred_future_logits = student.module.predictor(s_enc,
+                s_pred_future_logits = student.module.headprob(student.module.predictor(s_enc,
                                                                 indices=pos_indices, mask=mask,
-                                                                attn_type='all')
+                                                                attn_type='all'))
             else:
                 assert 0, f'{self.args.student_prediction_type} not implemented!'
 
+            s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
             print('s_pred_future_proba', s_pred_future_proba.shape)
             print('t_enc_proba', t_enc_proba.shape)
-
-            s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
             loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
             inverse_mask = (~mask.bool()).long()
             total_loss += (inverse_mask * loss).sum()
