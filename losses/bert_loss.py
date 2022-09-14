@@ -47,7 +47,7 @@ class BertLoss(FeatureLoss):
         binT = lambda x: ''.join(reversed([str((x >> i) & 1) for i in range(T)]))
         masks = []
         for idx in range(1, 2 ** T - 1):
-            mask = list(binT(idx))
+            mask = np.array(list(binT(idx)), dtype=int)
             if sum(mask) < 6:
                 masks.append(mask)
         masks = np.array(masks, dtype=int)
