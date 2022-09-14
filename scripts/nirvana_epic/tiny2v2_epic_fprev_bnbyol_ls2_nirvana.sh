@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny2v2_epic_fprev_bnbyol_nirvana"
+EXP_NAME="tiny2v2_epic_fprev_bnbyol_ls2_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -49,4 +49,4 @@ python -m torch.distributed.launch \
   --use_bn_in_head True \
   --use_bn_in_pred True \
   --hidden_dim_in_pred 4098 \
-  --loss_scale 1. \
+  --loss_scale 2. \
