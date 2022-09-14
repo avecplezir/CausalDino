@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_memory_bert2fr5_nirvana"
+EXP_NAME="tiny_epic_te_bn_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -25,25 +25,26 @@ python -m torch.distributed.launch \
   --video_extension MP4 \
   --dataset_level 3 \
   --arch "timesformer" \
-  --model_name get_deit_tiny_patch16_224 \
   --batch_size_per_gpu 32 \
   --exp_name $EXP_NAME \
+  --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb True \
-  --loss MemoryBertLoss \
-  --masking_ratio 0.8 \
-  --maxlen 64 \
-  --block_size 65 \
-  --dataset EpicNFEvents \
-  --continuous True \
-  --local_crops_number 0 \
-  --n_global_views 1 \
-  --freeze_last_layer 5 \
-  --num_workers 16 \
-  --global_crops_scale 0.14 1 \
   --weight_decay_end 0.1 \
-  --wrapper MultiCropWrapperMemory \
-  --predictor GPT \
+  --use_wandb True \
+  --loss TimeEmbLoss \
+  --local_crops_number 0 \
+  --n_global_views 4 \
+  --global_crops_scale 0.14 1 \
+  --dataset EpicEvents \
+  --wrapper MultiCropWrapperGPT \
+  --return_prediction_logits False \
+  --predictor GPT2FoldPredictor \
+  --headproba HeadProba \
+  --skip_last True \
   --random_sampling False \
-
+  --CE_fe_c 1 \
+  --CE_ef_c 0. \
+  --use_bn_in_head True \
+  --hidden_dim_in_head 4096 \
+  --loss_scale 1. \
