@@ -55,33 +55,26 @@ class BertLoss(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         masks = self.generate_masks(pos_indices)
-        print('masks', masks)
-        print('s_enc', s_enc.shape)
         for mask in masks:
-            print('mask', mask)
             mask = mask.unsqueeze(0)
             if self.args.student_prediction_type == 'predictor_first':
                 s_pred_future = student.module.predictor(s_enc, indices=pos_indices, mask=mask,
                                                          attn_type='all')
                 s_pred_future_logits = student.module.head(s_pred_future)
             elif self.args.student_prediction_type == 'head_first':
-                s_enc = student.module.head(s_enc)
-                print('s_enc 2', s_enc.shape)
-                s_pred = student.module.predictor(s_enc,
+                s_enc_head = student.module.head(s_enc)
+                s_pred = student.module.predictor(s_enc_head,
                                          indices=pos_indices, mask=mask,
                                          attn_type='all')
-                print('s_pred', s_pred.shape)
                 s_pred_future_logits = student.module.headprob(s_pred)
             else:
                 assert 0, f'{self.args.student_prediction_type} not implemented!'
 
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
-            print('s_pred_future_proba', s_pred_future_proba.shape)
-            print('t_enc_proba', t_enc_proba.shape)
             loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
             inverse_mask = (~mask.bool()).long()
             total_loss += (inverse_mask * loss).sum()
-            n_loss_terms += inverse_mask.sum()
+            n_loss_terms += loss.size(0) * inverse_mask.sum()
 
         total_loss /= n_loss_terms
         return total_loss

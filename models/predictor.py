@@ -242,6 +242,21 @@ class HeadProba(nn.Module):
         return x
 
 
+class HeadProbal2Norm(nn.Module):
+    def __init__(self, out_dim, emb_dim=256):
+        super().__init__()
+        self.last_layer = nn.utils.weight_norm(nn.Linear(emb_dim, out_dim, bias=False))
+        self.last_layer.weight_g.data.fill_(1)
+        norm_last_layer = True
+        if norm_last_layer:
+            self.last_layer.weight_g.requires_grad = False
+
+    def forward(self, x):
+        x = nn.functional.normalize(x, dim=-1, p=2)
+        x = self.last_layer(x)
+        return x
+
+
 class MLPVAE2Predictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
         super().__init__()
