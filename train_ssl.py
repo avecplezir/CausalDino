@@ -381,8 +381,12 @@ def train_svt(args):
     else:
         n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
         layer_norm_in_pred = True if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else False
+    layer_norm_in_pred = args.layer_norm_in_pred if args.layer_norm_in_pred else layer_norm_in_pred
+    layer_norm_in_head = args.layer_norm_in_head if args.layer_norm_in_head else False
+
     print('n_embd', n_embd)
-    print('layer_norm', layer_norm_in_pred)
+    print('layer_norm_in_pred', layer_norm_in_pred)
+    print('layer_norm_in_head', layer_norm_in_head)
     student = Wrapper(student,
          DINOHead(
              embed_dim,
@@ -392,6 +396,7 @@ def train_svt(args):
              skip_last=args.headproba,
              bottleneck_dim=args.bottleneck_dim,
              hidden_dim=args.hidden_dim_in_head,
+             layer_norm=layer_norm_in_head
          ),
          predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                              layer_norm=layer_norm_in_pred, use_bn=args.use_bn_in_pred, hidden_dim=args.hidden_dim_in_pred) if Predictor else None,
