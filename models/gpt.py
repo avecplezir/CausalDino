@@ -165,6 +165,7 @@ class GPT(nn.Module):
 
         self.maskemb = maskemb
         if self.maskemb:
+            print('use maskemb!')
             self.wme = nn.Embedding(1, config.n_embd)
 
         self.layer_norm = layer_norm
@@ -203,7 +204,10 @@ class GPT(nn.Module):
         x = self.transformer.drop(tok_emb + pos_emb)
 
         if self.maskemb:
-            x = x + (mask-1)*self.wme(torch.zeros_like(mask)) #add mask emb where mask value is zero
+            mask_emb = self.wme(torch.zeros_like(mask))
+            print('mask_emb', mask_emb.shape)
+            print('x', x.shape)
+            x = x + (mask-1)*mask_emb #add mask emb where mask value is zero
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)

@@ -9,7 +9,7 @@ import models.gpt_utils as tools
 
 class DINOHead(nn.Module):
     def __init__(self, n_embd=0, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
-                 bottleneck_dim=256, skip_last=False, layer_norm=False, l2norm=False):
+                 bottleneck_dim=256, skip_last=False, layer_norm=False, l2norm=False, **kwargs):
         super().__init__()
         self.skip_last = skip_last
         self.layer_norm = layer_norm
