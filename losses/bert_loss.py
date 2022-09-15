@@ -67,8 +67,8 @@ class BertLoss(FeatureLoss):
             elif self.args.student_prediction_type == 'head_first':
                 s_enc_head = student.module.head(s_enc)
                 s_pred = student.module.predictor(s_enc_head,
-                                         indices=pos_indices, mask=mask,
-                                         attn_type='all')
+                                                  indices=pos_indices, mask=mask,
+                                                  attn_type='all')
                 s_pred_future_logits = student.module.headprob(s_pred)
             else:
                 assert 0, f'{self.args.student_prediction_type} not implemented!'

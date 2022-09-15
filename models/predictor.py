@@ -14,7 +14,7 @@ class DINOHead(nn.Module):
         self.skip_last = skip_last
         self.layer_norm = layer_norm
         self.l2norm = l2norm
-        print('self.layer_norm in dinohead', layer_norm)
+        print('layer_norm in dinohead', layer_norm)
         nlayers = max(nlayers, 1)
         if nlayers == 1:
             self.mlp = nn.Linear(n_embd, bottleneck_dim)

@@ -79,6 +79,8 @@ class CausalSelfAttention(nn.Module):
             att = att.masked_fill(mask == 0, float('-inf'))
 
         att = F.softmax(att, dim=-1)
+        print('mask', mask)
+        print('att', att)
         att = self.attn_dropout(att)
         y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
         y = y.transpose(1, 2).contiguous().view(B, T, C)  # re-assemble all head outputs side by side
@@ -186,8 +188,8 @@ class GPT(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        # elif isinstance(module, nn.Embedding):
+            # torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
         elif isinstance(module, nn.LayerNorm):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
@@ -205,9 +207,7 @@ class GPT(nn.Module):
 
         if self.maskemb:
             mask_emb = self.wme(torch.zeros_like(mask))
-            print('mask_emb', mask_emb.shape)
-            print('x', x.shape)
-            x = x + (mask-1)*mask_emb #add mask emb where mask value is zero
+            x = x + (mask-1).unsqueeze(-1)*mask_emb #add mask emb where mask value is zero
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)
