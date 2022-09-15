@@ -41,6 +41,7 @@ python -m torch.distributed.launch \
   --dataset EpicEvents \
   --wrapper MultiCropWrapperGPT \
   --predictor Projector \
+  --head Projector \
   --headproba HeadProba \
   --CE_fe_c 1. \
   --CE_ef_c 0. \

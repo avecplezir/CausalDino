@@ -27,6 +27,7 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
+  --exp_name $EXP_NAME \
   --video_extension MP4 \
   --dataset_level 3 \
   --arch "timesformer" \
@@ -46,6 +47,7 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperGPT \
   --predictor Projector \
   --headproba HeadProbal2Norm \
+  --head Projector \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
   --use_bn_in_head True \
