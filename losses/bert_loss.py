@@ -76,8 +76,9 @@ class BertLoss(FeatureLoss):
             s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
             loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
             inverse_mask = (~mask.bool()).long()
-            total_loss += (inverse_mask * loss).sum()
-            n_loss_terms += loss.size(0) * inverse_mask.sum()
+            n_terms = loss.size(0) * inverse_mask.sum()
+            total_loss += (inverse_mask * loss).sum() / n_terms
+            n_loss_terms += 1
 
         total_loss /= n_loss_terms
         return total_loss
