@@ -33,10 +33,10 @@ python -m torch.distributed.launch \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   \
-  --batch_size_per_gpu 2 \
+  --batch_size_per_gpu 32 \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb False \
+  --use_wandb True \
   --weight_decay_end 0.1 \
   --num_workers 10 \
   \

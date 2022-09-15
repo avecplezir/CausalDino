@@ -33,7 +33,7 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --weight_decay_end 0.1 \
-  --num_workers 10 \
+  --num_workers 20 \
   \
   --dataset EpicEvents \
   --loss BertLoss \
@@ -45,13 +45,12 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperSimple \
   --predictor GPT \
-  --headproba HeadProba \
+  --head Projector \
+  --headproba HeadProbal2Norm \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
   --use_bn_in_head True \
-  --use_bn_in_pred True \
-  --hidden_dim_in_pred 4096 \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
-
+  --maskemb True \
