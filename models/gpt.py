@@ -208,7 +208,7 @@ class GPT(nn.Module):
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
 
-        if self.maskemb:
+        if self.maskemb and attn_type != 'id':
             mask_emb = self.wme(torch.zeros_like(mask))
             x = x + (mask-1).unsqueeze(-1)*mask_emb #add mask emb where mask value is zero
 

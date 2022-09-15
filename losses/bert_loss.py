@@ -17,7 +17,7 @@ class BertLoss(FeatureLoss):
 
         temp = self.teacher_temp_schedule[epoch]
         if self.args.teacher_prediction_type == 'head_predictor_joint':
-            t_enc_logits = teacher.head(teacher.predictor(s_enc, attn_type='id'))
+            t_enc_logits = teacher.headprob(teacher.head(teacher.predictor(s_enc, attn_type='id')))
         elif self.args.teacher_prediction_type == 'head':
             t_enc_logits = teacher.headprob(teacher.head(s_enc))
         else:
@@ -55,12 +55,16 @@ class BertLoss(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         masks = self.generate_masks(pos_indices)
+        print('s_enc', s_enc.shape)
+        print('t_enc_proba', t_enc_proba.shape)
         for mask in masks:
             mask = mask.unsqueeze(0)
             if self.args.student_prediction_type == 'predictor_first':
                 s_pred_future = student.module.predictor(s_enc, indices=pos_indices, mask=mask,
                                                          attn_type='all')
+                print('s_pred_future', s_pred_future.shape)
                 s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
+                print('s_pred_future_logits', s_pred_future_logits.shape)
             elif self.args.student_prediction_type == 'head_first':
                 s_enc_head = student.module.head(s_enc)
                 s_pred = student.module.predictor(s_enc_head,
