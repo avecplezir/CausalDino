@@ -88,40 +88,6 @@ class Projector(DINOHead):
         return x
 
 
-class MLPPosPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
-        super().__init__()
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            self.ln_f = nn.LayerNorm(n_embd)
-
-        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=2, layer_norm=layer_norm)
-        self.wpe = nn.Embedding(block_size, n_embd)
-
-    def forward(self, x, indices=None, **kwargs):
-        fp_emb = self.wpe(indices)
-        out = self.predictor(torch.cat([fp_emb, x], -1))
-        return out
-
-
-class MLPPastPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=None, layer_norm=False, use_bn=False, **kwargs):
-        super().__init__()
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            self.ln_f = nn.LayerNorm(n_embd)
-
-        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn)
-        self.wpe = nn.Embedding(block_size, n_embd)
-
-    def forward(self, x, indices=None, **kwargs):
-        x = x[:, -1:].repeat(1, indices.size(1), 1)
-        fp_emb = self.wpe(indices)
-        out = self.predictor(torch.cat([fp_emb, x], -1))
-
-        return out
-
-
 class MLPBYOL(nn.Module):
     def __init__(self, n_embd, hidden_dim=4096, layer_norm=None,
                  l2norm=None, use_bn=True, **kwargs):
@@ -160,6 +126,40 @@ class MLPBYOL(nn.Module):
 
         if self.l2norm:
             out = nn.functional.normalize(out, dim=-1, p=2)
+
+        return out
+
+
+class MLPPosPredictor(nn.Module):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+        super().__init__()
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
+        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=2, layer_norm=layer_norm)
+        self.wpe = nn.Embedding(block_size, n_embd)
+
+    def forward(self, x, indices=None, **kwargs):
+        fp_emb = self.wpe(indices)
+        out = self.predictor(torch.cat([fp_emb, x], -1))
+        return out
+
+
+class MLPPastPredictor(nn.Module):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, use_bn=False, **kwargs):
+        super().__init__()
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.ln_f = nn.LayerNorm(n_embd)
+
+        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn)
+        self.wpe = nn.Embedding(block_size, n_embd)
+
+    def forward(self, x, indices=None, **kwargs):
+        x = x[:, -1:].repeat(1, indices.size(1), 1)
+        fp_emb = self.wpe(indices)
+        out = self.predictor(torch.cat([fp_emb, x], -1))
 
         return out
 
