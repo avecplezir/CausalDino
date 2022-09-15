@@ -42,7 +42,6 @@ python -m torch.distributed.launch \
   --wrapper MultiCropWrapperGPT \
   --predictor Projector \
   --headproba HeadProba \
-  --skip_last True \
   --CE_fe_c 1. \
   --CE_ef_c 0. \
   --use_bn_in_head True \
