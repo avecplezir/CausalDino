@@ -52,5 +52,3 @@ python -m torch.distributed.launch \
   --layer_norm_in_pred False \
   --layer_norm_in_head False \
   --num_workers 20 \
-
-

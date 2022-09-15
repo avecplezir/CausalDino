@@ -103,13 +103,13 @@ class MLPBYOL(nn.Module):
                         nn.Linear(n_embd, hidden_dim),
                         nn.BatchNorm1d(hidden_dim),
                         nn.GELU(),
-                        nn.Linear(hidden_dim, n_embd)
+                        nn.Linear(hidden_dim, 256)
                     )
         else:
             self.mlp = nn.Sequential(
                         nn.Linear(n_embd, hidden_dim),
                         nn.GELU(),
-                        nn.Linear(hidden_dim, n_embd)
+                        nn.Linear(hidden_dim, 256)
                     )
 
     def forward(self, x, **kwargs):

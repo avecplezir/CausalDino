@@ -667,7 +667,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 param_norms = utils.clip_gradients(student, args.clip_grad)
             utils.cancel_gradients_last_layer(epoch, student,
                                               args.freeze_last_layer)
-            head_gradnorm = {f'head_lin{i}_gradnorm': torch.norm(student.module.head.mlp[i].weight.grad) for i in range(0, 7, 3)}
+            head_gradnorm = {f'head_lin{0}_gradnorm': torch.norm(student.module.head.mlp[0].weight.grad)}
             backbone_gradnorm = {f'backbone11_lin_gradnorm': torch.norm(student.module.backbone.blocks[11].mlp.fc1.weight.grad)}
             fp16_scaler.step(optimizer)
             fp16_scaler.update()
