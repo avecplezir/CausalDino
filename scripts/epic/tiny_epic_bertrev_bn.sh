@@ -56,7 +56,7 @@ python -m torch.distributed.launch \
   --CE_ef_c 0. \
   --use_bn_in_head True \
   --hidden_dim_in_head 4098 \
-  --teacher_prediction_type predictor \
+  --teacher_prediction_type head \
   --student_prediction_type predictor_first \
   --maskemb True \
 
