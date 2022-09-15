@@ -1,10 +1,13 @@
 #!/bin/bash
 
+SOURCE_CODE_PATH=$HOME
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-VAL_DATA_PATH="$INPUT_PATH/UCF101"
-DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_bert_bnjoint_nirvana"
-PORT='1024'
+SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
+VAL_DATA_PATH="/mnt/data/UCF101"
+DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
+PORT='1025'
+
+EXP_NAME="tiny_epic_fprevbyol_bn"
 
 cd "$PROJECT_PATH" || exit
 
@@ -14,6 +17,8 @@ fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
+
+export CUDA_VISIBLE_DEVICES=2
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -26,31 +31,29 @@ python -m torch.distributed.launch \
   --video_extension MP4 \
   --dataset_level 3 \
   --arch "timesformer" \
-  --model_name get_deit_tiny_patch16_224 \
-  \
   --batch_size_per_gpu 32 \
+  --model_name get_deit_tiny_patch16_224 \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb True \
   --weight_decay_end 0.1 \
-  --num_workers 10 \
-  \
-  --dataset EpicEvents \
-  --loss BertLoss \
+  --n_global_views 2 \
   --local_crops_number 0 \
-  --n_global_views 4 \
-  --random_sampling False \
-  --block_size 4 \
-  --n_parts 4 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperSimple \
-  --predictor GPT \
-  --head Projector \
+  --n_parts 11 \
+  --num_workers 20 \
+  --use_wandb True \
+  --loss FeatureLossAllPairs \
+  --dataset EpicEvents \
+  --wrapper MultiCropWrapperGPT \
+  --predictor MLPBYOL \
+  --head MLPBYOL \
   --headproba HeadProbal2Norm \
-  --CE_fe_c 1 \
+  --CE_fe_c 1. \
   --CE_ef_c 0. \
   --use_bn_in_head True \
-  --hidden_dim_in_head 4098 \
-  --teacher_prediction_type head_predictor_joint \
-  --student_prediction_type predictor_first \
-  --maskemb True \
+  --use_bn_in_pred True \
+  --hidden_dim_in_head 4096 \
+  --hidden_dim_in_pred 4096 \
+  --layer_norm_in_pred False \
+  --layer_norm_in_head False \
+  --num_workers 20 \
