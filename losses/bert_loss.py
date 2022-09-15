@@ -99,6 +99,6 @@ class GPTLoss(BertLoss):
             assert 0, f'{self.args.student_prediction_type} not implemented!'
 
         s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
-        loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
+        loss = -torch.sum(t_enc_proba[:, 1:] * torch.log(s_pred_future_proba[:, :-1]), dim=-1)
 
         return loss.mean()
