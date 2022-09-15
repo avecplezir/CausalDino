@@ -55,9 +55,6 @@ class BertLoss(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         masks = self.generate_masks(pos_indices)
-        print('masks', masks)
-        print('s_enc', s_enc.shape)
-        print('t_enc_proba', t_enc_proba.shape)
         for mask in masks:
             mask = mask.unsqueeze(0)
             if self.args.student_prediction_type == 'predictor_first':
