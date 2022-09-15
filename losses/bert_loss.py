@@ -63,7 +63,7 @@ class BertLoss(FeatureLoss):
             if self.args.student_prediction_type == 'predictor_first':
                 s_pred_future = student.module.predictor(s_enc, indices=pos_indices, mask=mask,
                                                          attn_type='all')
-                s_pred_future_logits = student.module.head(s_pred_future)
+                s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
             elif self.args.student_prediction_type == 'head_first':
                 s_enc_head = student.module.head(s_enc)
                 s_pred = student.module.predictor(s_enc_head,
