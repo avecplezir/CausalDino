@@ -1,4 +1,4 @@
-__all__ = ['FeatureLoss', 'FeatureLossAllPairs',]
+__all__ = ['FeatureLoss', 'FeatureLossAllPairs', 'ByolLossAllPairs']
 
 import torch
 import torch.nn.functional as F
@@ -184,7 +184,7 @@ class ByolLossAllPairs(FeatureLoss):
         total_loss = 0
         n_loss_terms = 0
         for ip in range(0, self.n_global_views):
-            for ie in range(0, self.n_crops): 
+            for ie in range(0, self.n_crops):
                 if ip == ie:
                     # we skip cases where student and teacher operate on the same view
                     continue
