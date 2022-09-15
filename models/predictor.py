@@ -65,10 +65,10 @@ class DINOHead(nn.Module):
 
 class Projector(DINOHead):
     def __init__(self, n_embd, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
-                 bottleneck_dim=256, layer_norm=False, l2norm=False):
+                 bottleneck_dim=256, layer_norm=False, l2norm=False, **kwargs):
         super().__init__(n_embd, n_embd, use_bn=use_bn, norm_last_layer=norm_last_layer,
                          nlayers=nlayers, hidden_dim=hidden_dim, bottleneck_dim=bottleneck_dim,
-                         skip_last=True, layer_norm=layer_norm, l2norm=l2norm)
+                         skip_last=True, layer_norm=layer_norm, l2norm=l2norm, **kwargs)
 
     def forward(self, x, **kwargs):
         reshape = (len(x.size()) == 3)
@@ -80,11 +80,9 @@ class Projector(DINOHead):
             x = x.reshape(b, t, -1)
 
         if self.layer_norm:
-            # print('prejector layer_norm!')
             x = self.ln_f(x)
 
         if self.l2norm:
-            # print('prejector l2norm!')
             x = nn.functional.normalize(x, dim=-1, p=2)
 
         return x
