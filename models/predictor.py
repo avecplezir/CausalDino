@@ -275,10 +275,10 @@ class HeadProbal2Norm(nn.Module):
 
 
 class L2Norm(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__()
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         x = nn.functional.normalize(x, dim=-1, p=2)
         return x
 
