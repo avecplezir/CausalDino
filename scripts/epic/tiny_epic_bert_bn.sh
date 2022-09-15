@@ -36,7 +36,7 @@ python -m torch.distributed.launch \
   --batch_size_per_gpu 32 \
   --do_eval True \
   --eval_freq 5 \
-  --use_wandb True \
+  --use_wandb False \
   --weight_decay_end 0.1 \
   --num_workers 10 \
   \
@@ -50,14 +50,14 @@ python -m torch.distributed.launch \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperSimple \
   --predictor GPT \
-  --headproba HeadProba \
+  --head Projector \
+  --headproba HeadProbal2Norm \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
   --use_bn_in_head True \
-  --use_bn_in_pred True \
-  --hidden_dim_in_pred 4096 \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
+  --maskemb True \
 
 
