@@ -1,4 +1,4 @@
-__all__ = ['BertLoss']
+__all__ = ['BertLoss', 'GPTLoss']
 
 import torch
 import torch.nn.functional as F
@@ -84,3 +84,21 @@ class BertLoss(FeatureLoss):
 
         total_loss /= n_loss_terms
         return total_loss
+
+
+class GPTLoss(BertLoss):
+    def compute_loss_fe(self, s_enc, t_enc_proba, student, pos_indices):
+        if self.args.student_prediction_type == 'predictor_first':
+            s_pred_future = student.module.predictor(s_enc, indices=pos_indices)
+            s_pred_future_logits = student.module.headprob(student.module.head(s_pred_future))
+        elif self.args.student_prediction_type == 'head_first':
+            s_enc_head = student.module.head(s_enc)
+            s_pred = student.module.predictor(s_enc_head, indices=pos_indices)
+            s_pred_future_logits = student.module.headprob(s_pred)
+        else:
+            assert 0, f'{self.args.student_prediction_type} not implemented!'
+
+        s_pred_future_proba = F.softmax(s_pred_future_logits / self.student_temp, dim=-1)
+        loss = -torch.sum(t_enc_proba * torch.log(s_pred_future_proba), dim=-1)
+
+        return loss.mean()
