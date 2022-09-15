@@ -274,6 +274,15 @@ class HeadProbal2Norm(nn.Module):
         return x
 
 
+class L2Norm(nn.Module):
+    def __init__(self, **kwargs):
+        super().__init__()
+
+    def forward(self, x):
+        x = nn.functional.normalize(x, dim=-1, p=2)
+        return x
+
+
 class MLPVAE2Predictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
         super().__init__()

@@ -164,4 +164,32 @@ class FeatureLossAllPairs(FeatureLoss):
         return total_loss
 
 
+def loss_fn(x, y):
+    return 2 - 2 * (x * y).sum(dim=-1)
 
+
+class ByolLossAllPairs(FeatureLoss):
+    def forward(self, student_output, teacher_output, epoch, **kwargs):
+        """
+        Cross-entropy between softmax outputs of the teacher and student networks.
+        """
+        s_enc, s_pred_future, _, _ = student_output
+        t_enc, t_pred_future, _, _ = teacher_output
+
+        total_loss = self.compute_loss_fe(s_pred_future, t_enc)
+
+        return total_loss, {}
+
+    def compute_loss_fe(self, s_pred_future, t_enc):
+        total_loss = 0
+        n_loss_terms = 0
+        for ip in range(0, self.n_global_views):
+            for ie in range(0, self.n_crops): 
+                if ip == ie:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = loss_fn(t_enc[:, ie], s_pred_future[:, ip])
+                total_loss += loss.mean()
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        return total_loss
