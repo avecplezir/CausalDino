@@ -1023,22 +1023,23 @@ class MultiCropWrapperGeneral(nn.Module):
             enc_list = output.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
-                # print('mode teacher')
                 return self.forward_teacher(x_enc, indices)
             elif self.mode == 'student':
-                # print('mode student')
                 if self.loss_mode == 'gpt':
-                    # print('loss_mode gpt')
                     return self.forward_student_gpt(x_enc, indices), None
                 if self.loss_mode == 'bert':
-                    # print('loss_mode bert')
                     return self.forward_student_bert(x_enc, indices)
                 elif self.loss_mode == 'vae':
                     print('loss_mode vae')
                     pass
                 elif self.loss_mode == 'timeemb':
                     print('loss_mode timeemb')
-                    pass
+                    s_pred_future_logits_list = []
+                    for ie in range(1, self.args.n_global_views):  # future encoding
+                        s_pred_future = self.predictor(x_enc[:, :ie], future_index=indices[:, ie], indices=indices)
+                        s_pred_future_logits = self.headprob(s_pred_future)
+                        s_pred_future_logits_list.apend(s_pred_future_logits)
+                    return
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:
