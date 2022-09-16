@@ -922,6 +922,30 @@ class MultiCropWrapperMemory(nn.Module):
             return self.head(output)
 
 
+class Memory:
+    def __init__(self, batch_size, maxlen):
+        self.batch_size = batch_size
+        self.maxlen = maxlen
+        self.memory = deque(maxlen=self.maxlen)
+        self.memory_mask = deque(maxlen=self.maxlen)
+        self.current_video_indices = -torch.ones(batch_size)
+
+    def add_memory(self, values):
+        self.memory.append(values.detach())
+        self.memory_mask.append(torch.ones(self.batch_size).to(values.device))
+
+    def remove_memory(self, video_indices):
+        new_video_indices = ~(self.current_video_indices == video_indices)
+        self.current_video_indices = video_indices
+        for idx in torch.arange(self.batch_size)[new_video_indices]:
+            for i in range(len(self.memory)):
+                self.memory[i][idx] = torch.zeros_like(self.memory[i][idx])
+                self.memory_mask[i][idx] = 0
+
+    def retrieve_memory(self, ):
+        return torch.stack(list(self.memory), 1), torch.stack(list(self.memory_mask), 1)
+
+
 class MultiCropWrapperGeneral(nn.Module):
     """
     Perform forward pass separately on each resolution input.
@@ -945,6 +969,9 @@ class MultiCropWrapperGeneral(nn.Module):
         self.args = args
         self.mode = mode
         self.loss_mode = loss_mode
+
+        if self.loss_mode == 'memory':
+            self.memory = Memory(args.batch_size_per_gpu, args.maxlen)
 
     def forward_backbone(self, x, **kwargs):
         # convert to list
@@ -1023,7 +1050,10 @@ class MultiCropWrapperGeneral(nn.Module):
             enc_list = output.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
-                return self.forward_teacher(x_enc, indices)
+                if self.loss_mode == 'memory':
+                    pass
+                else:
+                    return self.forward_teacher(x_enc, indices)
             elif self.mode == 'student':
                 if self.loss_mode == 'gpt':
                     return self.forward_student_gpt(x_enc, indices), None
