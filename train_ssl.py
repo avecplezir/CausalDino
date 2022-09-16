@@ -241,6 +241,8 @@ def get_args_parser():
     parser.add_argument('--l2norm_in_pred', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--maskemb', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--loss_mode', default=None, type=str, help="""""")
+    parser.add_argument('--future_index', type=utils.bool_flag, default=False, help="""""")
+
 
     return parser
 
@@ -407,7 +409,8 @@ def train_svt(args):
          ),
          predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                              layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred,
-                             hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb) if Predictor else None,
+                             hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb,
+                             future_index=args.future_index) if Predictor else None,
          headprob=HeadProba(args.out_dim) if HeadProba else None,
          return_prediction_logits=args.return_prediction_logits,
          return_enc_logits=args.return_enc_logits,
@@ -430,7 +433,8 @@ def train_svt(args):
                  ),
         predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
                             layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred,
-                            hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb) if Predictor else None,
+                            hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb,
+                            future_index=args.future_index) if Predictor else None,
         headprob=HeadProba(args.out_dim) if HeadProba else None,
         return_prediction_logits=args.return_prediction_logits,
         return_enc_logits=args.return_enc_logits,

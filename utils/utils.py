@@ -1038,8 +1038,9 @@ class MultiCropWrapperGeneral(nn.Module):
                     for ie in range(1, self.args.n_global_views):  # future encoding
                         s_pred_future = self.predictor(x_enc[:, :ie], future_index=indices[:, ie], indices=indices)
                         s_pred_future_logits = self.headprob(s_pred_future)
-                        s_pred_future_logits_list.apend(s_pred_future_logits)
-                    return
+                        s_pred_future_logits_list.append(s_pred_future_logits)
+                        print('s_pred_future_logits', s_pred_future_logits.shape)
+                    return s_pred_future_logits_list, None
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:

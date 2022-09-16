@@ -139,7 +139,7 @@ class GPT(nn.Module):
 
     def __init__(self, n_embd=256, block_size=4,
                  model_type='gpt-micro-256', layer_norm=False,
-                 maskemb=False, **kwargs):
+                 maskemb=False, future_index=False, **kwargs):
         super().__init__()
         config = get_default_config()
         config.block_size = block_size
@@ -172,8 +172,12 @@ class GPT(nn.Module):
         self.maskemb = maskemb
         if self.maskemb:
             print('use maskemb!')
-            # self.bn = BatchNormGPT(config.n_embd)
             self.wme = nn.Embedding(1, config.n_embd)
+
+        self.future_index = future_index
+        if self.future_index:
+            print('use future_index!')
+            self.wfe = nn.Embedding(config.block_size, config.n_embd)
 
         self.layer_norm = layer_norm
         if self.layer_norm:
@@ -199,14 +203,12 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
 
-    def forward(self, x, indices=None, attn_type='causal', mask=None, **kwargs):
+    def forward(self, x, indices=None, attn_type='causal', mask=None, future_index=None, **kwargs):
         device = x.device
         b, t = x.size()[:2]
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
 
-        # if self.maskemb:
-        #     x = self.bn(x)
         # forward the GPT model itself
         tok_emb = mask.unsqueeze(-1) * x if mask is not None else x # token embeddings of shape (b, t, n_embd), we zero embeddings where mask value is zero
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
@@ -216,6 +218,10 @@ class GPT(nn.Module):
             tok_emb = tok_emb + (mask-1).unsqueeze(-1)*mask_emb #add mask emb where mask value is zero
 
         x = self.transformer.drop(tok_emb + pos_emb)
+
+        if self.future_index:
+            fi_emb = self.wfe(future_index.unsqueeze(1))
+            x = torch.cat([fi_emb, tok_emb], 1)
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)

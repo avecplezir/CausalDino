@@ -1,4 +1,4 @@
-__all__ = ['BertLoss', 'GPTLoss']
+__all__ = ['BertLoss', 'GPTLoss', 'TELoss']
 
 import torch
 import torch.nn.functional as F
@@ -35,8 +35,6 @@ class BertLoss(FeatureLoss):
     def compute_loss_fe(self, s_pred_future_logits_list, t_enc_proba, masks):
         total_loss = 0
         n_loss_terms = 0
-        # print('t_enc_proba', t_enc_proba.shape)
-        # print('masks', masks.shape)
         for s_pred_future_logits, mask in zip(s_pred_future_logits_list, masks):
             s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
             loss = -torch.sum(t_enc_proba * s_pred_future_log, dim=-1)
@@ -51,9 +49,23 @@ class BertLoss(FeatureLoss):
 
 class GPTLoss(BertLoss):
     def compute_loss_fe(self, s_pred_future_logits, t_enc_proba, masks=None):
-        # print('s_pred_future_logits', s_pred_future_logits.shape)
-        # print('t_enc_proba', t_enc_proba.shape)
-        # print('masks', masks)
         s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba[:, 1:] * s_pred_future_log[:, :-1], dim=-1)
         return loss.mean()
+
+
+class TELoss(BertLoss):
+    def compute_loss_fe(self, s_pred_future_logits_list, t_enc_proba, masks=None):
+        total_loss = 0
+        n_loss_terms = 0
+        for s_pred_future_logits in s_pred_future_logits_list:  # future encoding
+            s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
+            ie = s_pred_future_log.size(1)
+            print('s_pred_future_log', s_pred_future_log.shape)
+            print('ie', ie)
+            loss = -torch.sum(t_enc_proba[:, ie] * s_pred_future_log, dim=-1)
+            total_loss += loss.sum()
+            n_loss_terms += loss.size(0) * ie
+
+        total_loss /= n_loss_terms
+        return total_loss
