@@ -929,12 +929,14 @@ class Memory:
         self.memory = deque(maxlen=self.maxlen)
         self.memory_mask = deque(maxlen=self.maxlen)
         self.current_video_indices = -torch.ones(batch_size)
+        self.memory_idx = 0
 
-    def add_memory(self, values):
+    def add(self, values):
+        values = values[:, self.memory_idx]
         self.memory.append(values.detach())
         self.memory_mask.append(torch.ones(self.batch_size).to(values.device))
 
-    def remove_memory(self, video_indices):
+    def remove(self, video_indices):
         new_video_indices = ~(self.current_video_indices == video_indices)
         self.current_video_indices = video_indices
         for idx in torch.arange(self.batch_size)[new_video_indices]:
@@ -942,7 +944,7 @@ class Memory:
                 self.memory[i][idx] = torch.zeros_like(self.memory[i][idx])
                 self.memory_mask[i][idx] = 0
 
-    def retrieve_memory(self, ):
+    def retrieve(self, ):
         return torch.stack(list(self.memory), 1), torch.stack(list(self.memory_mask), 1)
 
 
@@ -1003,6 +1005,15 @@ class MultiCropWrapperGeneral(nn.Module):
             assert 0, f'{self.args.teacher_prediction_type} not implemented!'
         return t_enc_logits
 
+    def forward_teacher_memory(self, x_enc, indices):
+        if self.args.teacher_prediction_type == 'head_predictor_joint':
+            t_enc = self.head(self.predictor(x_enc, indices=indices, attn_type='id'))
+        elif self.args.teacher_prediction_type == 'head':
+            t_enc = self.head(x_enc)
+        else:
+            assert 0, f'{self.args.teacher_prediction_type} not implemented!'
+        return t_enc
+
     def forward_student_gpt(self, x_enc, indices):
         if self.args.student_prediction_type == 'predictor_first':
             s_pred_future = self.predictor(x_enc, indices=indices)
@@ -1040,7 +1051,20 @@ class MultiCropWrapperGeneral(nn.Module):
             s_pred_future_logits_list.append(s_pred_future_logits)
         return s_pred_future_logits_list, masks
 
-    def forward(self, x, indices=None, **kwargs):
+    def forward_timeemb(self, x_enc, indices):
+        s_pred_future_logits_list = []
+        x_enc_head = self.head(x_enc)
+        # print('x_enc_head', x_enc_head.shape)
+        for ie in range(1, self.args.n_global_views):  # future encoding
+            # print('ie', ie)
+            s_pred_future = self.predictor(x_enc_head[:, :ie], future_index=indices[:, ie],
+                                           indices=indices[:, :ie])[:, 1:]
+            s_pred_future_logits = self.headprob(s_pred_future)
+            # print('s_pred_future_logits', s_pred_future_logits.shape)
+            s_pred_future_logits_list.append(s_pred_future_logits)
+        return s_pred_future_logits_list
+
+    def forward(self, x, indices=None, video_indices=None, **kwargs):
         if not isinstance(x, list):
             x = [x]
         n_crops = len(x)
@@ -1051,7 +1075,12 @@ class MultiCropWrapperGeneral(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
                 if self.loss_mode == 'memory':
-                    pass
+                    t_enc_head = self.forward_teacher_memory(x_enc, indices)
+                    self.memory.add(t_enc_head)
+                    self.memory.remove(video_indices)
+                    memory_enc, memory_mask = self.memory.retrieve()
+                    t_enc_logits = self.headprob(memory_enc)
+                    return t_enc_logits, memory_mask
                 else:
                     return self.forward_teacher(x_enc, indices)
             elif self.mode == 'student':
@@ -1063,18 +1092,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     print('loss_mode vae')
                     pass
                 elif self.loss_mode == 'timeemb':
-                    # print('loss_mode timeemb')
-                    s_pred_future_logits_list = []
-                    x_enc_head = self.head(x_enc)
-                    # print('x_enc_head', x_enc_head.shape)
-                    for ie in range(1, self.args.n_global_views):  # future encoding
-                        # print('ie', ie)
-                        s_pred_future = self.predictor(x_enc_head[:, :ie], future_index=indices[:, ie],
-                                                       indices=indices[:, :ie])[:, 1:]
-                        s_pred_future_logits = self.headprob(s_pred_future)
-                        # print('s_pred_future_logits', s_pred_future_logits.shape)
-                        s_pred_future_logits_list.append(s_pred_future_logits)
-                    return s_pred_future_logits_list, None
+                    return self.forward_timeemb(x_enc, indices), None
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:
