@@ -1052,8 +1052,8 @@ class MultiCropWrapperGeneral(nn.Module):
         masks = []
         for idx in range(1, 2 ** T - 1):
             mask = np.array(list(binT(idx)), dtype=int)
-            if 1 < sum(mask) < 3:
-                masks.append(mask)
+            # if 1 < sum(mask) < 3:
+            masks.append(mask)
         masks = np.array(masks, dtype=int)
         # masks = [[1, 0, 0, 0], [1, 1, 0, 0], [1, 1, 1, 0]]
         return torch.tensor(masks).to(pos_indices.device)
