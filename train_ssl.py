@@ -240,6 +240,7 @@ def get_args_parser():
     parser.add_argument('--l2norm_in_head', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--l2norm_in_pred', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--maskemb', type=utils.bool_flag, default=False, help="""""")
+    parser.add_argument('--loss_mode', default=None, type=str, help="""""")
 
     return parser
 
@@ -413,7 +414,9 @@ def train_svt(args):
          n_global_views=args.n_global_views,
          batch_size=args.batch_size_per_gpu,
          maxlen=args.maxlen,
-         student=True,
+         mode='student',
+         loss_mode=args.loss_mode,
+         args=args,
          )
     teacher = Wrapper(
         teacher,
@@ -434,7 +437,9 @@ def train_svt(args):
         n_global_views=args.n_global_views,
         batch_size=args.batch_size_per_gpu,
         maxlen=args.maxlen,
-        student=False,
+        mode='teacher',
+        loss_mode=args.loss_mode,
+        args=args,
     )
 
     # move networks to gpu
@@ -548,9 +553,9 @@ def train_svt(args):
 
     if args.do_eval and args.do_eval_before_train:
         if args.eval_dataset:
-            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher_without_ddp.backbone, opt=args)
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher, opt=args)
         if args.eval_dataset2:
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher_without_ddp.backbone,
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher,
                                   opt=args, return_pred_out=args.return_pred_out)
         if utils.is_main_process():
             print('val_stats', val_stats)
@@ -573,8 +578,8 @@ def train_svt(args):
 
         # ============ eval ========================
         if args.do_eval and epoch % args.eval_freq == 0:
-            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher_without_ddp.backbone, opt=args)
-            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher_without_ddp.backbone,
+            val_stats = eval_knn(eval_loader_train, eval_loader_test, eval_train, eval_test, teacher, opt=args)
+            val_stats2 = eval_knn(eval_loader_train2, eval_loader_test2, eval_train2, eval_test2, teacher,
                                   opt=args, return_pred_out=args.return_pred_out)
             if utils.is_main_process():
                 print('val_stats', val_stats)
@@ -641,8 +646,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
             teacher_output = teacher(images[:args.teacher_views], indices=indices,
                                      video_indices=video_indices)  # only the 2 global views pass through the teacher
             student_output = student(images, indices=indices, video_indices=video_indices)
-            loss, dict_losses = dino_loss(student_output, teacher_output, epoch,
-                                          student=student, teacher=teacher_without_ddp, video_indices=video_indices)
+            loss, dict_losses = dino_loss(student_output, teacher_output, epoch, video_indices=video_indices)
             loss = args.loss_scale * loss
 
         if not math.isfinite(loss.item()):

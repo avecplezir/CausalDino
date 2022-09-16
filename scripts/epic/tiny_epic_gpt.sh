@@ -48,13 +48,14 @@ python -m torch.distributed.launch \
   --block_size 4 \
   --n_parts 4 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperSimple \
+  --wrapper MultiCropWrapperGeneral \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \
+  --loss_mode gpt \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
-  --use_bn_in_head False \
+  --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
