@@ -63,6 +63,22 @@ class DINOHead(nn.Module):
         return x
 
 
+class BatchNormGPT(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.bn = nn.BatchNorm1d(hidden_dim)
+
+    def forward(self, x):
+        reshape = (len(x.size()) == 3)
+        if reshape:
+            b, t, emb = x.size()
+            x = x.reshape(b * t, emb)
+        x = self.bn(x)
+        if reshape:
+            x = x.reshape(b, t, -1)
+        return x
+
+
 class Projector(DINOHead):
     def __init__(self, n_embd, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
                  bottleneck_dim=256, layer_norm=False, l2norm=False, **kwargs):
