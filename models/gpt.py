@@ -221,7 +221,7 @@ class GPT(nn.Module):
 
         if self.future_index:
             fi_emb = self.wfe(future_index.unsqueeze(1))
-            x = torch.cat([fi_emb, tok_emb], 1)
+            x = torch.cat([fi_emb, x], 1)
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)

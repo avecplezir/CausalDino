@@ -1033,13 +1033,17 @@ class MultiCropWrapperGeneral(nn.Module):
                     print('loss_mode vae')
                     pass
                 elif self.loss_mode == 'timeemb':
-                    print('loss_mode timeemb')
+                    # print('loss_mode timeemb')
                     s_pred_future_logits_list = []
+                    x_enc_head = self.head(x_enc)
+                    # print('x_enc_head', x_enc_head.shape)
                     for ie in range(1, self.args.n_global_views):  # future encoding
-                        s_pred_future = self.predictor(x_enc[:, :ie], future_index=indices[:, ie], indices=indices)
+                        # print('ie', ie)
+                        s_pred_future = self.predictor(x_enc_head[:, :ie], future_index=indices[:, ie],
+                                                       indices=indices[:, :ie])[:, 1:]
                         s_pred_future_logits = self.headprob(s_pred_future)
+                        # print('s_pred_future_logits', s_pred_future_logits.shape)
                         s_pred_future_logits_list.append(s_pred_future_logits)
-                        print('s_pred_future_logits', s_pred_future_logits.shape)
                     return s_pred_future_logits_list, None
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'

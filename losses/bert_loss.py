@@ -61,9 +61,10 @@ class TELoss(BertLoss):
         for s_pred_future_logits in s_pred_future_logits_list:  # future encoding
             s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
             ie = s_pred_future_log.size(1)
-            print('s_pred_future_log', s_pred_future_log.shape)
-            print('ie', ie)
-            loss = -torch.sum(t_enc_proba[:, ie] * s_pred_future_log, dim=-1)
+            # print('ie', ie)
+            # print('s_pred_future_log', s_pred_future_log.shape)
+            # print('t_enc_proba[:, ie:ie+1]', t_enc_proba[:, ie:ie+1].shape)
+            loss = -torch.sum(t_enc_proba[:, ie:ie+1] * s_pred_future_log, dim=-1)
             total_loss += loss.sum()
             n_loss_terms += loss.size(0) * ie
 
