@@ -54,5 +54,5 @@ python -m torch.distributed.launch \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
-  --min_lr 1e-6 \
+  --min_lr 5e-4 \
 
