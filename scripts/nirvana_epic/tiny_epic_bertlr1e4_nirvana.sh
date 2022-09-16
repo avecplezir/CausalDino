@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_bert_lr1e4_nirvana"
+EXP_NAME="tiny_epic_bert_bn_lr1e4_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -33,7 +33,7 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --weight_decay_end 0.1 \
-  --num_workers 20 \
+  --num_workers 10 \
   \
   --dataset EpicEvents \
   --loss BertLoss \
@@ -43,16 +43,19 @@ python -m torch.distributed.launch \
   --block_size 4 \
   --n_parts 4 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperSimple \
+  --wrapper MultiCropWrapperGeneral \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \
+  --loss_mode bert \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
-  --use_bn_in_head False \
+  --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
   --maskemb True \
+  --layer_norm_in_head False \
+  --l2norm_in_head False \
   --lr 1e-4 \
   --min_lr 5e-5 \
