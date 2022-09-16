@@ -4,10 +4,10 @@ import torch
 import torch.nn.functional as F
 from collections import deque
 
-from .te_pp_loss import TEPPLoss
+from .feature_loss import FeatureLoss
 
 
-class MemoryLoss(TEPPLoss):
+class MemoryLoss(FeatureLoss):
     def init_memory(self, batch_size=None, **kwargs):
         self.memory = deque(maxlen=self.args.maxlen)
         self.memory_mask = deque(maxlen=self.args.maxlen)
