@@ -172,7 +172,7 @@ class GPT(nn.Module):
         self.maskemb = maskemb
         if self.maskemb:
             print('use maskemb!')
-            self.bn = BatchNormGPT(config.n_embd)
+            # self.bn = BatchNormGPT(config.n_embd)
             self.wme = nn.Embedding(1, config.n_embd)
 
         self.layer_norm = layer_norm
@@ -205,8 +205,8 @@ class GPT(nn.Module):
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
 
-        if self.maskemb:
-            x = self.bn(x)
+        # if self.maskemb:
+        #     x = self.bn(x)
         # forward the GPT model itself
         tok_emb = mask.unsqueeze(-1) * x if mask is not None else x # token embeddings of shape (b, t, n_embd), we zero embeddings where mask value is zero
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
