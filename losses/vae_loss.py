@@ -4,11 +4,11 @@ import torch
 import torch.nn.functional as F
 from torch import distributions as torchd
 
-from .timeemb_loss import TimeEmbLoss
+from .feature_loss import FeatureLoss
 import models.gpt_utils as tools
 
 
-class VAELoss(TimeEmbLoss):
+class VAELoss(FeatureLoss):
     def forward(self, student_output, teacher_output, epoch, student=None, teacher=None, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
