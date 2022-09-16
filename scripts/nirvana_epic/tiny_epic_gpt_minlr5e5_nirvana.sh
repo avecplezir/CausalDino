@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_gptminlr5e4_nirvana"
+EXP_NAME="tiny_epic_gptlr5e5_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -54,5 +54,5 @@ python -m torch.distributed.launch \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
-  --min_lr 5e-4 \
+  --min_lr 5e-5 \
 
