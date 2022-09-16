@@ -1026,9 +1026,9 @@ class MultiCropWrapperGeneral(nn.Module):
                 # print('mode teacher')
                 return self.forward_teacher(x_enc, indices)
             elif self.mode == 'student':
-                print('mode student')
+                # print('mode student')
                 if self.loss_mode == 'gpt':
-                    print('loss_mode gpt')
+                    # print('loss_mode gpt')
                     return self.forward_student_gpt(x_enc, indices), None
                 if self.loss_mode == 'bert':
                     print('loss_mode bert')
