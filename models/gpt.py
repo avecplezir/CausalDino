@@ -206,11 +206,12 @@ class GPT(nn.Module):
         # forward the GPT model itself
         tok_emb = mask.unsqueeze(-1) * x if mask is not None else x # token embeddings of shape (b, t, n_embd), we zero embeddings where mask value is zero
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
-        x = self.transformer.drop(tok_emb + pos_emb)
 
         if self.maskemb and attn_type != 'id':
             mask_emb = self.wme(torch.zeros_like(mask))
-            x = x + (mask-1).unsqueeze(-1)*mask_emb #add mask emb where mask value is zero
+            tok_emb = tok_emb + (mask-1).unsqueeze(-1)*mask_emb #add mask emb where mask value is zero
+
+        x = self.transformer.drop(tok_emb + pos_emb)
 
         for block in self.transformer.h:
             x = block(x, attn_type=attn_type, mask=mask)

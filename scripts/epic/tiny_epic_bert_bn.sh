@@ -60,5 +60,7 @@ python -m torch.distributed.launch \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
   --maskemb True \
+  --layer_norm_in_head False \
+  --l2norm_in_head True \
 
 

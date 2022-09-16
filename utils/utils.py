@@ -999,14 +999,14 @@ class MultiCropWrapperGeneral(nn.Module):
             if self.args.student_prediction_type == 'predictor_first':
                 s_pred_future = self.predictor(x_enc, indices=indices, mask=mask,
                                                attn_type='all')
-                print('s_pred_future', s_pred_future.shape)
+                # print('s_pred_future', s_pred_future.shape)
                 s_pred_future_logits = self.headprob(self.head(s_pred_future))
-                print('s_pred_future_logits', s_pred_future_logits.shape)
+                # print('s_pred_future_logits', s_pred_future_logits.shape)
             elif self.args.student_prediction_type == 'head_first':
                 s_enc_head = self.head(x_enc)
-                print('s_enc_head', s_enc_head.shape)
+                # print('s_enc_head', s_enc_head.shape)
                 s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type='all')
-                print('s_pred', s_pred.shape)
+                # print('s_pred', s_pred.shape)
                 s_pred_future_logits = self.headprob(s_pred)
             else:
                 assert 0, f'{self.args.student_prediction_type} not implemented!'
@@ -1031,7 +1031,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     # print('loss_mode gpt')
                     return self.forward_student_gpt(x_enc, indices), None
                 if self.loss_mode == 'bert':
-                    print('loss_mode bert')
+                    # print('loss_mode bert')
                     return self.forward_student_bert(x_enc, indices)
                 elif self.loss_mode == 'vae':
                     print('loss_mode vae')
@@ -1049,12 +1049,13 @@ class MultiCropWrapperGeneral(nn.Module):
     def generate_masks(self, pos_indices):
         b, T = pos_indices.size()
         binT = lambda x: ''.join(reversed([str((x >> i) & 1) for i in range(T)]))
-        masks = []
-        for idx in range(1, 2 ** T - 1):
-            mask = np.array(list(binT(idx)), dtype=int)
-            if sum(mask) < 6:
-                masks.append(mask)
-        masks = np.array(masks, dtype=int)
+        # masks = []
+        # for idx in range(1, 2 ** T - 1):
+        #     mask = np.array(list(binT(idx)), dtype=int)
+        #     if 1 < sum(mask) < 3:
+        #         masks.append(mask)
+        # masks = np.array(masks, dtype=int)
+        masks = [[1, 0, 0, 0], [1, 1, 0, 0], [1, 1, 1, 0]]
         return torch.tensor(masks).to(pos_indices.device)
 
 
