@@ -1029,25 +1029,29 @@ class MultiCropWrapperGeneral(nn.Module):
             assert 0, f'{self.args.student_prediction_type} not implemented!'
         return s_pred_future_logits
 
+    def forward_student_mask(self, x_enc, indices, mask):
+        mask = mask.unsqueeze(0)
+        if self.args.student_prediction_type == 'predictor_first':
+            s_pred_future = self.predictor(x_enc, indices=indices, mask=mask,
+                                           attn_type='all')
+            # print('s_pred_future', s_pred_future.shape)
+            s_pred_future_logits = self.headprob(self.head(s_pred_future))
+            # print('s_pred_future_logits', s_pred_future_logits.shape)
+        elif self.args.student_prediction_type == 'head_first':
+            s_enc_head = self.head(x_enc)
+            # print('s_enc_head', s_enc_head.shape)
+            s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type='all')
+            # print('s_pred', s_pred.shape)
+            s_pred_future_logits = self.headprob(s_pred)
+        else:
+            assert 0, f'{self.args.student_prediction_type} not implemented!'
+        return s_pred_future_logits
+
     def forward_student_bert(self, x_enc, indices):
         s_pred_future_logits_list = []
         masks = self.generate_masks(indices)
         for mask in masks:
-            mask = mask.unsqueeze(0)
-            if self.args.student_prediction_type == 'predictor_first':
-                s_pred_future = self.predictor(x_enc, indices=indices, mask=mask,
-                                               attn_type='all')
-                # print('s_pred_future', s_pred_future.shape)
-                s_pred_future_logits = self.headprob(self.head(s_pred_future))
-                # print('s_pred_future_logits', s_pred_future_logits.shape)
-            elif self.args.student_prediction_type == 'head_first':
-                s_enc_head = self.head(x_enc)
-                # print('s_enc_head', s_enc_head.shape)
-                s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type='all')
-                # print('s_pred', s_pred.shape)
-                s_pred_future_logits = self.headprob(s_pred)
-            else:
-                assert 0, f'{self.args.student_prediction_type} not implemented!'
+            s_pred_future_logits = self.forward_student_mask(x_enc, indices, mask)
             s_pred_future_logits_list.append(s_pred_future_logits)
         return s_pred_future_logits_list, masks
 
@@ -1093,6 +1097,11 @@ class MultiCropWrapperGeneral(nn.Module):
                     pass
                 elif self.loss_mode == 'timeemb':
                     return self.forward_timeemb(x_enc, indices), None
+                elif self.loss_mode == 'memory':
+                    bert_mask, bert_indices = self.generate_memory_mask_indices(indices)
+                    x_enc_gaps = x_enc
+                    s_pred_future_logits = self.forward_student_mask(x_enc_gaps, bert_indices, bert_mask)
+                    return s_pred_future_logits, bert_mask
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:
