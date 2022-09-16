@@ -35,7 +35,11 @@ class BertLoss(FeatureLoss):
     def compute_loss_fe(self, s_pred_future_logits_list, t_enc_proba, masks):
         total_loss = 0
         n_loss_terms = 0
+        print('t_enc_proba', t_enc_proba.shape)
+        print('masks', masks.shape)
         for s_pred_future_logits, mask in zip(s_pred_future_logits_list, masks):
+            print('s_pred_future_logits', s_pred_future_logits.shape)
+            print('mask', mask)
             s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
             loss = -torch.sum(t_enc_proba * s_pred_future_log, dim=-1)
             inverse_mask = (~mask.bool()).long()
@@ -49,6 +53,9 @@ class BertLoss(FeatureLoss):
 
 class GPTLoss(BertLoss):
     def compute_loss_fe(self, s_pred_future_logits, t_enc_proba, masks=None):
+        # print('s_pred_future_logits', s_pred_future_logits.shape)
+        # print('t_enc_proba', t_enc_proba.shape)
+        # print('masks', masks)
         s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba[:, 1:] * s_pred_future_log[:, :-1], dim=-1)
         return loss.mean()
