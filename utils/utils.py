@@ -730,198 +730,6 @@ class MultiCropWrapper(nn.Module):
         return self.head(output)
 
 
-class MultiCropWrapperGPT(nn.Module):
-    """
-    Perform forward pass separately on each resolution input.
-    The inputs corresponding to a single resolution are clubbed and single
-    forward is run on the same resolution inputs. Hence we do several
-    forward passes = number of different resolutions used. We then
-    concatenate all the output features and run the head forward on these
-    concatenated features.
-    """
-    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
-                 return_prediction_logits=True, n_global_views=None, **kwargs):
-        super(MultiCropWrapperGPT, self).__init__()
-        # disable layers dedicated to ImageNet labels classification
-        if hasattr(backbone, 'fc'):
-            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
-        self.backbone = backbone
-        self.head = head
-        self.predictor = predictor
-        self.predictor_past = predictor_past
-        self.headprob = headprob
-        self.return_prediction_logits = return_prediction_logits
-        self.n_global_views = n_global_views
-
-    def forward(self, x, indices=None, **kwargs):
-        # convert to list
-        if not isinstance(x, list):
-            x = [x]
-        n_crops = len(x)
-        idx_crops = torch.cumsum(torch.unique_consecutive(
-            torch.tensor([inp.shape[-1] for inp in x]),
-            return_counts=True,
-        )[1], 0)
-        start_idx = 0
-        for end_idx in idx_crops:
-            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
-            if start_idx == 0:
-                output = _out
-            else:
-                if isinstance(_out, tuple):
-                    output1 = torch.cat((output[0], _out[0]))
-                    output2 = torch.cat((output[1], _out[1]))
-                    output = (output1, output2)
-                else:
-                    output = torch.cat((output, _out))
-            start_idx = end_idx
-        # Run the head forward on the concatenated features.
-        # Encoding
-        x_enc_b = self.head(output)
-        if self.training:
-            enc_list = x_enc_b.chunk(n_crops)
-            x_enc = torch.stack(enc_list, 1)
-            x_enc_logits = self.headprob(x_enc)
-            # Predict future
-            pred_future = self.predictor(x_enc[:, :self.n_global_views], indices=indices)
-            predict_past = None #ToDo: the place to write past prediction
-            if self.return_prediction_logits:
-                pred_future_logits = self.headprob(pred_future)
-                return x_enc_logits, pred_future_logits, predict_past, indices
-            else:
-                return x_enc_logits, pred_future, predict_past, indices
-        else:
-            # enc_list = x_enc_b.chunk(n_crops)
-            # x_enc = torch.stack(enc_list, 1)
-            # pred_future = self.predictor(x_enc)
-            # return self.headprob(pred_future)
-            return self.headprob(x_enc_b)
-
-
-class MultiCropWrapperPredictorProjector(nn.Module):
-    """
-    Perform forward pass separately on each resolution input.
-    The inputs corresponding to a single resolution are clubbed and single
-    forward is run on the same resolution inputs. Hence we do several
-    forward passes = number of different resolutions used. We then
-    concatenate all the output features and run the head forward on these
-    concatenated features.
-    """
-    def __init__(self, backbone, head, predictor, predictor_past=None, headprob=None,
-                 return_prediction_logits=True, n_global_views=None, **kwargs):
-        super(MultiCropWrapperPredictorProjector, self).__init__()
-        # disable layers dedicated to ImageNet labels classification
-        if hasattr(backbone, 'fc'):
-            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
-        self.backbone = backbone
-        self.head = head
-        self.predictor = predictor
-        self.predictor_past = predictor_past
-        self.headprob = headprob
-        self.return_prediction_logits = return_prediction_logits
-        self.n_global_views = n_global_views
-
-    def forward(self, x, indices=None, return_pred_out=False, **kwargs):
-        # convert to list
-        if not isinstance(x, list):
-            x = [x]
-        n_crops = len(x)
-        idx_crops = torch.cumsum(torch.unique_consecutive(
-            torch.tensor([inp.shape[-1] for inp in x]),
-            return_counts=True,
-        )[1], 0)
-        start_idx = 0
-        for end_idx in idx_crops:
-            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
-            if start_idx == 0:
-                output = _out
-            else:
-                if isinstance(_out, tuple):
-                    output1 = torch.cat((output[0], _out[0]))
-                    output2 = torch.cat((output[1], _out[1]))
-                    output = (output1, output2)
-                else:
-                    output = torch.cat((output, _out))
-            start_idx = end_idx
-        # Run the head forward on the concatenated features.
-        # Encoding
-        if self.training:
-            enc_list = output.chunk(n_crops)
-            x_enc = torch.stack(enc_list, 1)
-            x_enc_logits = self.headprob(self.head(x_enc))
-            # Predict future
-            pred_future = self.predictor(x_enc[:, :self.n_global_views], indices=indices)
-            predict_past = None #ToDo: the place to write past prediction
-            if self.return_prediction_logits:
-                pred_future_logits = self.headprob(self.head(pred_future))
-                return x_enc_logits, pred_future_logits, predict_past, indices
-            else:
-                return x_enc_logits, pred_future, predict_past, indices
-        else:
-            if return_pred_out:
-                enc_list = output.chunk(n_crops)
-                x_enc = torch.stack(enc_list, 1)
-                pred_future = self.predictor(x_enc[:, :self.n_global_views], indices=indices)
-                pred_future_logits = self.headprob(self.head(pred_future))
-                return pred_future_logits
-            else:
-                return self.headprob(self.head(output))
-
-
-class MultiCropWrapperMemory(nn.Module):
-    """
-    Perform forward pass separately on each resolution input.
-    The inputs corresponding to a single resolution are clubbed and single
-    forward is run on the same resolution inputs. Hence we do several
-    forward passes = number of different resolutions used. We then
-    concatenate all the output features and run the head forward on these
-    concatenated features.
-    """
-    def __init__(self, backbone, head, predictor, predictor_past=None,
-                 headprob=None, return_enc_logits=True, **kwargs):
-        super(MultiCropWrapperMemory, self).__init__()
-        # disable layers dedicated to ImageNet labels classification
-        if hasattr(backbone, 'fc'):
-            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
-        self.backbone = backbone
-        self.head = head
-        self.predictor = predictor
-        self.predictor_past = predictor_past
-        self.headprob = headprob
-        self.return_enc_logits = return_enc_logits
-
-    def forward(self, x, indices=None, **kwargs):
-        # convert to list
-        if not isinstance(x, list):
-            x = [x]
-        n_crops = len(x)
-        idx_crops = torch.cumsum(torch.unique_consecutive(
-            torch.tensor([inp.shape[-1] for inp in x]),
-            return_counts=True,
-        )[1], 0)
-        start_idx = 0
-        for end_idx in idx_crops:
-            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
-            if start_idx == 0:
-                output = _out
-            else:
-                if isinstance(_out, tuple):
-                    output1 = torch.cat((output[0], _out[0]))
-                    output2 = torch.cat((output[1], _out[1]))
-                    output = (output1, output2)
-                else:
-                    output = torch.cat((output, _out))
-            start_idx = end_idx
-        # Run the head forward on the concatenated features.
-        if self.training:
-            enc_list = output.chunk(n_crops)
-            x_enc = torch.stack(enc_list, 1)
-            x_enc_logits = self.head(x_enc) if self.return_enc_logits else None
-            return x_enc, x_enc_logits, indices
-        else:
-            return self.head(output)
-
-
 class Memory:
     def __init__(self, batch_size, maxlen):
         self.batch_size = batch_size
@@ -972,7 +780,7 @@ class MultiCropWrapperGeneral(nn.Module):
         self.mode = mode
         self.loss_mode = loss_mode
 
-        if self.loss_mode == 'memory':
+        if self.loss_mode == 'memory' and self.mode == 'teacher':
             self.memory = Memory(args.batch_size_per_gpu, args.maxlen)
 
     def forward_backbone(self, x, **kwargs):
@@ -996,8 +804,9 @@ class MultiCropWrapperGeneral(nn.Module):
             start_idx = end_idx
         return output
 
-    def forward_teacher(self, x_enc, indices):
+    def forward_teacher(self, x_enc):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
+            indices = torch.zeros_like(x_enc[:, :, 0])
             t_enc_logits = self.headprob(self.head(self.predictor(x_enc, indices=indices, attn_type='id')))
         elif self.args.teacher_prediction_type == 'head':
             t_enc_logits = self.headprob(self.head(x_enc))
@@ -1005,8 +814,9 @@ class MultiCropWrapperGeneral(nn.Module):
             assert 0, f'{self.args.teacher_prediction_type} not implemented!'
         return t_enc_logits
 
-    def forward_teacher_memory(self, x_enc, indices):
+    def forward_teacher_memory(self, x_enc):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
+            indices = torch.zeros_like(x_enc[:, :, 0])
             t_enc = self.head(self.predictor(x_enc, indices=indices, attn_type='id'))
         elif self.args.teacher_prediction_type == 'head':
             t_enc = self.head(x_enc)
@@ -1021,9 +831,7 @@ class MultiCropWrapperGeneral(nn.Module):
             s_pred_future_logits = self.headprob(self.head(s_pred_future))
         elif self.args.student_prediction_type == 'head_first':
             s_enc_head = self.head(x_enc)
-            # print('s_enc_head', s_enc_head.shape)
             s_pred = self.predictor(s_enc_head, indices=indices)
-            # print('s_pred', s_pred.shape)
             s_pred_future_logits = self.headprob(s_pred)
         else:
             assert 0, f'{self.args.student_prediction_type} not implemented!'
@@ -1039,9 +847,7 @@ class MultiCropWrapperGeneral(nn.Module):
             # print('s_pred_future_logits', s_pred_future_logits.shape)
         elif self.args.student_prediction_type == 'head_first':
             s_enc_head = self.head(x_enc)
-            # print('s_enc_head', s_enc_head.shape)
             s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type='all')
-            # print('s_pred', s_pred.shape)
             s_pred_future_logits = self.headprob(s_pred)
         else:
             assert 0, f'{self.args.student_prediction_type} not implemented!'
@@ -1058,13 +864,10 @@ class MultiCropWrapperGeneral(nn.Module):
     def forward_timeemb(self, x_enc, indices):
         s_pred_future_logits_list = []
         x_enc_head = self.head(x_enc)
-        # print('x_enc_head', x_enc_head.shape)
         for ie in range(1, self.args.n_global_views):  # future encoding
-            # print('ie', ie)
             s_pred_future = self.predictor(x_enc_head[:, :ie], future_index=indices[:, ie],
                                            indices=indices[:, :ie])[:, 1:]
             s_pred_future_logits = self.headprob(s_pred_future)
-            # print('s_pred_future_logits', s_pred_future_logits.shape)
             s_pred_future_logits_list.append(s_pred_future_logits)
         return s_pred_future_logits_list
 
@@ -1079,14 +882,19 @@ class MultiCropWrapperGeneral(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
                 if self.loss_mode == 'memory':
-                    t_enc_head = self.forward_teacher_memory(x_enc, indices)
+                    print('teacher memory')
+                    t_enc_head = self.forward_teacher_memory(x_enc)
+                    print('t_enc_head', t_enc_head.shape)
                     self.memory.add(t_enc_head)
                     self.memory.remove(video_indices)
                     memory_enc, memory_mask = self.memory.retrieve()
+                    print('memory_enc', memory_enc.shape)
+                    print('memory_mask', memory_mask.shape)
                     t_enc_logits = self.headprob(memory_enc)
+                    print('t_enc_logits', t_enc_logits.shape)
                     return t_enc_logits, memory_mask
                 else:
-                    return self.forward_teacher(x_enc, indices)
+                    return self.forward_teacher(x_enc)
             elif self.mode == 'student':
                 if self.loss_mode == 'gpt':
                     return self.forward_student_gpt(x_enc, indices), None
@@ -1098,9 +906,13 @@ class MultiCropWrapperGeneral(nn.Module):
                 elif self.loss_mode == 'timeemb':
                     return self.forward_timeemb(x_enc, indices), None
                 elif self.loss_mode == 'memory':
-                    bert_mask, bert_indices = self.generate_memory_mask_indices(indices)
-                    x_enc_gaps = x_enc
-                    s_pred_future_logits = self.forward_student_mask(x_enc_gaps, bert_indices, bert_mask)
+                    print('student memory')
+                    bert_mask, bert_indices = self.get_memory_bert_indices_mask(indices)
+                    print('bert_mask, bert_indices', bert_mask.shape, bert_indices.shape)
+                    bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc], 1)
+                    print('bert_x_enc', bert_x_enc.shape)
+                    s_pred_future_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
+                    print('s_pred_future_logits', s_pred_future_logits.shape)
                     return s_pred_future_logits, bert_mask
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
@@ -1108,6 +920,12 @@ class MultiCropWrapperGeneral(nn.Module):
                 assert 0, f'mode {self.mode} not implemented!'
         else:
             return output
+
+    def get_memory_bert_indices_mask(self, indices):
+        bert_indices = torch.arange(self.args.maxlen).flip([0]).unsqueeze(0).to(indices.device)
+        bert_mask = torch.zero_like(bert_indices).repeat(indices.size(0), 1)
+        bert_mask[:, -1] = 1
+        return bert_mask, bert_indices
 
     def generate_masks(self, pos_indices):
         b, T = pos_indices.size()

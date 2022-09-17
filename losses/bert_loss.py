@@ -1,4 +1,4 @@
-__all__ = ['BertLoss', 'GPTLoss', 'TELoss']
+__all__ = ['BertLoss', 'GPTLoss', 'TELoss', 'MemoryLoss']
 
 import torch
 import torch.nn.functional as F
@@ -61,9 +61,6 @@ class TELoss(BertLoss):
         for s_pred_future_logits in s_pred_future_logits_list:  # future encoding
             s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
             ie = s_pred_future_log.size(1)
-            # print('ie', ie)
-            # print('s_pred_future_log', s_pred_future_log.shape)
-            # print('t_enc_proba[:, ie:ie+1]', t_enc_proba[:, ie:ie+1].shape)
             loss = -torch.sum(t_enc_proba[:, ie:ie+1] * s_pred_future_log, dim=-1)
             total_loss += loss.sum()
             n_loss_terms += loss.size(0) * ie
@@ -80,11 +77,22 @@ class MemoryLoss(FeatureLoss):
         s_pred_future_logits, bert_mask = student_output
         t_enc_logits, memory_mask = teacher_output
 
+        t = t_enc_logits.size(1)
+        s_pred_future_logits = s_pred_future_logits[:, -t:]
+        bert_mask = bert_mask[:, -t:]
+
+        print('memory loss')
+        print('s_pred_future_logits', s_pred_future_logits.shape)
+        print('bert_mask', bert_mask.shape)
+        print('memory_mask', memory_mask.shape)
         temp = self.teacher_temp_schedule[epoch]
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
         inverse_bert_mask = (~bert_mask.bool()).long()
         inverse_mask = memory_mask * inverse_bert_mask
+        print('inverse_mask', inverse_mask.shape)
+        print('t_enc_proba', t_enc_proba.shape)
+        print('s_pred_future_logits', s_pred_future_logits.shape)
 
         CE_fe = self.compute_loss_fe(s_pred_future_logits, t_enc_proba, inverse_mask)
         total_loss = CE_fe
