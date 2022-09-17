@@ -81,18 +81,18 @@ class MemoryLoss(FeatureLoss):
         s_pred_future_logits = s_pred_future_logits[:, -t:]
         bert_mask = bert_mask[:, -t:]
 
-        print('memory loss')
-        print('s_pred_future_logits', s_pred_future_logits.shape)
-        print('bert_mask', bert_mask.shape)
-        print('memory_mask', memory_mask.shape)
+        # print('memory loss')
+        # print('s_pred_future_logits', s_pred_future_logits.shape)
+        # print('bert_mask', bert_mask.shape)
+        # print('memory_mask', memory_mask.shape)
         temp = self.teacher_temp_schedule[epoch]
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
         inverse_bert_mask = (~bert_mask.bool()).long()
         inverse_mask = memory_mask * inverse_bert_mask
-        print('inverse_mask', inverse_mask.shape)
-        print('t_enc_proba', t_enc_proba.shape)
-        print('s_pred_future_logits', s_pred_future_logits.shape)
+        # print('inverse_mask', inverse_mask.shape)
+        # print('t_enc_proba', t_enc_proba.shape)
+        # print('s_pred_future_logits', s_pred_future_logits.shape)
 
         CE_fe = self.compute_loss_fe(s_pred_future_logits, t_enc_proba, inverse_mask)
         total_loss = CE_fe

@@ -745,7 +745,8 @@ class Memory:
         self.memory_mask.append(torch.ones(self.batch_size).to(values.device))
 
     def remove(self, video_indices):
-        new_video_indices = ~(self.current_video_indices == video_indices.cpu())
+        video_indices = video_indices.cpu()
+        new_video_indices = ~(self.current_video_indices == video_indices)
         self.current_video_indices = video_indices
         for idx in torch.arange(self.batch_size)[new_video_indices]:
             for i in range(len(self.memory)):
@@ -879,16 +880,16 @@ class MultiCropWrapperGeneral(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
                 if self.loss_mode == 'memory':
-                    print('teacher memory')
+                    # print('teacher memory')
                     t_enc_head = self.forward_teacher_memory(x_enc)
-                    print('t_enc_head', t_enc_head.shape)
+                    # print('t_enc_head', t_enc_head.shape)
                     self.memory.add(t_enc_head)
                     self.memory.remove(video_indices)
                     memory_enc, memory_mask = self.memory.retrieve()
-                    print('memory_enc', memory_enc.shape)
-                    print('memory_mask', memory_mask.shape)
+                    # print('memory_enc', memory_enc.shape)
+                    # print('memory_mask', memory_mask.shape)
                     t_enc_logits = self.headprob(memory_enc)
-                    print('t_enc_logits', t_enc_logits.shape)
+                    # print('t_enc_logits', t_enc_logits.shape)
                     return t_enc_logits, memory_mask
                 else:
                     return self.forward_teacher(x_enc)
@@ -903,13 +904,13 @@ class MultiCropWrapperGeneral(nn.Module):
                 elif self.loss_mode == 'timeemb':
                     return self.forward_timeemb(x_enc, indices), None
                 elif self.loss_mode == 'memory':
-                    print('student memory')
+                    # print('student memory')
                     bert_mask, bert_indices = self.get_memory_bert_indices_mask(indices)
-                    print('bert_mask, bert_indices', bert_mask.shape, bert_indices.shape)
+                    # print('bert_mask, bert_indices', bert_mask.shape, bert_indices.shape)
                     bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc], 1)
-                    print('bert_x_enc', bert_x_enc.shape)
+                    # print('bert_x_enc', bert_x_enc.shape)
                     s_pred_future_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
-                    print('s_pred_future_logits', s_pred_future_logits.shape)
+                    # print('s_pred_future_logits', s_pred_future_logits.shape)
                     return s_pred_future_logits, bert_mask
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
