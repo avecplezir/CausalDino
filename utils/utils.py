@@ -745,7 +745,7 @@ class Memory:
         self.memory_mask.append(torch.ones(self.batch_size).to(values.device))
 
     def remove(self, video_indices):
-        new_video_indices = ~(self.current_video_indices == video_indices)
+        new_video_indices = ~(self.current_video_indices == video_indices.cpu())
         self.current_video_indices = video_indices
         for idx in torch.arange(self.batch_size)[new_video_indices]:
             for i in range(len(self.memory)):
@@ -827,7 +827,6 @@ class MultiCropWrapperGeneral(nn.Module):
     def forward_student_gpt(self, x_enc, indices):
         if self.args.student_prediction_type == 'predictor_first':
             s_pred_future = self.predictor(x_enc, indices=indices)
-            # print('s_pred_future', s_pred_future.shape)
             s_pred_future_logits = self.headprob(self.head(s_pred_future))
         elif self.args.student_prediction_type == 'head_first':
             s_enc_head = self.head(x_enc)
@@ -838,13 +837,10 @@ class MultiCropWrapperGeneral(nn.Module):
         return s_pred_future_logits
 
     def forward_student_mask(self, x_enc, indices, mask):
-        mask = mask.unsqueeze(0)
         if self.args.student_prediction_type == 'predictor_first':
             s_pred_future = self.predictor(x_enc, indices=indices, mask=mask,
                                            attn_type='all')
-            # print('s_pred_future', s_pred_future.shape)
             s_pred_future_logits = self.headprob(self.head(s_pred_future))
-            # print('s_pred_future_logits', s_pred_future_logits.shape)
         elif self.args.student_prediction_type == 'head_first':
             s_enc_head = self.head(x_enc)
             s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type='all')
@@ -857,6 +853,7 @@ class MultiCropWrapperGeneral(nn.Module):
         s_pred_future_logits_list = []
         masks = self.generate_masks(indices)
         for mask in masks:
+            mask = mask.unsqueeze(0)
             s_pred_future_logits = self.forward_student_mask(x_enc, indices, mask)
             s_pred_future_logits_list.append(s_pred_future_logits)
         return s_pred_future_logits_list, masks
@@ -923,7 +920,7 @@ class MultiCropWrapperGeneral(nn.Module):
 
     def get_memory_bert_indices_mask(self, indices):
         bert_indices = torch.arange(self.args.maxlen).flip([0]).unsqueeze(0).to(indices.device)
-        bert_mask = torch.zero_like(bert_indices).repeat(indices.size(0), 1)
+        bert_mask = torch.zeros_like(bert_indices).repeat(indices.size(0), 1)
         bert_mask[:, -1] = 1
         return bert_mask, bert_indices
 
