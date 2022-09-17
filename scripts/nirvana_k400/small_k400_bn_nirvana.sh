@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_train_256p_dense_cache"
-EXP_NAME="small_k400_nirvana"
+EXP_NAME="small_k400_bn_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit

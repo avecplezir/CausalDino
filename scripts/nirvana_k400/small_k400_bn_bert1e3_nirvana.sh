@@ -2,8 +2,8 @@
 
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
-DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_bert_bn_lr1e3_nirvana"
+DATA_PATH="$INPUT_PATH/videos_train_256p_dense_cache"
+EXP_NAME="small_k400_bn_bert1e3_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -16,19 +16,18 @@ export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
 python -m torch.distributed.launch \
-  --nproc_per_node=1 \
+  --nproc_per_node=2 \
   --master_port="$PORT" \
   train_ssl.py \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
   --exp_name $EXP_NAME \
-  --video_extension MP4 \
-  --dataset_level 3 \
+  --video_extension mp4 \
   \
   --arch "timesformer" \
-  --model_name get_deit_tiny_patch16_224 \
-  --batch_size_per_gpu 32 \
+  --model_name get_deit_small_patch16_224 \
+  --batch_size_per_gpu 16 \
   \
   --do_eval True \
   --eval_freq 5 \
@@ -60,3 +59,4 @@ python -m torch.distributed.launch \
   --l2norm_in_head False \
   --lr 1e-3 \
   --min_lr 5e-5 \
+
