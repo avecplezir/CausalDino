@@ -232,37 +232,6 @@ class GPT(nn.Module):
         return x
 
 
-class GPTFutureTimeEmb(GPT):
-    def forward(self, x, future_index=None, attn_type='causal'):
-        b, t = x.size()[:2]
-        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-
-        t_f = 1
-        # forward the GPT model itself
-        tok_emb = x  # token embeddings of shape (b, t, n_embd)
-        future_pos_emb = self.transformer.wpe(future_index.unsqueeze(1))  # position embeddings of shape (1, t, n_embd)
-        x = torch.cat([future_pos_emb, tok_emb], 1)
-        for block in self.transformer.h:
-            x = block(x, attn_type=attn_type)
-
-        if self.layer_norm:
-            x = self.transformer.ln_f(x)
-
-        # return all tokens except the conditioning
-        return x[:, t_f:]
-
-
-class GPT2FoldPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=4, layer_norm=False, **kwargs):
-        super().__init__()
-        self.gpt = GPT(n_embd, block_size, model_type='gpt-micro-256-half', layer_norm=False)
-        self.future_embgpt = GPTFutureTimeEmb(n_embd, block_size, model_type='gpt-micro-256-half',
-                                              layer_norm=layer_norm)
-
-    def forward(self, x, indices=None):
-        return self.gpt(x, indices=indices)
-
-
 class GPTVAE(GPT):
     def __init__(self, n_embd=256, block_size=4,
                  model_type='gpt-micro-256-half', layer_norm=False,

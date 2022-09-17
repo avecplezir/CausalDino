@@ -147,13 +147,9 @@ class MLPBYOL(nn.Module):
 
 
 class MLPPosPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=None, layer_norm=False, **kwargs):
+    def __init__(self, n_embd=256, block_size=None, layer_norm=False, use_bn=False, **kwargs):
         super().__init__()
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            self.ln_f = nn.LayerNorm(n_embd)
-
-        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=2, layer_norm=layer_norm)
+        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=2, use_bn=use_bn, layer_norm=layer_norm)
         self.wpe = nn.Embedding(block_size, n_embd)
 
     def forward(self, x, indices=None, **kwargs):
@@ -165,11 +161,7 @@ class MLPPosPredictor(nn.Module):
 class MLPPastPredictor(nn.Module):
     def __init__(self, n_embd=256, block_size=None, layer_norm=False, use_bn=False, **kwargs):
         super().__init__()
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            self.ln_f = nn.LayerNorm(n_embd)
-
-        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn)
+        self.predictor = Projector(2 * n_embd, bottleneck_dim=n_embd, nlayers=3, use_bn=use_bn, layer_norm=layer_norm)
         self.wpe = nn.Embedding(block_size, n_embd)
 
     def forward(self, x, indices=None, **kwargs):
@@ -247,18 +239,6 @@ class MLPVAEPredictor(nn.Module):
             out = nn.functional.normalize(out, dim=-1, p=2)
 
         return out, stoch_post, stats_post, stats_prior
-
-
-class MLPVAE2FoldPredictor(nn.Module):
-    def __init__(self, n_embd=256, block_size=4, layer_norm=False, **kwargs):
-        super().__init__()
-        self.wpe = nn.Embedding(block_size, n_embd)
-        self.future_embgpt = MLPVAEPredictor(n_embd=n_embd, block_size=block_size, layer_norm=layer_norm, **kwargs)
-
-    def forward(self, x, indices=None):
-        pos = self.wpe(indices)
-        x = x + pos
-        return x
 
 
 class HeadProba(nn.Module):
