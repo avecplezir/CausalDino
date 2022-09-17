@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_bn_memory64_nirvana"
+EXP_NAME="tiny_epic_bn_memory64maxlen8_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
