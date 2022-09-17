@@ -22,6 +22,7 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
+  --exp_name $EXP_NAME \
   --video_extension MP4 \
   --dataset_level 3 \
   --arch "timesformer" \
