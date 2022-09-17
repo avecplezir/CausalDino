@@ -806,7 +806,7 @@ class MultiCropWrapperGeneral(nn.Module):
 
     def forward_teacher(self, x_enc):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
-            indices = torch.zeros_like(x_enc[:, :, 0])
+            indices = torch.zeros_like(x_enc[:, :, 0]).long()
             t_enc_logits = self.headprob(self.head(self.predictor(x_enc, indices=indices, attn_type='id')))
         elif self.args.teacher_prediction_type == 'head':
             t_enc_logits = self.headprob(self.head(x_enc))
@@ -816,7 +816,7 @@ class MultiCropWrapperGeneral(nn.Module):
 
     def forward_teacher_memory(self, x_enc):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
-            indices = torch.zeros_like(x_enc[:, :, 0])
+            indices = torch.zeros_like(x_enc[:, :, 0]).long()
             t_enc = self.head(self.predictor(x_enc, indices=indices, attn_type='id'))
         elif self.args.teacher_prediction_type == 'head':
             t_enc = self.head(x_enc)
