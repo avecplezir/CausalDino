@@ -34,7 +34,7 @@ python -m torch.distributed.launch \
   --weight_decay_end 0.1 \
   --n_global_views 2 \
   --local_crops_number 8 \
-  --global_crops_scale 0.14 1 \
+  --global_crops_scale 0.4 1 \
   --n_parts 11 \
   --use_wandb True \
   --loss DINOLoss \
