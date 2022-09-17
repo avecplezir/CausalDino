@@ -27,12 +27,14 @@ python -m torch.distributed.launch \
   --data_path "${DATA_PATH}" \
   --val_data_dir "${VAL_DATA_PATH}" \
   --output_dir "${SNAPSHOT_PATH}/${EXP_NAME}" \
+  --exp_name $EXP_NAME \
   --video_extension MP4 \
   --dataset_level 3 \
+  \
   --arch "timesformer" \
-  --batch_size_per_gpu 32 \
-  --exp_name $EXP_NAME \
   --model_name get_deit_tiny_patch16_224 \
+  --batch_size_per_gpu 32 \
+  \
   --do_eval True \
   --eval_freq 5 \
   --weight_decay_end 0.1 \
