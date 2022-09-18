@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="small_epic_gpt_rev_nirvana"
+EXP_NAME="small_epic_gpt_rev_none_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -27,6 +27,7 @@ python -m torch.distributed.launch \
   --dataset_level 3 \
   \
   --arch "timesformer" \
+  --default_cfg none \
   --model_name get_deit_small_patch16_224 \
   --batch_size_per_gpu 16 \
   \
