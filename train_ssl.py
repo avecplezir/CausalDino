@@ -234,7 +234,7 @@ def get_args_parser():
     parser.add_argument('--maskemb', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--loss_mode', default=None, type=str, help="""""")
     parser.add_argument('--future_index', type=utils.bool_flag, default=False, help="""""")
-
+    parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False, help="""""")
 
     return parser
 
