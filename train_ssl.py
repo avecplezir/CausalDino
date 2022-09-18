@@ -200,7 +200,7 @@ def get_args_parser():
                         help="""size of the image with global augmentation""")
     parser.add_argument('--num_frames', type=int, default=8,
                         help="""number of frames in each clip""")
-    parser.add_argument('--default_cfg', default=None, type=str, help='Video extension.')
+    parser.add_argument('--default_cfg', default=None, type=str, help='')
     parser.add_argument('--full_pretrain', default=None, type=str, help='path to pretrained checkpoint')
     parser.add_argument('--block_size', type=int, default=64,
                         help="""block_size in gpt""")
@@ -234,7 +234,7 @@ def get_args_parser():
     parser.add_argument('--maskemb', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--loss_mode', default=None, type=str, help="""""")
     parser.add_argument('--future_index', type=utils.bool_flag, default=False, help="""""")
-
+    parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False, help="""""")
 
     return parser
 
@@ -375,7 +375,7 @@ def train_svt(args):
     if args.student_prediction_type == 'predictor_first':
         in_dim_pred = embed_dim
         out_dim_pred = embed_dim
-        in_dim_head = 256
+        in_dim_head = embed_dim
     elif args.student_prediction_type == 'head_first':
         in_dim_head = embed_dim
         in_dim_pred = 256

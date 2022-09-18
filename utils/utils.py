@@ -730,7 +730,7 @@ class MultiCropWrapper(nn.Module):
         if self.training:
             return self.head(output)
         else:
-            output
+            return output
 
 
 class Memory:
