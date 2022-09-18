@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny2v2_epic_fprev_bnbyol_ls2_nirvana"
+EXP_NAME="tiny_epic_bn_memory_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -26,27 +26,37 @@ python -m torch.distributed.launch \
   --video_extension MP4 \
   --dataset_level 3 \
   --arch "timesformer" \
-  --batch_size_per_gpu 32 \
   --model_name get_deit_tiny_patch16_224 \
+  \
+  --batch_size_per_gpu 32 \
   --do_eval True \
   --eval_freq 5 \
-  --weight_decay_end 0.1 \
-  --n_global_views 2 \
-  --local_crops_number 0 \
-  --global_crops_scale 0.14 1 \
-  --n_parts 11 \
-  --num_workers 20 \
   --use_wandb True \
-  --loss FeatureLossAllPairs \
-  --dataset EpicEvents \
-  --wrapper MultiCropWrapperGPT \
-  --predictor MLPBYOL \
-  --headproba HeadProba \
-  --skip_last True \
-  --CE_fe_c 1. \
+  --weight_decay_end 0.1 \
+  --num_workers 24 \
+  \
+  --dataset EpicNFEvents \
+  --continuous True \
+  --loss MemoryLoss \
+  --local_crops_number 0 \
+  --n_global_views 1 \
+  --random_sampling False \
+  --maxlen 4 \
+  --block_size 4 \
+  --n_parts 4 \
+  --global_crops_scale 0.14 1 \
+  --wrapper MultiCropWrapperGeneral \
+  --predictor GPT \
+  --head Projector \
+  --headproba HeadProbal2Norm \
+  --loss_mode memory \
+  --CE_fe_c 1 \
   --CE_ef_c 0. \
-  --return_pred_out True \
   --use_bn_in_head True \
-  --use_bn_in_pred True \
-  --hidden_dim_in_pred 4098 \
-  --loss_scale 2. \
+  --hidden_dim_in_head 2048 \
+  --teacher_prediction_type head \
+  --student_prediction_type head_first \
+  --maskemb True \
+  --layer_norm_in_head False \
+  --l2norm_in_head False \
+

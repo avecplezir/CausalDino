@@ -18,7 +18,7 @@ fi
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -33,12 +33,13 @@ python -m torch.distributed.launch \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 128 \
   --do_eval True \
+  --sampling_rate 8 \
   --eval_freq 5 \
   --use_wandb True \
   --weight_decay_end 0.1 \
-  --num_workers 10 \
+  --num_workers 20 \
   \
   --dataset EpicNFEvents \
   --continuous True \
