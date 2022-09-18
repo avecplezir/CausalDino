@@ -80,11 +80,11 @@ class BatchNormGPT(nn.Module):
 
 
 class Projector(DINOHead):
-    def __init__(self, in_dim, out_dim=256, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
+    def __init__(self, in_dim=0, out_dim=256, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
                 layer_norm=False, l2norm=False, **kwargs):
         super().__init__(in_dim=in_dim, out_dim=0, use_bn=use_bn, norm_last_layer=norm_last_layer,
-                         nlayers=nlayers, hidden_dim=hidden_dim, bottleneck_dim=out_dim,
-                         skip_last=True, layer_norm=layer_norm, l2norm=l2norm, **kwargs)
+                         nlayers=nlayers, hidden_dim=hidden_dim, bottleneck_dim=256,
+                         skip_last=True, layer_norm=layer_norm, l2norm=l2norm)
 
     def forward(self, x, **kwargs):
         reshape = (len(x.size()) == 3)
@@ -108,6 +108,7 @@ class MLPBYOL(nn.Module):
     def __init__(self, in_dim, out_dim=256, hidden_dim=4096, layer_norm=None,
                  l2norm=None, use_bn=True, **kwargs):
         super().__init__()
+        out_dim = 256
         self.layer_norm = layer_norm
         self.l2norm = l2norm
         if self.layer_norm:
