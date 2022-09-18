@@ -27,6 +27,7 @@ python -m torch.distributed.launch \
   --dataset_level 3 \
   \
   --arch "timesformer" \
+  --default_cfg none \
   --batch_size_per_gpu 16 \
   --model_name get_deit_small_patch16_224 \
   \
