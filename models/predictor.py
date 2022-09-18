@@ -8,7 +8,7 @@ import models.gpt_utils as tools
 
 
 class DINOHead(nn.Module):
-    def __init__(self, n_embd=0, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
+    def __init__(self, in_dim=0, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
                  bottleneck_dim=256, skip_last=False, layer_norm=False, l2norm=False, **kwargs):
         super().__init__()
         self.skip_last = skip_last
@@ -17,9 +17,9 @@ class DINOHead(nn.Module):
         print('layer_norm in dinohead', layer_norm)
         nlayers = max(nlayers, 1)
         if nlayers == 1:
-            self.mlp = nn.Linear(n_embd, bottleneck_dim)
+            self.mlp = nn.Linear(in_dim, bottleneck_dim)
         else:
-            layers = [nn.Linear(n_embd, hidden_dim)]
+            layers = [nn.Linear(in_dim, hidden_dim)]
             if use_bn:
                 print('dinohead use_bn!')
                 layers.append(nn.BatchNorm1d(hidden_dim))
@@ -80,10 +80,10 @@ class BatchNormGPT(nn.Module):
 
 
 class Projector(DINOHead):
-    def __init__(self, n_embd, out_dim=0, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
-                 bottleneck_dim=256, layer_norm=False, l2norm=False, **kwargs):
-        super().__init__(n_embd, n_embd, use_bn=use_bn, norm_last_layer=norm_last_layer,
-                         nlayers=nlayers, hidden_dim=hidden_dim, bottleneck_dim=bottleneck_dim,
+    def __init__(self, in_dim, out_dim=256, use_bn=False, norm_last_layer=True, nlayers=3, hidden_dim=2048,
+                layer_norm=False, l2norm=False, **kwargs):
+        super().__init__(in_dim, None, use_bn=use_bn, norm_last_layer=norm_last_layer,
+                         nlayers=nlayers, hidden_dim=hidden_dim, bottleneck_dim=out_dim,
                          skip_last=True, layer_norm=layer_norm, l2norm=l2norm, **kwargs)
 
     def forward(self, x, **kwargs):
@@ -105,27 +105,27 @@ class Projector(DINOHead):
 
 
 class MLPBYOL(nn.Module):
-    def __init__(self, n_embd, hidden_dim=4096, layer_norm=None,
+    def __init__(self, in_dim, out_dim=256, hidden_dim=4096, layer_norm=None,
                  l2norm=None, use_bn=True, **kwargs):
         super().__init__()
         self.layer_norm = layer_norm
         self.l2norm = l2norm
         if self.layer_norm:
-            self.ln_f = nn.LayerNorm(n_embd)
+            self.ln_f = nn.LayerNorm(in_dim)
 
         if use_bn:
             print('predictor use_bn!')
             self.mlp = nn.Sequential(
-                        nn.Linear(n_embd, hidden_dim),
+                        nn.Linear(in_dim, hidden_dim),
                         nn.BatchNorm1d(hidden_dim),
                         nn.GELU(),
-                        nn.Linear(hidden_dim, 256)
+                        nn.Linear(hidden_dim, out_dim)
                     )
         else:
             self.mlp = nn.Sequential(
-                        nn.Linear(n_embd, hidden_dim),
+                        nn.Linear(in_dim, hidden_dim),
                         nn.GELU(),
-                        nn.Linear(hidden_dim, 256)
+                        nn.Linear(hidden_dim, out_dim)
                     )
 
     def forward(self, x, **kwargs):

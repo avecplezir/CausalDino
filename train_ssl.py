@@ -66,6 +66,8 @@ def get_args_parser():
         mixed precision training (--use_fp16 false) to avoid unstabilities.""")
     parser.add_argument('--out_dim', default=65536, type=int, help="""Dimensionality of
         the DINO head output. For complex and large datasets large values (like 65k) work well.""")
+    parser.add_argument('--out_dim_headproba', default=65536, type=int, help="""Dimensionality of
+        the DINO head output. For complex and large datasets large values (like 65k) work well.""")
     parser.add_argument('--norm_last_layer', default=True, type=utils.bool_flag,
                         help="""Whether or not to weight normalize the last layer of the DINO head.
         Not normalizing leads to better performance but can make the training unstable.
@@ -190,10 +192,6 @@ def get_args_parser():
                         help="level to read the data")
     parser.add_argument('--continuous', type=utils.bool_flag, default=False,
                         help="""Whether to use continuous sampler""")
-    parser.add_argument('--return_prediction_logits', type=utils.bool_flag, default=True,
-                        help="""Whether to return logits with prediction""")
-    parser.add_argument('--return_enc_logits', type=utils.bool_flag, default=True,
-                        help="""Whether to return logits of encoding""")
     parser.add_argument('--pseudo_length', type=int, default=None,
                         help="""pseudo_length of the dataset""")
     parser.add_argument('--sampling_rate', type=int, default=32,
@@ -213,10 +211,6 @@ def get_args_parser():
                         help="""Whether to use continuous sampler""")
     parser.add_argument('--memory_balance_loss', type=utils.bool_flag, default=False,
                         help="""Whether to use memory balancing""")
-    parser.add_argument('--teacher_pred_head', type=utils.bool_flag, default=False,
-                        help="""Whether to use teacher prediction head in memory loss""")
-    parser.add_argument('--teacher_enc_pred_head', type=utils.bool_flag, default=False,
-                        help="""Whether to use teacher prediction head in memory loss in encoder""")
     parser.add_argument('--masking_ratio', default=0.2, type=float, help='ratio of masked tokens for bert-like loss')
     parser.add_argument('--memory_offset', type=int, default=0,
                         help="""offset in memory loss""")
@@ -224,8 +218,6 @@ def get_args_parser():
                         help="""number of views to pass to teacher""")
     parser.add_argument('--local_first', type=utils.bool_flag, default=False,
                         help="""Whether to apply local transformation first in augmentation""")
-    parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False,
-                        help="""Whether return prediction in teacher for eval""")
     parser.add_argument('--hidden_dim_in_pred', type=int, default=2048,
                         help="""""")
     parser.add_argument('--hidden_dim_in_head', type=int, default=2048,
@@ -381,13 +373,18 @@ def train_svt(args):
     Wrapper = getattr(utils, args.wrapper)
     print('Wrapper', Wrapper)
     if args.student_prediction_type == 'predictor_first':
-        n_embd = embed_dim
+        in_dim_pred = embed_dim
+        out_dim_pred = embed_dim
+        in_dim_head = 256
     elif args.student_prediction_type == 'head_first':
-        n_embd = 256
+        in_dim_head = embed_dim
+        in_dim_pred = 256
+        out_dim_pred = 256
     else:
-        n_embd = embed_dim if args.wrapper in ['MultiCropWrapperPredictorProjector', 'MultiCropWrapperMemory', 'MultiCropWrapperMemorySaver'] else 256
+        assert 0, f'{args.student_prediction_type} not implemented!'
 
-    print('n_embd', n_embd)
+    print('in_dim_pred', in_dim_pred)
+    print('in_dim_head', in_dim_head)
     print('layer_norm_in_pred', args.layer_norm_in_pred)
     print('layer_norm_in_head', args.layer_norm_in_head)
     print('l2norm_in_head', args.l2norm_in_head)
@@ -398,7 +395,7 @@ def train_svt(args):
 
     student = Wrapper(student,
          DINOHead(
-             n_embd=embed_dim,
+             in_dim=in_dim_head,
              out_dim=args.out_dim,
              bottleneck_dim=args.bottleneck_dim,
              hidden_dim=args.hidden_dim_in_head,
@@ -407,13 +404,12 @@ def train_svt(args):
              l2norm=args.l2norm_in_head,
              norm_last_layer=args.norm_last_layer,
          ),
-         predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
+         predictor=Predictor(in_dim=in_dim_pred, out_dim=out_dim_pred, block_size=args.block_size,
+                             model_type=args.predictor_model_type,
                              layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred,
                              hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb,
                              future_index=args.future_index) if Predictor else None,
-         headprob=HeadProba(args.out_dim) if HeadProba else None,
-         return_prediction_logits=args.return_prediction_logits,
-         return_enc_logits=args.return_enc_logits,
+         headprob=HeadProba(args.out_dim_headproba) if HeadProba else None,
          n_global_views=args.n_global_views,
          batch_size=args.batch_size_per_gpu,
          maxlen=args.maxlen,
@@ -423,7 +419,7 @@ def train_svt(args):
          )
     teacher = Wrapper(
         teacher,
-        DINOHead(n_embd=embed_dim,
+        DINOHead(in_dim=in_dim_head,
                  out_dim=args.out_dim,
                  bottleneck_dim=args.bottleneck_dim,
                  hidden_dim=args.hidden_dim_in_head,
@@ -431,13 +427,12 @@ def train_svt(args):
                  use_bn=args.use_bn_in_head,
                  l2norm=args.l2norm_in_head,
                  ),
-        predictor=Predictor(n_embd=n_embd, block_size=args.block_size, model_type=args.predictor_model_type,
+        predictor=Predictor(in_dim=in_dim_pred, out_dim=out_dim_pred, block_size=args.block_size,
+                            model_type=args.predictor_model_type,
                             layer_norm=args.layer_norm_in_pred, use_bn=args.use_bn_in_pred,
                             hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb,
                             future_index=args.future_index) if Predictor else None,
-        headprob=HeadProba(args.out_dim) if HeadProba else None,
-        return_prediction_logits=args.return_prediction_logits,
-        return_enc_logits=args.return_enc_logits,
+        headprob=HeadProba(args.out_dim_headproba) if HeadProba else None,
         n_global_views=args.n_global_views,
         batch_size=args.batch_size_per_gpu,
         maxlen=args.maxlen,
@@ -478,9 +473,6 @@ def train_svt(args):
         n_global_views=args.n_global_views,
         local_crops_number=args.local_crops_number,
         args=args,
-        start_video_idx=dataset._start_video_idx if args.continuous else None,
-        video_clip_size=dataset._video_clip_size if args.continuous else None,
-        index2clip_video=dataset.index2clip_video if args.continuous else None,
         batch_size=args.batch_size_per_gpu,
     ).cuda()
 

@@ -137,31 +137,31 @@ def get_default_config():
 class GPT(nn.Module):
     """ GPT Language Model """
 
-    def __init__(self, n_embd=256, block_size=4,
+    def __init__(self, in_dim=256, out_dim=256, block_size=4,
                  model_type='gpt-micro-256', layer_norm=False,
-                 maskemb=False, future_index=False, **kwargs):
+                 maskemb=False, future_index=False, input_dim=None, **kwargs):
         super().__init__()
+        n_embd = out_dim
         config = get_default_config()
         config.block_size = block_size
         config.model_type = model_type
         assert config.block_size is not None
         self.block_size = config.block_size
 
-        type_given = config.model_type is not None
-        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
-        assert type_given ^ params_given  # exactly one of these (XOR)
-        print('config.model_type', config.model_type)
-        if type_given:
-            # translate from model_type to detailed configuration
-            config.merge_from_dict({
-                                       'gpt-mini': dict(n_layer=6, n_head=6, n_embd=n_embd),
-                                       'gpt-micro': dict(n_layer=4, n_head=4, n_embd=n_embd),
-                                       'gpt-nano': dict(n_layer=3, n_head=3, n_embd=n_embd),
-                                       'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=n_embd),
-                                       'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=n_embd),
-                                       'gpt': dict(n_layer=8, n_head=8, n_embd=n_embd),
-                                       'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=n_embd),
-                                   }[config.model_type])
+        # translate from model_type to detailed configuration
+        config.merge_from_dict({
+                                   'gpt-mini': dict(n_layer=6, n_head=6, n_embd=n_embd),
+                                   'gpt-micro': dict(n_layer=4, n_head=4, n_embd=n_embd),
+                                   'gpt-nano': dict(n_layer=3, n_head=3, n_embd=n_embd),
+                                   'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=n_embd),
+                                   'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=n_embd),
+                                   'gpt': dict(n_layer=8, n_head=8, n_embd=n_embd),
+                                   'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=n_embd),
+                               }[config.model_type])
+
+        self.in_dim = in_dim
+        self.input2nemb = nn.Linear(in_dim, config.n_embd) if self.in_dim != n_embd else None
+        print('self.input2nemb', self.input2nemb)
 
         self.transformer = nn.ModuleDict(dict(
             wpe=nn.Embedding(config.block_size, config.n_embd),
@@ -206,6 +206,10 @@ class GPT(nn.Module):
     def forward(self, x, indices=None, attn_type='causal', mask=None, future_index=None, **kwargs):
         device = x.device
         b, t = x.size()[:2]
+
+        if self.input2nemb:
+            x = self.input2nemb(x) #map to correct emb dimention
+
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
 

@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_bert_bn_joint_byolh_lr1e3_nirvana"
+EXP_NAME="tiny_epic_bert_bn_joint_lr1e3_smgpt_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -57,5 +57,4 @@ python -m torch.distributed.launch \
   --maskemb True \
   --layer_norm_in_head False \
   --l2norm_in_head False \
-  --lr 1e-3 \
-  --min_lr 5e-5 \
+  --predictor_model_type gpt-micro-256-half \
