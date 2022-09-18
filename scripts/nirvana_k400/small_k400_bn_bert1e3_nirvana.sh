@@ -30,7 +30,7 @@ python -m torch.distributed.launch \
   --batch_size_per_gpu 16 \
   \
   --do_eval True \
-  --eval_freq 5 \
+  --eval_freq 1 \
   --use_wandb True \
   --weight_decay_end 0.1 \
   --num_workers 10 \
