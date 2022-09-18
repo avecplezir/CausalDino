@@ -375,7 +375,7 @@ def train_svt(args):
     if args.student_prediction_type == 'predictor_first':
         in_dim_pred = embed_dim
         out_dim_pred = embed_dim
-        in_dim_head = 256
+        in_dim_head = embed_dim
     elif args.student_prediction_type == 'head_first':
         in_dim_head = embed_dim
         in_dim_pred = 256
