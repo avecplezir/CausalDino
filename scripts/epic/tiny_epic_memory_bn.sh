@@ -33,7 +33,7 @@ python -m torch.distributed.launch \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   \
-  --batch_size_per_gpu 128 \
+  --batch_size_per_gpu 64 \
   --do_eval True \
   --sampling_rate 8 \
   --eval_freq 5 \
