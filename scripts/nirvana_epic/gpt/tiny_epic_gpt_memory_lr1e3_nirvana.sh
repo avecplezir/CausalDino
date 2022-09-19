@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_gpt_lr1e3_nirvana"
+EXP_NAME="tiny_epic_gpt_memory_lr1e3_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -40,8 +40,9 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 4 \
   --random_sampling False \
-  --block_size 4 \
-  --n_parts 4 \
+  --maxlen 16 \
+  --block_size 64 \
+  --n_parts 64 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGeneral \
   --predictor GPT \
@@ -57,4 +58,3 @@ python -m torch.distributed.launch \
   --student_prediction_type head_first \
   --lr 1e-3 \
   --min_lr 1e-5 \
-

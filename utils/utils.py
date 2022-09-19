@@ -955,14 +955,11 @@ class MultiCropWrapperGeneral(nn.Module):
                     s_pred_logits, stoch_post, stats_post, stats_prior = self.forward_student_vae(x_enc, indices)
                     return s_pred_logits, stats_post, stats_prior
                 elif self.loss_mode == 'memory_gpt':
-                    x_enc = torch.cat([m_enc[:, :-x_enc.size(1)], x_enc], 1)
+                    t = x_enc.size(1)
+                    x_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
                     indices = self.get_indices(x_enc, maxlen=False)
-                    print('x_enc', x_enc.shape)
-                    print('indices', indices.shape)
-                    print('m_mask', m_mask.shape)
-                    print('self.args.block_size', self.args.block_size)
                     s_pred_logits = self.forward_student_gpt(x_enc, indices, mask=m_mask)
-                    return s_pred_logits[:, -x_enc.size(1):], None
+                    return s_pred_logits[:, -t:], None
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:
