@@ -436,8 +436,6 @@ def decode_events(
     mode='random',
     temporal_aug=False,
     local_crops_number=8,
-    temporal_aug_memory=False,
-    shuffle=False,
 ):
     """
     Decode the video and perform temporal sampling.
@@ -510,20 +508,6 @@ def decode_events(
 
         frames = [global_1, global_2, *local_samples]
         indices = 0
-    elif temporal_aug_memory:
-        max_len = frames.shape[0]
-
-        num_global_frames = num_frames
-        num_local_frames = num_frames
-        global_1 = temporal_sampling(frames, 0, max_len - 5, num_global_frames)
-        global_2 = temporal_sampling(frames, 5, max_len, num_global_frames)
-        local_samples = []
-        for l_idx in range(local_crops_number):
-            cur_local = temporal_sampling(frames, l_idx, max_len-(local_crops_number-l_idx), num_local_frames)
-            local_samples.append(cur_local)
-
-        frames = [global_1, global_2, *local_samples]
-        indices = 0
     else:
         # Perform temporal sampling from the decoded video.
         max_len = frames.shape[0]
@@ -544,12 +528,5 @@ def decode_events(
             samples.append(cur_local)
 
         frames = [*samples]
-
-    if shuffle:
-        indices_for_suffle = np.random.shuffle(np.arange(len(frames)))
-        print('indices_for_suffle', indices_for_suffle)
-        frames = np.array(frames)[indices_for_suffle]
-        indices = indices[indices_for_suffle]
-        print('suffled pos indices', indices)
 
     return frames, indices

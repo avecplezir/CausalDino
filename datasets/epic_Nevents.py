@@ -97,11 +97,11 @@ class EpicNEvents(EpicEvents):
                 target_fps=self.cfg.DATA.TARGET_FPS,
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
-                num_clips_global=1,
+                num_clips_global=self.cfg.n_global_views,
                 n_parts=self.cfg.n_parts,
                 random_sampling=self.cfg.random_sampling,
                 mode='ordered',
-                temporal_aug_memory=self.cfg.temporal_aug_memory
+                temporal_aug=self.cfg.temporal_aug,
             )
         except Exception as e:
             print(
@@ -138,19 +138,17 @@ class EpicNFEvents(EpicNEvents):
                 clip_idx, video_idx = self.index2clip_video[index]
                 frames = self.get_event(clip_idx, video_idx)
 
-                # T H W C -> T C H W.
                 frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-                # Perform data augmentation.
-                augmentation = VideoDataAugmentationDINO(size=self.cfg.global_size,
-                                                         local_crops_number=self.cfg.local_crops_number,
-                                                         global_crops_scale=self.cfg.global_crops_scale,
-                                                         n_global_views=self.cfg.n_global_views,
-                                                         )
-                if self.cfg.temporal_aug_memory:
-                    frames = augmentation(frames, from_list=True)
+                if self.cfg.temporal_aug:
+                    augmentation = VideoDataAugmentationDINO(global_crops_scale=self.cfg.global_crops_scale)
+                    frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
                 else:
-                    frames = augmentation(frames[0], from_list=False)
-                # T C H W -> C T H W.
+                    augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                               local_crops_number=self.cfg.local_crops_number,
+                                                               global_crops_scale=self.cfg.global_crops_scale,
+                                                               local_first=self.cfg.local_first,
+                                                               )
+                    frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
 
                 return frames, clip_idx, video_idx

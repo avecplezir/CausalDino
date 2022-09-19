@@ -33,14 +33,15 @@ python -m torch.distributed.launch \
   --arch "timesformer" \
   --model_name get_deit_tiny_patch16_224 \
   \
-  --batch_size_per_gpu 32 \
+  --batch_size_per_gpu 4 \
   --do_eval True \
   --eval_freq 5 \
   --use_wandb True \
   --weight_decay_end 0.1 \
   --num_workers 10 \
   \
-  --dataset EpicEvents \
+  --dataset EpicNFEvents \
+  --continuous True \
   --loss GPTLoss \
   --local_crops_number 0 \
   --n_global_views 4 \

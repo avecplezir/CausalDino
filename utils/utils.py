@@ -956,7 +956,8 @@ class MultiCropWrapperGeneral(nn.Module):
                     return s_pred_logits, stats_post, stats_prior
                 elif self.loss_mode == 'memory_gpt':
                     t = x_enc.size(1)
-                    proportion = m_mask.sum(-1, keepdim=True) / t
+                    m_size = m_mask.sum(dim=-1, keepdim=True).unsqueeze(-1)
+                    proportion = torch.maximum(m_size, torch.ones_like(m_size)) / t
                     x_enc = x_enc * proportion
                     x_enc.data.div_(proportion)
                     x_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
