@@ -61,9 +61,6 @@ class CausalSelfAttention(nn.Module):
 
         assert attn_type in ['causal', 'all', 'id'], f'{attn_type} is not implemented!'
 
-        if attn_type == 'id':
-            mask = torch.eye(T).to(x.device)
-
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
         q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
@@ -72,19 +69,17 @@ class CausalSelfAttention(nn.Module):
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+
         if attn_type == 'causal':
             att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
-
-        if mask is not None:
-            if attn_type == 'id':
-                mask = mask[None, None, :, :]
-            else:
-                mask = mask[:, None, None, :]
+        elif attn_type == 'id':
+            mask = torch.eye(T).to(x.device)[None, None, :, :]
+            att = att.masked_fill(mask == 0, float('-inf'))
+        elif mask is not None:
+            mask = mask[:, None, None, :]
             att = att.masked_fill(mask == 0, float('-inf'))
 
         att = F.softmax(att, dim=-1)
-        # print('gpt mask', mask)
-        # print('gpt att', att[0])
         att = self.attn_dropout(att)
         y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
         y = y.transpose(1, 2).contiguous().view(B, T, C)  # re-assemble all head outputs side by side
@@ -139,7 +134,7 @@ class GPT(nn.Module):
 
     def __init__(self, in_dim=256, out_dim=256, block_size=4,
                  model_type='gpt-micro-256', layer_norm=False,
-                 maskemb=False, future_index=False, input_dim=None, **kwargs):
+                 maskemb=False, future_index=False, **kwargs):
         super().__init__()
         n_embd = out_dim
         config = get_default_config()
@@ -236,50 +231,17 @@ class GPT(nn.Module):
         return x
 
 
-class GPTVAE(GPT):
-    def __init__(self, n_embd=256, block_size=4,
-                 model_type='gpt-micro-256-half', layer_norm=False,
-                 maskemb=False):
-        super().__init__()
-        config = get_default_config()
-        config.block_size = block_size
-        config.model_type = model_type
-        assert config.block_size is not None
-        self.block_size = config.block_size
-
-        type_given = config.model_type is not None
-        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
-        assert type_given ^ params_given  # exactly one of these (XOR)
-        print('config.model_type', config.model_type)
-        if type_given:
-            # translate from model_type to detailed configuration
-            config.merge_from_dict({
-                                       'gpt-mini': dict(n_layer=6, n_head=6, n_embd=n_embd),
-                                       'gpt-micro': dict(n_layer=4, n_head=4, n_embd=n_embd),
-                                       'gpt-nano': dict(n_layer=3, n_head=3, n_embd=n_embd),
-                                       'gpt-micro-256-more': dict(n_layer=6, n_head=8, n_embd=n_embd),
-                                       'gpt-micro-256': dict(n_layer=4, n_head=4, n_embd=n_embd),
-                                       'gpt': dict(n_layer=8, n_head=8, n_embd=n_embd),
-                                       'gpt-micro-256-half': dict(n_layer=2, n_head=4, n_embd=n_embd),
-                                   }[config.model_type])
-
-        self.transformer = nn.ModuleDict(dict(
-            wpe=nn.Embedding(config.block_size, config.n_embd),
-            drop=nn.Dropout(config.embd_pdrop),
-            h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-        ))
-
-        self.maskemb = maskemb
-        if self.maskemb:
-            self.wme = nn.Embedding(2, config.n_embd)
-
-        self.layer_norm = layer_norm
-        if self.layer_norm:
-            self.transformer.ln_f = nn.LayerNorm(config.n_embd)
+class GPTVAE(nn.Module):
+    def __init__(self, in_dim=256, out_dim=256, block_size=4,
+                 model_type='gpt-micro-256', layer_norm=False,
+                 maskemb=False, future_index=False, **kwargs):
+        self.gpt = GPT(in_dim=in_dim, out_dim=out_dim, block_size=block_size,
+                       model_type=model_type, layer_norm=layer_norm,
+                       maskemb=maskemb, future_index=future_index, **kwargs)
 
         self._stoch = 32
         self._discrete = 32
-        self._hidden = n_embd
+        self._hidden = out_dim
 
         self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
         self._obs_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
@@ -289,36 +251,19 @@ class GPTVAE(GPT):
         self.apply(self._init_weights)
         for pn, p in self.named_parameters():
             if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
+                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * self.config.n_layer))
 
         # report number of parameters (note we don't count the decoder parameters in lm_head)
         n_params = sum(p.numel() for p in self.transformer.parameters())
-        print("gpt number of parameters: %.2fM" % (n_params / 1e6,))
+        print("gpt vae number of parameters: %.2fM" % (n_params / 1e6,))
 
     def forward(self, x, indices=None, **kwargs):
-        device = x.device
-        b, t = x.size()[:2]
-        assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-
-        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) if indices is None else indices # shape (1, t)
-
-        # forward the GPT model itself
-        tok_emb = x  # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (1, t, n_embd)
-        x = self.transformer.drop(tok_emb + pos_emb)
-
         # post
-        x_post = x
-        for block in self.transformer.h:
-            x_post = block(x_post, attn_type='all')
-        x_post = self.transformer.ln_f(x_post)
+        x_post = self.gpt(x, indices=indices, attn_type='all')
         stats_post = self._suff_stats_layer('obs', x_post)
 
         # prior
-        x_prior = x
-        for block in self.transformer.h:
-            x_prior = block(x_prior, attn_type='causal')
-        x_prior = self.transformer.ln_f(x_prior)
+        x_prior = self.gpt(x, indices=indices, attn_type='causal')
         stats_prior = self._suff_stats_layer('ims', x_prior)
 
         # sample posterior and transform it to feed to gpt
@@ -327,10 +272,8 @@ class GPTVAE(GPT):
         stoch_post = stoch_post.reshape(shape)
 
         # prediction
-        x = self.post2gpt(torch.cat([x, stoch_post], -1))
-        for block in self.transformer.h:
-            x = block(x, attn_type='causal')
-        out = self.transformer.ln_f(x)
+        x_pred = self.post2gpt(torch.cat([x, stoch_post], -1))
+        out = self.gpt(x_pred, indices=indices, attn_type='causal')
 
         return out, stoch_post, stats_post, stats_prior
 
