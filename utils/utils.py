@@ -831,17 +831,7 @@ class MultiCropWrapperGeneral(nn.Module):
             start_idx = end_idx
         return output
 
-    def forward_teacher(self, x_enc):
-        if self.args.teacher_prediction_type == 'head_predictor_joint':
-            indices = torch.zeros_like(x_enc[:, :, 0]).long()
-            t_enc_logits = self.headprob(self.head(self.predictor(x_enc, indices=indices, attn_type='id')))
-        elif self.args.teacher_prediction_type == 'head':
-            t_enc_logits = self.headprob(self.head(x_enc))
-        else:
-            assert 0, f'{self.args.teacher_prediction_type} not implemented!'
-        return t_enc_logits
-
-    def forward_teacher_memory(self, x_enc):
+    def forward_teacher(self, x_enc, headprob=True):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
             indices = torch.zeros_like(x_enc[:, :, 0]).long()
             t_enc = self.head(self.predictor(x_enc, indices=indices, attn_type='id'))
@@ -849,7 +839,11 @@ class MultiCropWrapperGeneral(nn.Module):
             t_enc = self.head(x_enc)
         else:
             assert 0, f'{self.args.teacher_prediction_type} not implemented!'
-        return t_enc
+        if headprob:
+            t_enc_logits = self.headprob(t_enc)
+            return t_enc_logits
+        else:
+            return t_enc
 
     def forward_student_gpt(self, x_enc, indices, mask=None):
         if self.args.student_prediction_type == 'predictor_first':
@@ -917,7 +911,7 @@ class MultiCropWrapperGeneral(nn.Module):
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
                 if self.loss_mode == 'memory_bert':
-                    t_enc_head = self.forward_teacher_memory(x_enc)
+                    t_enc_head = self.forward_teacher(x_enc, headprob=False)
                     self.memory.add(t_enc_head)
                     self.memory.remove(video_indices)
                     memory_enc, memory_mask = self.memory.retrieve()
@@ -957,14 +951,18 @@ class MultiCropWrapperGeneral(nn.Module):
                     return s_m_pred_logits, bert_mask, s_pred_logits
                 elif self.loss_mode == 'memory_vae':
                     x_enc = torch.cat([m_enc[:, :-1], x_enc[:, :1]], 1)
-                    indices = self.get_indices(x_enc)
+                    indices = self.get_indices(x_enc, maxlen=False)
                     s_pred_logits, stoch_post, stats_post, stats_prior = self.forward_student_vae(x_enc, indices)
                     return s_pred_logits, stats_post, stats_prior
                 elif self.loss_mode == 'memory_gpt':
-                    x_enc = torch.cat([m_enc[:, :-self.args.n_global_views], x_enc], 1)
-                    indices = self.get_indices(x_enc)
+                    x_enc = torch.cat([m_enc[:, :-x_enc.size(1)], x_enc], 1)
+                    indices = self.get_indices(x_enc, maxlen=False)
+                    print('x_enc', x_enc.shape)
+                    print('indices', indices.shape)
+                    print('m_mask', m_mask.shape)
+                    print('self.args.block_size', self.args.block_size)
                     s_pred_logits = self.forward_student_gpt(x_enc, indices, mask=m_mask)
-                    return s_pred_logits[:, -self.args.n_global_views:], None
+                    return s_pred_logits[:, -x_enc.size(1):], None
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:
@@ -972,8 +970,9 @@ class MultiCropWrapperGeneral(nn.Module):
         else:
             return output
 
-    def get_indices(self, x):
-        return torch.arange(self.args.maxlen).flip([0]).unsqueeze(0).to(x.device)
+    def get_indices(self, x, maxlen=True):
+        t = self.args.maxlen if maxlen else x.size(1)
+        return torch.arange(t).flip([0]).unsqueeze(0).to(x.device)
 
     def get_memory_bert_indices_mask(self, x):
         bert_indices = self.get_indices(x)

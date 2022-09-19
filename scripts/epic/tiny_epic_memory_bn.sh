@@ -45,8 +45,8 @@ python -m torch.distributed.launch \
   --local_crops_number 0 \
   --n_global_views 4 \
   --random_sampling False \
-  --block_size 4 \
-  --n_parts 4 \
+  --block_size 16 \
+  --n_parts 16 \
   --global_crops_scale 0.14 1 \
   --wrapper MultiCropWrapperGeneral \
   --predictor GPT \
