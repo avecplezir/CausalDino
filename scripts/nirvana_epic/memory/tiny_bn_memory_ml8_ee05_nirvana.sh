@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="tiny_epic_bn_memory_ml8_ee_nirvana"
+EXP_NAME="tiny_epic_bn_memory_ml8_ee05_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -51,9 +51,9 @@ python -m torch.distributed.launch \
   --head Projector \
   --headproba HeadProbal2Norm \
   --loss_mode memory \
-  --CE_fe_c 1. \
+  --CE_fe_c 0.5 \
   --CE_ef_c 0. \
-  --CE_ee_c 1. \
+  --CE_ee_c 0.5 \
   --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \

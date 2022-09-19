@@ -98,7 +98,7 @@ class MemoryLoss(FeatureLoss):
 
         CE_fe = self.compute_loss_fe(s_m_pred_logits, t_m_enc_proba, inverse_mask)
         CE_ee = self.dino_loss(s_enc_logits, t_enc_proba) if self.args.CE_ee_c else 0.
-        total_loss = CE_fe
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ee_c * CE_ee
 
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_m_enc_proba)
@@ -107,6 +107,7 @@ class MemoryLoss(FeatureLoss):
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
+                            'CE_ee': CE_ee,
                             'memory_size': memory_size,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
@@ -121,7 +122,7 @@ class MemoryLoss(FeatureLoss):
         total_loss = (inverse_mask * loss).sum() / n_terms
         return total_loss
 
-    def dino_loss(self, t_enc_proba, s_enc_proba):
+    def dino_loss(self, s_enc_logits, t_enc_proba):
         total_loss = 0
         n_loss_terms = 0
         for iq in range(self.n_global_views):
@@ -129,7 +130,7 @@ class MemoryLoss(FeatureLoss):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-t_enc_proba[:, iq] * torch.log(s_enc_proba[:, v]), dim=-1)
+                loss = -torch.sum(t_enc_proba[:, iq] * F.log_softmax(s_enc_logits[:, v], dim=-1), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         n_loss_terms = max(1, n_loss_terms)

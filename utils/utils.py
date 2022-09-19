@@ -905,7 +905,7 @@ class MultiCropWrapperGeneral(nn.Module):
                 elif self.loss_mode == 'memory':
                     bert_mask, bert_indices = self.get_memory_bert_indices_mask(indices)
                     # print('bert_mask, bert_indices', bert_mask.shape, bert_indices.shape)
-                    bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc], 1)
+                    bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc[:, :1]], 1)
                     # print('bert_x_enc', bert_x_enc.shape)
                     s_m_pred_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
                     # print('s_pred_future_logits', s_pred_future_logits.shape)
