@@ -909,7 +909,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     # print('bert_x_enc', bert_x_enc.shape)
                     s_m_pred_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
                     # print('s_pred_future_logits', s_pred_future_logits.shape)
-                    s_pred_logits = self.headprob(self.head(x_enc))
+                    s_pred_logits = self.forward_teacher(x_enc) if self.args.CE_ee_c else 0.
                     return s_m_pred_logits, bert_mask, s_pred_logits
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'

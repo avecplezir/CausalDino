@@ -75,7 +75,7 @@ class MemoryLoss(FeatureLoss):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        s_m_pred_logits, bert_mask = student_output
+        s_m_pred_logits, bert_mask, s_enc_logits = student_output
         t_m_enc_logits, memory_mask, t_enc_logits = teacher_output
 
         t = t_m_enc_logits.size(1)
@@ -97,7 +97,7 @@ class MemoryLoss(FeatureLoss):
         # print('s_pred_future_logits', s_pred_future_logits.shape)
 
         CE_fe = self.compute_loss_fe(s_m_pred_logits, t_m_enc_proba, inverse_mask)
-        CE_ee = self.dino_loss(s_pred_logits, t_enc_proba) if self.args.CE_ee_c else 0.
+        CE_ee = self.dino_loss(s_enc_logits, t_enc_proba) if self.args.CE_ee_c else 0.
         total_loss = CE_fe
 
         self.update_centers(t_enc_logits, None, None)
