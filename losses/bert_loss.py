@@ -38,9 +38,9 @@ class BertLoss(FeatureLoss):
     def compute_loss_fe(self, s_pred_logits_list, t_enc_proba, masks):
         total_loss = 0
         n_loss_terms = 0
-        for s_pred_future_logits, mask in zip(s_pred_logits_list, masks):
-            s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
-            loss = -torch.sum(t_enc_proba * s_pred_future_log, dim=-1)
+        for s_pred_logits, mask in zip(s_pred_logits_list, masks):
+            s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
+            loss = -torch.sum(t_enc_proba * s_pred_log, dim=-1)
             inverse_mask = (~mask.bool()).long()
             n_terms = loss.size(0) * inverse_mask.sum()
             total_loss += (inverse_mask * loss).sum()
@@ -51,8 +51,8 @@ class BertLoss(FeatureLoss):
 
 
 class GPTLoss(BertLoss):
-    def compute_loss_fe(self, s_pred_future_logits, t_enc_proba, masks=None):
-        s_pred_future_log = F.log_softmax(s_pred_future_logits / self.student_temp, dim=-1)
+    def compute_loss_fe(self, s_pred_logits, t_enc_proba, masks=None):
+        s_pred_future_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba[:, 1:] * s_pred_future_log[:, :-1], dim=-1)
         return loss.mean()
 
@@ -127,12 +127,13 @@ class MemoryLoss(FeatureLoss):
     def dino_loss(self, s_enc_logits, t_enc_proba):
         total_loss = 0
         n_loss_terms = 0
+        s_enc_log = F.log_softmax(s_enc_logits / self.student_temp, dim=-1)
         for iq in range(self.n_global_views):
             for v in range(self.n_crops):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = -torch.sum(t_enc_proba[:, iq] * F.log_softmax(s_enc_logits[:, v], dim=-1), dim=-1)
+                loss = -torch.sum(t_enc_proba[:, iq] * s_enc_log[:, v] , dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         n_loss_terms = max(1, n_loss_terms)
@@ -177,6 +178,17 @@ class MemoryVAELoss(MemoryLoss):
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
+
+    def compute_loss_fe(self, s_pred_future_logits, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
+        s_pred_future, stoch_post, stats_post, stats_prior = \
+        student.module.predictor(memory_enc, indices=pos_indices, f_x=memory_enc[:, -1:])
+        loss = -torch.sum(t_enc_proba * F.log_softmax(s_pred_future_logits, dim=-1), dim=-1)
+        mask_sum = memory_mask.sum() + 1e-16
+        total_loss = (memory_mask * loss).sum() / mask_sum
+
+        kl_loss = self.kl_loss(stats_post, stats_prior, balance=self.args.kl_balance)
+
+        return total_loss, kl_loss
 
     def compute_loss_fe(self, s_m_pred_logits, t_m_enc_proba, inverse_mask):
         s_pred_log = F.log_softmax(s_m_pred_logits / self.student_temp, dim=-1)
