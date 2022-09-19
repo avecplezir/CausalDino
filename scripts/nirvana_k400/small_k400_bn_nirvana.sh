@@ -41,4 +41,5 @@ python -m torch.distributed.launch \
   --dataset EpicEvents \
   --use_bn_in_head True \
   --num_workers 10 \
+  --student_prediction_type head_first \
 
