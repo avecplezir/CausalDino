@@ -687,7 +687,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
 
         # logging
-        memory_size = memory_mask.sum(-1).mean() if memory_mask is not None else None
+        memory_size = memory_mask.sum(-1).mean() if memory_mask is not None else 0.
         torch.cuda.synchronize()
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
