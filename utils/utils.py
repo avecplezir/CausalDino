@@ -918,7 +918,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     t_m_enc_logits = self.headprob(memory_enc)
                     t_enc_logits = self.headprob(t_enc_head)
                     return t_m_enc_logits, t_enc_logits, memory_mask, memory_enc
-                elif self.loss_mode == 'memory_vae':
+                elif self.loss_mode in ['memory_vae', 'memory_bert_teacher']:
                     self.memory.add(x_enc)
                     self.memory.remove(video_indices)
                     memory_enc, memory_mask = self.memory.retrieve()
@@ -937,7 +937,9 @@ class MultiCropWrapperGeneral(nn.Module):
                 if self.loss_mode == 'gpt':
                     return self.forward_student_gpt(x_enc, indices), None
                 if self.loss_mode == 'bert':
-                    return self.forward_student_bert(x_enc, indices)
+                    s_pred_logits_list, bert_masks = self.forward_student_bert(x_enc, indices)
+                    inverse_bert_masks = (~bert_masks.bool()).long()
+                    return s_pred_logits_list, inverse_bert_masks
                 elif self.loss_mode == 'vae':
                     s_pred_logits, stoch_post, stats_post, stats_prior = self.forward_student_vae(x_enc, indices)
                     return s_pred_logits, stats_post, stats_prior
@@ -949,6 +951,16 @@ class MultiCropWrapperGeneral(nn.Module):
                     s_m_pred_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
                     s_pred_logits = self.forward_teacher(x_enc) if self.args.CE_ee_c else 0.
                     return s_m_pred_logits, bert_mask, s_pred_logits
+                elif self.loss_mode == 'memory_bert_teacher':
+                    x_enc = torch.cat([m_enc[:, :-1], x_enc[:, :1]], 1)
+                    indices = self.get_indices(x_enc, maxlen=False)
+                    s_pred_logits_list, bert_masks = self.forward_student_bert(x_enc, indices)
+                    inverse_bert_masks = (~bert_masks.bool()).long()
+                    print('m_mask', m_mask.shape)
+                    print('inverse_bert_masks', inverse_bert_masks.shape)
+                    inverse_mask = m_mask * inverse_bert_masks
+                    print('inverse_mask', inverse_mask.shape)
+                    return s_pred_logits_list, inverse_mask
                 elif self.loss_mode == 'memory_vae':
                     x_enc = torch.cat([m_enc[:, :-1], x_enc[:, :1]], 1)
                     indices = self.get_indices(x_enc, maxlen=False)
