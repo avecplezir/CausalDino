@@ -232,7 +232,7 @@ def get_args_parser():
     parser.add_argument('--l2norm_in_head', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--l2norm_in_pred', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--maskemb', type=utils.bool_flag, default=False, help="""""")
-    parser.add_argument('--loss_mode', default=None, type=str, help="""""")
+    parser.add_argument('--loss_mode', default='None', type=str, help="""""")
     parser.add_argument('--future_index', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--memory', default=None, type=str, help="""""")
