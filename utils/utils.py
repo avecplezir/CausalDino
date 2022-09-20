@@ -989,6 +989,10 @@ class MultiCropWrapperGeneral(nn.Module):
                         proportion = torch.maximum(m_size, torch.ones_like(m_size)) / t
                         x_enc = x_enc * proportion
                         x_enc.data.div_(proportion)
+
+                    proportion = 10
+                    x_enc = x_enc * proportion
+                    x_enc.data.div_(proportion)
                     x_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
                     indices = self.get_indices(x_enc, maxlen=False)
                     s_pred_logits = self.forward_student_gpt(x_enc, indices, mask=m_mask)
