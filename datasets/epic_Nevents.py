@@ -102,6 +102,7 @@ class EpicNEvents(EpicEvents):
                 random_sampling=self.cfg.random_sampling,
                 mode='ordered',
                 temporal_aug=self.cfg.temporal_aug,
+                local_crops_number=self.cfg.local_crops_number,
             )
         except Exception as e:
             print(
