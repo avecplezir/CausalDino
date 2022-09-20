@@ -1,4 +1,5 @@
-__all__ = ['BertLoss', 'GPTLoss', 'TELoss', 'MemoryLoss', 'BertTeacherMemoryLoss']
+__all__ = ['BertLoss', 'GPTLoss', 'TELoss', 'MemoryLoss', 'BertTeacherMemoryLoss', 'VAELoss']
+
 
 import torch
 import torch.nn.functional as F
@@ -157,9 +158,8 @@ class VAELoss(BertLoss):
         temp = self.teacher_temp_schedule[epoch]
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        CE_fe = self.compute_loss_fe(s_pred_logits, t_enc_proba, stats_post, stats_prior)
-
-        total_loss = CE_fe
+        CE_fe, kl = self.compute_loss_fe(s_pred_logits, t_enc_proba, stats_post, stats_prior)
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.kl_c * kl
 
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_enc_proba)
@@ -167,6 +167,7 @@ class VAELoss(BertLoss):
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
+                            'kl': kl,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
@@ -174,7 +175,8 @@ class VAELoss(BertLoss):
                             }
 
     def compute_loss_fe(self, s_pred_logits, t_enc_proba, stats_post, stats_prior):
-        loss = -torch.sum(t_enc_proba[:, -1:] * F.log_softmax(s_pred_logits[:, :-1], dim=-1), dim=-1)
+        s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
+        loss = -torch.sum(t_enc_proba[:, -1:] * s_pred_log, dim=-1)
         total_loss = loss.mean()
         kl_loss = self.kl_loss(stats_post, stats_prior, balance=self.args.kl_balance)
 
@@ -239,7 +241,8 @@ class MemoryVAELoss(VAELoss):
                             }
 
     def compute_loss_fe(self, s_pred_logits, t_enc_proba, stats_post, stats_prior, memory_mask):
-        loss = -torch.sum(t_enc_proba[:, -1:] * F.log_softmax(s_pred_logits[:, :-1], dim=-1), dim=-1)
+        s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
+        loss = -torch.sum(t_enc_proba[:, -1:] * s_pred_log, dim=-1)
         kl_loss = self.kl_loss(stats_post, stats_prior, balance=self.args.kl_balance)
         mask_sum = memory_mask.sum() + 1e-16
         total_loss = (memory_mask * loss).sum() / mask_sum

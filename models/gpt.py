@@ -235,9 +235,13 @@ class GPTVAE(nn.Module):
     def __init__(self, in_dim=256, out_dim=256, block_size=4,
                  model_type='gpt-micro-256', layer_norm=False,
                  maskemb=False, future_index=False, **kwargs):
+        super().__init__()
         self.gpt = GPT(in_dim=in_dim, out_dim=out_dim, block_size=block_size,
                        model_type=model_type, layer_norm=layer_norm,
                        maskemb=maskemb, future_index=future_index, **kwargs)
+        self.gpt_pred = GPT(in_dim=in_dim, out_dim=out_dim, block_size=block_size,
+                            model_type=model_type, layer_norm=layer_norm,
+                            maskemb=maskemb, future_index=future_index, **kwargs)
 
         self._stoch = 32
         self._discrete = 32
@@ -245,17 +249,24 @@ class GPTVAE(nn.Module):
 
         self._ims_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
         self._obs_stat_layer = nn.Linear(self._hidden, self._stoch * self._discrete)
-        self.post2gpt = nn.Linear(self._hidden + self._stoch * self._discrete, self._hidden)
+        self.post2gpt = nn.Linear(self._stoch * self._discrete, self._hidden)
 
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
-        for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * self.config.n_layer))
-
         # report number of parameters (note we don't count the decoder parameters in lm_head)
-        n_params = sum(p.numel() for p in self.transformer.parameters())
+        n_params = sum(p.numel() for p in self.parameters())
         print("gpt vae number of parameters: %.2fM" % (n_params / 1e6,))
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        # elif isinstance(module, nn.Embedding):
+            # torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        elif isinstance(module, nn.LayerNorm):
+            torch.nn.init.zeros_(module.bias)
+            torch.nn.init.ones_(module.weight)
 
     def forward(self, x, indices=None, **kwargs):
         # post
@@ -272,8 +283,8 @@ class GPTVAE(nn.Module):
         stoch_post = stoch_post.reshape(shape)
 
         # prediction
-        x_pred = self.post2gpt(torch.cat([x, stoch_post], -1))
-        out = self.gpt(x_pred, indices=indices, attn_type='causal')
+        x_pred = x + self.post2gpt(stoch_post)
+        out = self.gpt_pred(x_pred, indices=indices, attn_type='causal')
 
         return out, stoch_post, stats_post, stats_prior
 
