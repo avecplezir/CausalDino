@@ -150,7 +150,7 @@ class EpicNFEvents(EpicNEvents):
                                                                )
                     frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
-
+                print('len(frames)', len(frames), frames[0].shape)
                 return frames, clip_idx, video_idx
             except:
                 if i_try > self._num_retries // 2:
