@@ -687,10 +687,12 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
 
         # logging
+        memory_size = memory_mask.sum(-1).mean() if memory_mask is not None else None
         torch.cuda.synchronize()
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
+        metric_logger.update(memory_size=memory_size)
         metric_logger.update(**head_gradnorm)
         metric_logger.update(**backbone_gradnorm)
         metric_logger.update(**dict_losses)
@@ -700,6 +702,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 batch_loss=loss.item(),
                 lr=optimizer.param_groups[0]["lr"],
                 wd=optimizer.param_groups[0]["weight_decay"],
+                memory_size=memory_size,
                 **head_gradnorm,
                 **backbone_gradnorm,
                 **{f"batch_{key}": val for key, val in dict_losses.items()}, step=step,

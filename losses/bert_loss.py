@@ -98,12 +98,10 @@ class MemoryLoss(FeatureLoss):
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_m_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_m_enc_logits)
-        memory_size = memory_mask.sum(-1).mean()
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
                             'CE_ee': CE_ee,
-                            'memory_size': memory_size,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
