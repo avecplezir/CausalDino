@@ -55,7 +55,7 @@ python -m torch.distributed.launch \
   --loss_mode vae \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
-  --kl_c 1 \
+  --kl_c 0.1 \
   --kl_balance 0.8 \
   --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
