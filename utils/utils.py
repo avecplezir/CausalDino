@@ -890,6 +890,17 @@ class MultiCropWrapperGeneral(nn.Module):
             s_pred_logits_list.append(s_pred_logits)
         return s_pred_logits_list, masks
 
+    def forward_student_memory_bert_all(self, x_enc, indices, m_mask):
+        s_pred_logits_list = []
+        masks = self.generate_masks(indices)
+        masks_list = []
+        for mask in masks:
+            mask = mask.unsqueeze(0) * m_mask
+            masks_list.append(mask)
+            s_pred_logits = self.forward_student_mask(x_enc, indices, mask)
+            s_pred_logits_list.append(s_pred_logits)
+        return s_pred_logits_list, masks_list
+
     def forward_timeemb(self, x_enc, indices):
         s_pred_logits_list = []
         x_enc_head = self.head(x_enc)
@@ -918,7 +929,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     t_m_enc_logits = self.headprob(memory_enc)
                     t_enc_logits = self.headprob(t_enc_head)
                     return t_m_enc_logits, t_enc_logits, memory_mask, memory_enc
-                elif self.loss_mode in ['memory_vae', 'memory_bert_teacher']:
+                elif self.loss_mode in ['memory_vae', 'memory_bert_all']:
                     self.memory.add(x_enc)
                     self.memory.remove(video_indices)
                     memory_enc, memory_mask = self.memory.retrieve()
@@ -929,8 +940,10 @@ class MultiCropWrapperGeneral(nn.Module):
                     self.memory.add(x_enc)
                     self.memory.remove(video_indices)
                     memory_enc, memory_mask = self.memory.retrieve()
-                    t_enc_logits = self.forward_teacher(x_enc)
-                    return t_enc_logits, memory_mask, memory_enc
+                    # t_enc_logits = self.forward_teacher(x_enc)
+                    # return t_enc_logits, memory_mask, memory_enc
+                    t_m_enc_logits = self.forward_teacher(memory_enc)
+                    return t_m_enc_logits, memory_mask, memory_enc
                 else:
                     return self.forward_teacher(x_enc)
             elif self.mode == 'student':
@@ -951,9 +964,11 @@ class MultiCropWrapperGeneral(nn.Module):
                     s_m_pred_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
                     s_pred_logits = self.forward_teacher(x_enc) if self.args.CE_ee_c else 0.
                     return s_m_pred_logits, bert_mask, s_pred_logits
-                elif self.loss_mode == 'memory_bert_teacher':
+                elif self.loss_mode == 'memory_bert_all':
                     x_enc = torch.cat([m_enc[:, :-1], x_enc[:, :1]], 1)
+                    print('x_enc', x_enc.shape)
                     indices = self.get_indices(x_enc, maxlen=False)
+                    print('indices', indices.shape)
                     s_pred_logits_list, bert_masks = self.forward_student_bert(x_enc, indices)
                     inverse_bert_masks = (~bert_masks.bool()).long()
                     print('m_mask', m_mask.shape)
@@ -967,7 +982,8 @@ class MultiCropWrapperGeneral(nn.Module):
                     s_pred_logits, stoch_post, stats_post, stats_prior = self.forward_student_vae(x_enc, indices)
                     return s_pred_logits, stats_post, stats_prior
                 elif self.loss_mode == 'memory_gpt':
-                    t = x_enc.size(1)
+                    # t = x_enc.size(1)
+                    t = 0
                     scale = False
                     if scale:
                         m_size = m_mask.sum(dim=-1, keepdim=True).unsqueeze(-1)
@@ -999,6 +1015,10 @@ class MultiCropWrapperGeneral(nn.Module):
         b, T = pos_indices.size()
         binT = lambda x: ''.join(reversed([str((x >> i) & 1) for i in range(T)]))
         masks = []
+
+        if T == 1:
+            return torch.tensor([[1]]).to(pos_indices.device)
+
         for idx in range(1, 2 ** T - 1):
             mask = np.array(list(binT(idx)), dtype=int)
             # if 1 < sum(mask) < 3:

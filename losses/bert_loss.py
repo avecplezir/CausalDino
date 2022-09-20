@@ -53,11 +53,11 @@ class BertLoss(FeatureLoss):
 class BertTeacherMemoryLoss(BertLoss):
     def compute_loss_fe(self, s_pred_logits_list, t_enc_proba, inverse_masks):
         total_loss = 0
-        n_loss_terms = 0
+        n_loss_terms = 1e-16
         for s_pred_logits, inverse_mask in zip(s_pred_logits_list, inverse_masks):
             s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
             loss = -torch.sum(t_enc_proba * s_pred_log, dim=-1)
-            n_terms = inverse_mask.sum() + 1e-16
+            n_terms = inverse_mask.sum()
             total_loss += (inverse_mask * loss).sum()
             n_loss_terms += n_terms
 

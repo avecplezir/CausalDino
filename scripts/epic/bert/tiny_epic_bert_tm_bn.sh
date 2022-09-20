@@ -54,6 +54,7 @@ python -m torch.distributed.launch \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \
+  --memory Memory \
   --loss_mode memory_bert_teacher \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
