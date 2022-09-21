@@ -62,22 +62,24 @@ class GPTMaskLoss(BertLoss):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        s_pred_logits_list, masks, *_ = student_output
+        s_pred_logits_list, memory_mask, *_ = student_output
         t_enc_logits, *_ = teacher_output
 
         temp = self.teacher_temp_schedule[epoch]
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        CE_fe = self.compute_loss_fe(s_pred_logits_list, t_enc_proba, masks)
+        CE_fe = self.compute_loss_fe(s_pred_logits_list, t_enc_proba, memory_mask)
 
         total_loss = CE_fe
 
+        memory_size = memory_mask.float().sum(-1).mean()
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
+                            'memory_size': memory_size,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
@@ -135,7 +137,7 @@ class MemoryLoss(FeatureLoss):
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_m_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_m_enc_logits)
-        memory_size = memory_mask.sum(-1).mean()
+        memory_size = memory_mask.float().sum(-1).mean()
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
@@ -251,7 +253,7 @@ class MemoryVAELoss(VAELoss):
         self.update_centers(t_enc_logits, None, None)
         time_entropy = self.time_entropy(t_m_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_m_enc_logits)
-        memory_size = memory_mask.sum(-1).mean()
+        memory_size = memory_mask.float().sum(-1).mean()
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,

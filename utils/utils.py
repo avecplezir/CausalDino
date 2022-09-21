@@ -770,7 +770,7 @@ class PatchMemory:
 
     def add(self, values):
         self.memory.append(values.detach())
-        self.memory_mask.append(torch.ones(self.batch_size, values.size(1)).to(values.device))
+        self.memory_mask.append(torch.ones(self.batch_size, values.size(1)).to(values.device).long())
 
     def remove(self, video_indices):
         video_indices = video_indices.cpu()
