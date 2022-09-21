@@ -845,25 +845,15 @@ class MultiCropWrapperGeneral(nn.Module):
         else:
             return t_enc
 
-    def forward_student_gpt(self, x_enc, indices, mask=None):
+    def forward_student(self, x_enc, indices, mask=None, attn_type='causal', future_index=None):
         if self.args.student_prediction_type == 'predictor_first':
-            s_pred = self.predictor(x_enc, indices=indices, mask=mask)
+            s_pred = self.predictor(x_enc, indices=indices, mask=mask, attn_type=attn_type,
+                                    future_index=future_index)
             s_pred_logits = self.headprob(self.head(s_pred))
         elif self.args.student_prediction_type == 'head_first':
             s_enc_head = self.head(x_enc)
-            s_pred = self.predictor(s_enc_head, indices=indices, mask=mask)
-            s_pred_logits = self.headprob(s_pred)
-        else:
-            assert 0, f'{self.args.student_prediction_type} not implemented!'
-        return s_pred_logits
-
-    def forward_student_mask(self, x_enc, indices, mask):
-        if self.args.student_prediction_type == 'predictor_first':
-            s_pred = self.predictor(x_enc, indices=indices, mask=mask, attn_type='all')
-            s_pred_logits = self.headprob(self.head(s_pred))
-        elif self.args.student_prediction_type == 'head_first':
-            s_enc_head = self.head(x_enc)
-            s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type='all')
+            s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type=attn_type,
+                                    future_index=future_index)
             s_pred_logits = self.headprob(s_pred)
         else:
             assert 0, f'{self.args.student_prediction_type} not implemented!'
@@ -874,7 +864,7 @@ class MultiCropWrapperGeneral(nn.Module):
         masks = self.generate_masks(indices)
         for mask in masks:
             mask = mask.unsqueeze(0)
-            s_pred_logits = self.forward_student_mask(x_enc, indices, mask)
+            s_pred_logits = self.forward_student(x_enc, indices, mask=mask, attn_type='all')
             s_pred_logits_list.append(s_pred_logits)
         return s_pred_logits_list, masks
 
@@ -882,10 +872,8 @@ class MultiCropWrapperGeneral(nn.Module):
         s_pred_logits_list = []
         x_enc_head = self.head(x_enc)
         for ie in range(1, self.args.n_global_views):  # future encoding
-            s_pred = self.predictor(x_enc_head[:, :ie], future_index=indices[:, ie],
-                                    indices=indices[:, :ie])[:, 1:]
-            s_pred_logits = self.headprob(s_pred)
-            s_pred_logits_list.append(s_pred_logits)
+            s_pred_logits = self.forward_student(x_enc_head[:, :ie], future_index=indices[:, ie], indices=indices[:, :ie])
+            s_pred_logits_list.append(s_pred_logits[:, 1:])
         return s_pred_logits_list
 
     def forward(self, x, indices=None, video_indices=None, m_enc=None, m_mask=None, **kwargs):
@@ -898,7 +886,7 @@ class MultiCropWrapperGeneral(nn.Module):
             enc_list = output.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
-                if self.loss_mode == 'memory_bert':
+                if self.loss_mode == 'memory':
                     t_enc_head = self.forward_teacher(x_enc, headprob=False)
                     self.memory.add(t_enc_head)
                     self.memory.remove(video_indices)
@@ -910,7 +898,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     return self.forward_teacher(x_enc)
             elif self.mode == 'student':
                 if self.loss_mode == 'gpt':
-                    return self.forward_student_gpt(x_enc, indices), None
+                    return self.forward_student(x_enc, indices), None
                 if self.loss_mode == 'bert':
                     return self.forward_student_bert(x_enc, indices)
                 elif self.loss_mode == 'vae':
@@ -920,11 +908,8 @@ class MultiCropWrapperGeneral(nn.Module):
                     return self.forward_timeemb(x_enc, indices), None
                 elif self.loss_mode == 'memory':
                     bert_mask, bert_indices = self.get_memory_bert_indices_mask(indices)
-                    # print('bert_mask, bert_indices', bert_mask.shape, bert_indices.shape)
                     bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc[:, :1]], 1)
-                    # print('bert_x_enc', bert_x_enc.shape)
                     s_m_pred_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
-                    # print('s_pred_future_logits', s_pred_future_logits.shape)
                     s_pred_logits = self.forward_teacher(x_enc) if self.args.CE_ee_c else 0.
                     return s_m_pred_logits, bert_mask, s_pred_logits
                 else:

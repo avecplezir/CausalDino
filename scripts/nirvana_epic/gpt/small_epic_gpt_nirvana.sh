@@ -52,7 +52,7 @@ python -m torch.distributed.launch \
   --loss_mode gpt \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
-  --use_bn_in_head True \
+  --use_bn_in_head False \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
