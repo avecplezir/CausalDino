@@ -207,8 +207,6 @@ def get_args_parser():
     parser.add_argument('--maxlen', type=int, default=8,
                         help="""max len in memory""")
     parser.add_argument('--kl_balance', default=0.8, type=float, help='kl balance in VAE loss')
-    parser.add_argument('--temporal_aug_memory', type=utils.bool_flag, default=False,
-                        help="""Whether to use continuous sampler""")
     parser.add_argument('--memory_balance_loss', type=utils.bool_flag, default=False,
                         help="""Whether to use memory balancing""")
     parser.add_argument('--masking_ratio', default=0.2, type=float, help='ratio of masked tokens for bert-like loss')
@@ -232,9 +230,10 @@ def get_args_parser():
     parser.add_argument('--l2norm_in_head', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--l2norm_in_pred', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--maskemb', type=utils.bool_flag, default=False, help="""""")
-    parser.add_argument('--loss_mode', default=None, type=str, help="""""")
+    parser.add_argument('--loss_mode', default='None', type=str, help="""""")
     parser.add_argument('--future_index', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False, help="""""")
+    parser.add_argument('--memory', default=None, type=str, help="""""")
 
     return parser
 
@@ -268,7 +267,6 @@ def train_svt(args):
     config.global_size = args.global_size
     config.temporal_aug = (args.loss == "DINOLoss")
     config.global_crops_scale = args.global_crops_scale
-    config.temporal_aug_memory = args.temporal_aug_memory
     config.local_first = args.local_first
     config.block_size = args.block_size
     args.teacher_views = args.n_global_views if args.teacher_views is None else args.teacher_views
@@ -393,6 +391,9 @@ def train_svt(args):
     print('DINOHead', DINOHead)
     print('embed_dim', embed_dim)
 
+    memory = getattr(utils, args.memory)(args.batch_size_per_gpu, args.maxlen) if args.memory else None
+    print('memory', memory)
+
     student = Wrapper(student,
          DINOHead(
              in_dim=in_dim_head,
@@ -410,6 +411,7 @@ def train_svt(args):
                              hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb,
                              future_index=args.future_index) if Predictor else None,
          headprob=HeadProba(args.out_dim_headproba) if HeadProba else None,
+         memory=None,
          n_global_views=args.n_global_views,
          batch_size=args.batch_size_per_gpu,
          maxlen=args.maxlen,
@@ -433,6 +435,7 @@ def train_svt(args):
                             hidden_dim=args.hidden_dim_in_pred, maskemb=args.maskemb,
                             future_index=args.future_index) if Predictor else None,
         headprob=HeadProba(args.out_dim_headproba) if HeadProba else None,
+        memory=memory,
         n_global_views=args.n_global_views,
         batch_size=args.batch_size_per_gpu,
         maxlen=args.maxlen,
@@ -641,7 +644,12 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             teacher_output = teacher(images[:args.teacher_views], indices=indices,
                                      video_indices=video_indices)  # only the 2 global views pass through the teacher
-            student_output = student(images, indices=indices, video_indices=video_indices)
+            if 'memory' in args.loss_mode:
+                memory_mask, memory_enc = teacher_output[-2:]
+            else:
+                memory_mask, memory_enc = None, None
+            student_output = student(images, indices=indices, video_indices=video_indices, m_enc=memory_enc,
+                                     m_mask=memory_mask)
             loss, dict_losses = dino_loss(student_output, teacher_output, epoch, video_indices=video_indices)
             loss = args.loss_scale * loss
 

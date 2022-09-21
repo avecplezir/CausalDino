@@ -78,25 +78,18 @@ class MemoryLoss(FeatureLoss):
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
         s_m_pred_logits, bert_mask, s_enc_logits = student_output
-        t_m_enc_logits, memory_mask, t_enc_logits = teacher_output
+        t_m_enc_logits, t_enc_logits, memory_mask, *_ = teacher_output
 
         t = t_m_enc_logits.size(1)
         s_m_pred_logits = s_m_pred_logits[:, -t:]
         bert_mask = bert_mask[:, -t:]
 
-        # print('memory loss')
-        # print('s_pred_future_logits', s_pred_future_logits.shape)
-        # print('bert_mask', bert_mask.shape)
-        # print('memory_mask', memory_mask.shape)
         temp = self.teacher_temp_schedule[epoch]
         t_m_enc_proba = F.softmax((t_m_enc_logits - self.center) / temp, dim=-1)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1) if self.args.CE_ee_c else 0.
 
         inverse_bert_mask = (~bert_mask.bool()).long()
         inverse_mask = memory_mask * inverse_bert_mask
-        # print('inverse_mask', inverse_mask.shape)
-        # print('t_enc_proba', t_enc_proba.shape)
-        # print('s_pred_future_logits', s_pred_future_logits.shape)
 
         CE_fe = self.compute_loss_fe(s_m_pred_logits, t_m_enc_proba, inverse_mask)
         CE_ee = self.dino_loss(s_enc_logits, t_enc_proba) if self.args.CE_ee_c else 0.
@@ -133,7 +126,7 @@ class MemoryLoss(FeatureLoss):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = -torch.sum(t_enc_proba[:, iq] * s_enc_log[:, v] , dim=-1)
+                loss = -torch.sum(t_enc_proba[:, iq] * s_enc_log[:, v], dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         n_loss_terms = max(1, n_loss_terms)
@@ -141,61 +134,40 @@ class MemoryLoss(FeatureLoss):
         return total_loss
 
 
-class MemoryVAELoss(MemoryLoss):
+class VAELoss(BertLoss):
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        s_m_pred_logits, bert_mask, s_enc_logits = student_output
-        t_m_enc_logits, memory_mask, t_enc_logits = teacher_output
-
-        t = t_m_enc_logits.size(1)
-        s_m_pred_logits = s_m_pred_logits[:, -t:]
-        bert_mask = bert_mask[:, -t:]
+        s_pred_logits, stats_post, stats_prior = student_output
+        t_enc_logits, *_ = teacher_output
 
         temp = self.teacher_temp_schedule[epoch]
-        t_m_enc_proba = F.softmax((t_m_enc_logits - self.center) / temp, dim=-1)
-        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1) if self.args.CE_ee_c else 0.
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
 
-        inverse_bert_mask = (~bert_mask.bool()).long()
-        inverse_mask = memory_mask * inverse_bert_mask
-
-        CE_fe = self.compute_loss_fe(s_m_pred_logits, t_m_enc_proba, inverse_mask)
-        CE_ee = self.dino_loss(s_enc_logits, t_enc_proba) if self.args.CE_ee_c else 0.
-        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ee_c * CE_ee
+        CE_fe, kl = self.compute_loss_fe(s_pred_logits, t_enc_proba, stats_post, stats_prior)
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.kl_c * kl
 
         self.update_centers(t_enc_logits, None, None)
-        time_entropy = self.time_entropy(t_m_enc_proba)
-        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_m_enc_logits)
-        memory_size = memory_mask.sum(-1).mean()
+        time_entropy = self.time_entropy(t_enc_proba)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
         return total_loss, {'CE': total_loss,
                             'CE_fe': CE_fe,
-                            'CE_ee': CE_ee,
-                            'memory_size': memory_size,
+                            'kl': kl,
                             'entropy': self.entropy(self.center),
                             'batch_time_entropy': time_entropy,
                             'dirac_entropy': dirac_entropy,
                             'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
                             }
 
-    def compute_loss_fe(self, s_pred_future_logits, memory_enc, memory_mask, t_enc_proba, student, teacher, pos_indices):
-        s_pred_future, stoch_post, stats_post, stats_prior = \
-        student.module.predictor(memory_enc, indices=pos_indices, f_x=memory_enc[:, -1:])
-        loss = -torch.sum(t_enc_proba * F.log_softmax(s_pred_future_logits, dim=-1), dim=-1)
-        mask_sum = memory_mask.sum() + 1e-16
-        total_loss = (memory_mask * loss).sum() / mask_sum
-
+    def compute_loss_fe(self, s_pred_logits, t_enc_proba, stats_post, stats_prior):
+        s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
+        loss = -torch.sum(t_enc_proba[:, -1:] * s_pred_log, dim=-1)
+        total_loss = loss.mean()
         kl_loss = self.kl_loss(stats_post, stats_prior, balance=self.args.kl_balance)
 
         return total_loss, kl_loss
-
-    def compute_loss_fe(self, s_m_pred_logits, t_m_enc_proba, inverse_mask):
-        s_pred_log = F.log_softmax(s_m_pred_logits / self.student_temp, dim=-1)
-        loss = -torch.sum(t_m_enc_proba * s_pred_log, dim=-1)
-        n_terms = inverse_mask.sum() + 1e-16
-        total_loss = (inverse_mask * loss).sum() / n_terms
-        return total_loss
 
     def get_dist(self, state):
         logit = state['logit']
@@ -214,3 +186,53 @@ class MemoryVAELoss(MemoryLoss):
 
         loss = mix * value_lhs + (1 - mix) * value_rhs
         return loss.mean()
+
+
+class MemoryVAELoss(VAELoss):
+    def forward(self, student_output, teacher_output, epoch, **kwargs):
+        """
+        Cross-entropy between softmax outputs of the teacher and student networks.
+        """
+        s_m_pred_logits, bert_mask, s_enc_logits, stats_post, stats_prior = student_output
+        t_m_enc_logits, t_enc_logits, memory_mask, *_ = teacher_output
+
+        t = t_m_enc_logits.size(1)
+        s_m_pred_logits = s_m_pred_logits[:, -t:]
+        bert_mask = bert_mask[:, -t:]
+
+        temp = self.teacher_temp_schedule[epoch]
+        t_m_enc_proba = F.softmax((t_m_enc_logits - self.center) / temp, dim=-1)
+        t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1) if self.args.CE_ee_c else 0.
+
+        inverse_bert_mask = (~bert_mask.bool()).long()
+        inverse_mask = memory_mask * inverse_bert_mask
+
+        CE_fe, kl = self.compute_loss_fe(s_m_pred_logits, t_m_enc_proba, stats_post, stats_prior, inverse_mask)
+        CE_ee = self.dino_loss(s_enc_logits, t_enc_proba) if self.args.CE_ee_c else 0.
+        total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ee_c * CE_ee + self.args.kl_c * kl
+
+        self.update_centers(t_enc_logits, None, None)
+        time_entropy = self.time_entropy(t_m_enc_proba)
+        dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_m_enc_logits)
+        memory_size = memory_mask.sum(-1).mean()
+
+        return total_loss, {'CE': total_loss,
+                            'CE_fe': CE_fe,
+                            'CE_ee': CE_ee,
+                            'kl': kl,
+                            'memory_size': memory_size,
+                            'entropy': self.entropy(self.center),
+                            'batch_time_entropy': time_entropy,
+                            'dirac_entropy': dirac_entropy,
+                            'dirac_entropy_proportion2max': dirac_entropy_proportion2max,
+                            }
+
+    def compute_loss_fe(self, s_pred_logits, t_enc_proba, stats_post, stats_prior, memory_mask):
+        s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
+        loss = -torch.sum(t_enc_proba[:, -1:] * s_pred_log, dim=-1)
+        kl_loss = self.kl_loss(stats_post, stats_prior, balance=self.args.kl_balance)
+        mask_sum = memory_mask.sum() + 1e-16
+        total_loss = (memory_mask * loss).sum() / mask_sum
+        kl_loss = (kl_loss * loss).sum() / mask_sum
+        return total_loss, kl_loss
+
