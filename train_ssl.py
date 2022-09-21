@@ -234,6 +234,8 @@ def get_args_parser():
     parser.add_argument('--future_index', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--return_pred_out', type=utils.bool_flag, default=False, help="""""")
     parser.add_argument('--memory', default=None, type=str, help="""""")
+    parser.add_argument('--temporal_aug', type=utils.bool_flag, default=False,
+                        help="""wheather to use temperal augmentation like in svt""")
 
     return parser
 
@@ -265,7 +267,7 @@ def train_svt(args):
     config.n_global_views = args.n_global_views
     config.random_sampling = args.random_sampling
     config.global_size = args.global_size
-    config.temporal_aug = (args.loss == "DINOLoss")
+    config.temporal_aug = (args.loss == "DINOLoss") or args.temporal_aug
     config.global_crops_scale = args.global_crops_scale
     config.local_first = args.local_first
     config.block_size = args.block_size

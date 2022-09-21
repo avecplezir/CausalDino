@@ -44,7 +44,6 @@ class EpicEvents(torch.utils.data.Dataset):
         self._video_clip_size = [] # len of the video in terms of number of clips
         self.index2clip_video = {}
         self.init_video_clip_indices()
-        self.span = 32
 
     def init_video_clip_indices(self, ):
         idx = 0
@@ -69,95 +68,97 @@ class EpicEvents(torch.utils.data.Dataset):
             vc = np.array(self._video_clip_size)
             print('video_clip_size stats, mean, std, max, min', vc.mean(), vc.std(), vc.max(), vc.min())
 
-    def __getitem__(self, index):
-
-        clip_idx, video_idx = self.index2clip_video[index]
-        min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
-
+    def get_event(self, clip_idx, video_idx):
         # Try to decode and sample a clip from a video. If the video can not be
         # decoded, repeatly find a random video replacement that can be decoded.
+        min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
+
+        video_container = None
+        try:
+            video_container = get_video_container(
+                self._path_to_videos[video_idx],
+                self.cfg.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE,
+                self.cfg.DATA.DECODING_BACKEND,
+            )
+        except Exception as e:
+            print(
+                "Failed to load video from {} with error {}".format(
+                    self._path_to_videos[video_idx], e
+                )
+            )
+        # Select a random video if the current video was not able to access.
+        if video_container is None:
+            warnings.warn(
+                "Failed to meta load video idx {} from {}".format(
+                    video_idx, self._path_to_videos[video_idx]
+                )
+            )
+            return None
+
+        # Decode video. Meta info is used to perform selective decoding.
+        try:
+            frames, indices = decode_events(
+                container=video_container,
+                sampling_rate=self.sampling_rate,
+                num_frames=self.num_frames,
+                clip_idx=clip_idx,
+                target_fps=self.cfg.DATA.TARGET_FPS,
+                backend=self.cfg.DATA.DECODING_BACKEND,
+                max_spatial_scale=min_scale,
+                num_clips_global=self.cfg.n_global_views,
+                n_parts=self.cfg.n_parts,
+                random_sampling=self.cfg.random_sampling,
+                mode='ordered',
+                temporal_aug=self.cfg.temporal_aug,
+                local_crops_number=self.cfg.local_crops_number,
+            )
+        except Exception as e:
+            print(
+                "Failed to decode events from video from {} with error {}".format(
+                    self._path_to_videos[video_idx], e
+                )
+            )
+            return None
+
+        # If decoding failed (wrong format, video is too short, and etc),
+        # select another video.
+        if frames is None:
+            warnings.warn(
+                "Failed to decode video idx {} from {}".format(
+                    video_idx, self._path_to_videos[video_idx]
+                )
+            )
+            return None
+
+        # augmentation
+        frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
+        if self.cfg.temporal_aug:
+            augmentation = VideoDataAugmentationDINO(size=self.cfg.global_size,
+                                                     global_crops_scale=self.cfg.global_crops_scale,
+                                                     local_crops_number=self.cfg.local_crops_number,
+                                                     )
+        else:
+            augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
+                                                       local_crops_number=self.cfg.local_crops_number,
+                                                       global_crops_scale=self.cfg.global_crops_scale,
+                                                       local_first=self.cfg.local_first,
+                                                       )
+        frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+        frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
+
+        return frames, indices
+
+    def __getitem__(self, index):
         for i_try in range(self._num_retries):
-            video_container = None
             try:
-                video_container = get_video_container(
-                    self._path_to_videos[video_idx],
-                    self.cfg.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE,
-                    self.cfg.DATA.DECODING_BACKEND,
-                )
-            except Exception as e:
-                print(
-                    "Failed to load video from {} with error {}".format(
-                        self._path_to_videos[video_idx], e
-                    )
-                )
-            # Select a random video if the current video was not able to access.
-            if video_container is None:
-                warnings.warn(
-                    "Failed to meta load video idx {} from {}; trial {}".format(
-                        video_idx, self._path_to_videos[video_idx], i_try
-                    )
-                )
+                clip_idx, video_idx = self.index2clip_video[index]
+                frames, _ = self.get_event(clip_idx, video_idx)
+                return frames, clip_idx, video_idx
+            except:
                 if i_try > self._num_retries // 2:
                     # let's try another one
                     index = index + 1
-                continue
-
-            # Decode video. Meta info is used to perform selective decoding.
-            try:
-                frames, indices = decode_events(
-                    container=video_container,
-                    sampling_rate=self.sampling_rate,
-                    num_frames=self.num_frames,
-                    clip_idx=clip_idx,
-                    target_fps=self.cfg.DATA.TARGET_FPS,
-                    backend=self.cfg.DATA.DECODING_BACKEND,
-                    max_spatial_scale=min_scale,
-                    num_clips_global=self.cfg.n_global_views,
-                    n_parts=self.cfg.n_parts,
-                    random_sampling=self.cfg.random_sampling,
-                    mode='ordered',
-                    temporal_aug=self.cfg.temporal_aug,
-                    local_crops_number=self.cfg.local_crops_number,
-                )
-            except Exception as e:
-                print(
-                    "Failed to decode events from video from {} with error {}".format(
-                        self._path_to_videos[video_idx], e
-                    )
-                )
-                if i_try > self._num_retries // 2:
-                    # let's try another one
-                    index = index + 1
-                continue
-
-            # If decoding failed (wrong format, video is too short, and etc),
-            # select another video.
-            if frames is None:
-                warnings.warn(
-                    "Failed to decode video idx {} from {}; trial {}".format(
-                        video_idx, self._path_to_videos[video_idx], i_try
-                    )
-                )
-                if i_try > self._num_retries // 2:
-                    # let's try another one
-                    index = index + 1
-                continue
-
-            frames = [rearrange(x, "t h w c -> t c h w") for x in frames]
-            if self.cfg.temporal_aug:
-                augmentation = VideoDataAugmentationDINO(global_crops_scale=self.cfg.global_crops_scale)
-                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL,
-                                      two_token=self.cfg.MODEL.TWO_TOKEN)
-            else:
-                augmentation = VideoDataAugmentationEvents(size=self.cfg.global_size,
-                                                           local_crops_number=self.cfg.local_crops_number,
-                                                           global_crops_scale=self.cfg.global_crops_scale,
-                                                           local_first=self.cfg.local_first,
-                                                           )
-                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
-            frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
-
-            return frames, indices, video_idx
+                    continue
 
         else:
             raise RuntimeError(
