@@ -35,7 +35,7 @@ python -m torch.distributed.launch \
   --weight_decay_end 0.1 \
   --num_workers 10 \
   \
-  --dataset EpicNFEvents \
+  --dataset EpicEvents \
   --continuous True \
   --loss GPTMaskLoss \
   --local_crops_number 0 \
