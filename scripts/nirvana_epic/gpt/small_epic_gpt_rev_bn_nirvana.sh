@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_256"
-EXP_NAME="small_epic_gpt_nbn_nirvana"
+EXP_NAME="small_epic_gpt_rev_bn_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -52,8 +52,8 @@ python -m torch.distributed.launch \
   --loss_mode gpt \
   --CE_fe_c 1 \
   --CE_ef_c 0. \
-  --use_bn_in_head False \
+  --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
-  --student_prediction_type head_first \
+  --student_prediction_type predictor_first \
 
