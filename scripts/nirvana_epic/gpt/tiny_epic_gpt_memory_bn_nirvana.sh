@@ -37,7 +37,7 @@ python -m torch.distributed.launch \
   \
   --dataset EpicNFEvents \
   --continuous True \
-  --loss GPTLoss \
+  --loss GPTMaskLoss \
   --local_crops_number 0 \
   --n_global_views 4 \
   --random_sampling False \

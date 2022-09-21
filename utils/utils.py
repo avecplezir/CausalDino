@@ -938,7 +938,7 @@ class MultiCropWrapperGeneral(nn.Module):
                     x_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
                     indices = self.get_indices(x_enc, maxlen=False)
                     s_pred_logits = self.forward_student(x_enc, indices, mask=m_mask)
-                    return s_pred_logits, None
+                    return s_pred_logits, m_mask
                 else:
                     assert 0, f'mode {self.loss_mode} not implemented'
             else:
