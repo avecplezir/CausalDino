@@ -9,12 +9,16 @@ import models.gpt_utils as tools
 
 
 class BertLoss(FeatureLoss):
-    def forward(self, student_output: tuple, teacher_output: tuple, epoch: int, **kwargs):
+    def forward(self, student_output, teacher_output, epoch: int, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
         s_pred_logits_list, masks = student_output
         t_enc_logits = teacher_output
+
+        print('s_pred_logits_list', s_pred_logits_list.shape)
+        print('t_enc_logits', t_enc_logits.shape)
+        print('masks', masks)
 
         temp = self.teacher_temp_schedule[epoch]
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)

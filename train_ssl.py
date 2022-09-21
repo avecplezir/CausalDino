@@ -624,7 +624,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                     fp16_scaler, args, cfg=None):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
-    for it, (images, indices, video_indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+    for it, (images, indices, clip_indices, video_indices, *_) in enumerate(metric_logger.log_every(data_loader, 10, header)):
         if args.continuous:
             def all_unique(item):
                 return len(set(item)) == len(item)

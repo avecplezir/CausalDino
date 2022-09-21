@@ -152,8 +152,8 @@ class EpicEvents(torch.utils.data.Dataset):
         for i_try in range(self._num_retries):
             try:
                 clip_idx, video_idx = self.index2clip_video[index]
-                frames, _ = self.get_event(clip_idx, video_idx)
-                return frames, clip_idx, video_idx
+                frames, indices = self.get_event(clip_idx, video_idx)
+                return frames, indices, clip_idx, video_idx
             except:
                 if i_try > self._num_retries // 2:
                     # let's try another one
