@@ -22,7 +22,7 @@ class VAELoss(BertLoss):
         CE_fe, kl = self.compute_loss_fe(s_pred_logits, t_enc_proba, stats_post, stats_prior)
         total_loss = self.args.CE_fe_c * CE_fe + self.args.kl_c * kl
 
-        self.update_centers(t_enc_logits, None, None)
+        self.update_centers(t_enc_logits, None)
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
@@ -85,7 +85,7 @@ class MemoryVAELoss(VAELoss):
         CE_ee = self.dino_loss(s_enc_logits, t_enc_proba) if self.args.CE_ee_c else 0.
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ee_c * CE_ee + self.args.kl_c * kl
 
-        self.update_centers(t_enc_logits, None, None)
+        self.update_centers(t_enc_logits, None)
         time_entropy = self.time_entropy(t_m_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_m_enc_logits)
         memory_size = memory_mask.float().sum(-1).mean()

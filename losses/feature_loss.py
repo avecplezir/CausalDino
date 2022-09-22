@@ -24,8 +24,7 @@ class FeatureLoss(DINOLoss):
         self.local_crops_number = local_crops_number
         self.batch_size = batch_size
         self.register_buffer("center", torch.zeros(1, 1, out_dim))
-        self.register_buffer("predict_future_center", torch.zeros(1, 1, out_dim))
-        self.register_buffer("predict_past_center", torch.zeros(1, 1, out_dim))
+        self.register_buffer("predict_center", torch.zeros(1, 1, out_dim))
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = np.concatenate((
@@ -38,8 +37,8 @@ class FeatureLoss(DINOLoss):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
         """
-        s_enc_logits, s_pred_future_logits, s_pred_past_logits, _ = student_output
-        t_enc_logits, t_pred_future_logits, t_pred_past_logits, _ = teacher_output
+        s_enc_logits, s_pred_future_logits, *_ = student_output
+        t_enc_logits, t_pred_future_logits, *_ = teacher_output
 
         temp = self.teacher_temp_schedule[epoch]
 
@@ -54,7 +53,7 @@ class FeatureLoss(DINOLoss):
 
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 
-        self.update_centers(t_enc_logits, t_pred_future_logits, t_pred_past_logits)
+        self.update_centers(t_enc_logits, t_pred_future_logits)
         time_entropy = self.time_entropy(t_enc_proba)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
@@ -68,22 +67,18 @@ class FeatureLoss(DINOLoss):
                             }
 
     @torch.no_grad()
-    def update_centers(self, t_enc_logits, t_pred_future_logits, t_pred_past_logits):
+    def update_centers(self, t_enc_logits, t_pred_logits):
         # update batch centers
 
         if t_enc_logits is not None:
             batch_center = self.get_batch_center(t_enc_logits)
             self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
-        if t_pred_future_logits is not None:
-            batch_center_pred_future = self.get_batch_center(t_pred_future_logits)
-            self.predict_future_center = self.predict_future_center * self.center_momentum \
-                                         + batch_center_pred_future * (1 - self.center_momentum)
+        if t_pred_logits is not None:
+            batch_center_pred = self.get_batch_center(t_pred_logits)
+            self.predict_center = self.predict_center * self.center_momentum \
+                                         + batch_center_pred * (1 - self.center_momentum)
 
-        if t_pred_past_logits is not None:
-            batch_center_pred_past = self.get_batch_center(t_pred_past_logits)
-            self.predict_past_center = self.predict_past_center * self.center_momentum \
-                                       + batch_center_pred_past * (1 - self.center_momentum)
 
     def compute_kl(self, conditional):
         marginal_log = F.log_softmax(self.center.detach(), dim=-1).repeat(conditional.size(0), conditional.size(1), 1)
