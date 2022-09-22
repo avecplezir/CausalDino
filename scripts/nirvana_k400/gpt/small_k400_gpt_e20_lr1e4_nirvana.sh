@@ -3,7 +3,7 @@
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
 VAL_DATA_PATH="$INPUT_PATH/UCF101"
 DATA_PATH="$INPUT_PATH/videos_train_256p_dense_cache"
-EXP_NAME="small_k400_gpt_e40_lr1e3_nirvana"
+EXP_NAME="small_k400_gpt_e20_lr1e4_nirvana"
 PORT='1024'
 
 cd "$PROJECT_PATH" || exit
@@ -59,5 +59,5 @@ python -m torch.distributed.launch \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
-  --lr 1e-3 \
-  --min_lr 1e-4 \
+  --lr 1e-4 \
+  --min_lr 1e-5 \
