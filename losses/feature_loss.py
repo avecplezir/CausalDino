@@ -34,13 +34,6 @@ class FeatureLoss(DINOLoss):
             np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
         ))
 
-        if self.args.continuous:
-            self.memory = None
-            self.init_memory(batch_size=batch_size)
-
-    def init_memory(self, batch_size=None):
-        pass
-
     def forward(self, student_output, teacher_output, epoch, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
