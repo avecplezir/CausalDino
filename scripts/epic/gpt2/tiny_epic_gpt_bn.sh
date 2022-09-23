@@ -7,7 +7,7 @@ VAL_DATA_PATH="/mnt/data/UCF101"
 DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
 PORT='1027'
 
-EXP_NAME="tiny_epic_gpt_bn1"
+EXP_NAME="tiny_epic_gpt2_bn"
 
 cd "$PROJECT_PATH" || exit
 
@@ -43,7 +43,7 @@ python -m torch.distributed.launch \
   --num_workers 10 \
   \
   --dataset EpicEvents \
-  --loss GPTLoss \
+  --loss GPTTwoLoss \
   --local_crops_number 0 \
   --n_global_views 4 \
   --random_sampling False \
@@ -54,9 +54,9 @@ python -m torch.distributed.launch \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \
-  --loss_mode gpt \
-  --CE_fe_c 1 \
-  --CE_ef_c 0. \
+  --loss_mode gpttwo \
+  --CE_fe_c 0.5 \
+  --CE_ef_c 0.5 \
   --use_bn_in_head True \
   --hidden_dim_in_head 2048 \
   --teacher_prediction_type head \

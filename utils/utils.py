@@ -834,7 +834,8 @@ class MultiCropWrapperGeneral(nn.Module):
     def forward_teacher(self, x_enc, headprob=True):
         if self.args.teacher_prediction_type == 'head_predictor_joint':
             indices = torch.zeros_like(x_enc[:, :, 0]).long()
-            t_enc = self.head(self.predictor(x_enc, indices=indices, attn_type='id'))
+            t_pred = self.predictor(x_enc, indices=indices, attn_type='id')
+            t_enc = self.head(t_pred)
         elif self.args.teacher_prediction_type == 'head':
             t_enc = self.head(x_enc)
         else:
@@ -912,11 +913,19 @@ class MultiCropWrapperGeneral(nn.Module):
                     memory_enc, memory_mask = self.memory.retrieve()
                     t_m_enc_logits = self.forward_teacher(memory_enc)
                     return t_m_enc_logits, memory_mask, memory_enc
+                elif self.loss_mode == 'gpttwo':
+                    t_enc_logits = self.forward_teacher(x_enc)
+                    t_pred_logits = self.forward_student(x_enc, indices)
+                    return t_pred_logits, t_enc_logits
                 else:
                     return self.forward_teacher(x_enc)
             elif self.mode == 'student':
                 if self.loss_mode == 'gpt':
                     return self.forward_student(x_enc, indices), None
+                elif self.loss_mode == 'gpttwo':
+                    s_enc_logits = self.forward_teacher(x_enc)
+                    s_pred_logits = self.forward_student(x_enc, indices)
+                    return s_pred_logits, s_enc_logits, None
                 if self.loss_mode == 'bert':
                     return self.forward_student_bert(x_enc, indices)
                 elif self.loss_mode == 'vae':
@@ -927,12 +936,11 @@ class MultiCropWrapperGeneral(nn.Module):
                 elif self.loss_mode == 'memory':
                     bert_mask, bert_indices = self.get_memory_bert_indices_mask(indices)
                     bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc[:, :1]], 1)
-                    s_m_pred_logits = self.forward_student_mask(bert_x_enc, bert_indices, bert_mask)
+                    s_m_pred_logits = self.forward_student(bert_x_enc, bert_indices, mask=bert_mask, attn_type='all')
                     s_pred_logits = self.forward_teacher(x_enc) if self.args.CE_ee_c else 0.
                     return s_m_pred_logits, bert_mask, s_pred_logits
                 elif self.loss_mode == 'memory_gpt':
                     t = x_enc.size(1)
-                    # proportion = 1.5
                     m_size = m_mask.sum().item()
                     grad_size = (t - 1) * x_enc.size(0)
                     proportion = max(m_size, 1) / grad_size

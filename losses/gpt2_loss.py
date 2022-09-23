@@ -14,6 +14,12 @@ class GPTTwoLoss(FeatureLoss):
         s_pred_logits, s_enc_logits, masks = student_output
         t_pred_logits, t_enc_logits = teacher_output
 
+        print('s_pred_logits', s_pred_logits.shape)
+        print('s_enc_logits', s_enc_logits.shape)
+        print('t_pred_logits', t_pred_logits.shape)
+        print('t_enc_logits', t_enc_logits.shape)
+
+
         temp = self.teacher_temp_schedule[epoch]
         CE_fe = self.compute_loss_fe(s_pred_logits, t_enc_logits, temp, masks) if self.args.CE_fe_c else 0.
         CE_ef = self.compute_loss_ef(s_enc_logits, t_pred_logits, temp, masks) if self.args.CE_ef_c else 0.
