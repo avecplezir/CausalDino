@@ -1,13 +1,10 @@
 #!/bin/bash
 
-SOURCE_CODE_PATH=$HOME
 PROJECT_PATH="$SOURCE_CODE_PATH/CausalDino"
-SNAPSHOT_PATH="$PROJECT_PATH/checkpoints"
-VAL_DATA_PATH="/mnt/data/UCF101"
-DATA_PATH="/mnt/data/EPIC-KITCHENS-100/videos_256"
-PORT='1027'
-
-EXP_NAME="tiny_epic_gpt2_memory_bn"
+VAL_DATA_PATH="$INPUT_PATH/UCF101"
+DATA_PATH="$INPUT_PATH/videos_256"
+EXP_NAME="tiny_epic_gpt2_memory_lr1e3_bn_nirvana"
+PORT='1024'
 
 cd "$PROJECT_PATH" || exit
 
@@ -17,9 +14,6 @@ fi
 
 export WANDB_MODE="run"
 export WANDB_API_KEY="df61f407e5d9259d358ba2a7ef24aa3038bec740"
-
-export CUDA_VISIBLE_DEVICES=3
-export CUDA_LAUNCH_BLOCKING=1
 
 python -m torch.distributed.launch \
   --nproc_per_node=1 \
@@ -65,3 +59,5 @@ python -m torch.distributed.launch \
   --teacher_prediction_type head \
   --student_prediction_type head_first \
   --maskemb True \
+  --lr 1e-3 \
+  --min_lr 1e-4 \

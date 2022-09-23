@@ -876,6 +876,10 @@ class MultiCropWrapperBase(nn.Module):
 
 
 class MultiCropWrapperMemory(MultiCropWrapperBase):
+    def get_indices(self, x, maxlen=True):
+        t = self.args.maxlen if maxlen else x.size(1)
+        return torch.arange(t).flip([0]).unsqueeze(0).to(x.device)
+
     def forward(self, x, indices=None, video_indices=None, m_enc=None, m_mask=None, **kwargs):
         if not isinstance(x, list):
             x = [x]
@@ -917,81 +921,7 @@ class MultiCropWrapperMemory(MultiCropWrapperBase):
             return output
 
 
-class MultiCropWrapperGeneral(nn.Module):
-    """
-    Perform forward pass separately on each resolution input.
-    The inputs corresponding to a single resolution are clubbed and single
-    forward is run on the same resolution inputs. Hence we do several
-    forward passes = number of different resolutions used. We then
-    concatenate all the output features and run the head forward on these
-    concatenated features.
-    """
-    def __init__(self, backbone, head, predictor, predictor_past=None,
-                 headprob=None, args=None, mode=None, loss_mode=None, memory=None, **kwargs):
-        super(MultiCropWrapperGeneral, self).__init__()
-        # disable layers dedicated to ImageNet labels classification
-        if hasattr(backbone, 'fc'):
-            backbone.fc, backbone.head = nn.Identity(), nn.Identity()
-        self.backbone = backbone
-        self.head = head
-        self.predictor = predictor
-        self.predictor_past = predictor_past
-        self.headprob = headprob
-        self.memory = memory
-        self.args = args
-        self.mode = mode
-        self.loss_mode = loss_mode
-
-    def forward_backbone(self, x, **kwargs):
-        # convert to list
-        idx_crops = torch.cumsum(torch.unique_consecutive(
-            torch.tensor([inp.shape[-1] for inp in x]),
-            return_counts=True,
-        )[1], 0)
-        start_idx = 0
-        for end_idx in idx_crops:
-            _out = self.backbone(torch.cat(x[start_idx: end_idx]), **kwargs)
-            if start_idx == 0:
-                output = _out
-            else:
-                if isinstance(_out, tuple):
-                    output1 = torch.cat((output[0], _out[0]))
-                    output2 = torch.cat((output[1], _out[1]))
-                    output = (output1, output2)
-                else:
-                    output = torch.cat((output, _out))
-            start_idx = end_idx
-        return output
-
-    def forward_encode(self, x_enc, headprob=True):
-        if self.args.teacher_prediction_type == 'head_predictor_joint':
-            indices = torch.zeros_like(x_enc[:, :, 0]).long()
-            t_pred = self.predictor(x_enc, indices=indices, attn_type='id')
-            t_enc = self.head(t_pred)
-        elif self.args.teacher_prediction_type == 'head':
-            t_enc = self.head(x_enc)
-        else:
-            assert 0, f'{self.args.teacher_prediction_type} not implemented!'
-        if headprob:
-            t_enc_logits = self.headprob(t_enc)
-            return t_enc_logits
-        else:
-            return t_enc
-
-    def forward_predict(self, x_enc, indices, mask=None, attn_type='causal', future_index=None):
-        if self.args.student_prediction_type == 'predictor_first':
-            s_pred = self.predictor(x_enc, indices=indices, mask=mask, attn_type=attn_type,
-                                    future_index=future_index)
-            s_pred_logits = self.headprob(self.head(s_pred))
-        elif self.args.student_prediction_type == 'head_first':
-            s_enc_head = self.head(x_enc)
-            s_pred = self.predictor(s_enc_head, indices=indices, mask=mask, attn_type=attn_type,
-                                    future_index=future_index)
-            s_pred_logits = self.headprob(s_pred)
-        else:
-            assert 0, f'{self.args.student_prediction_type} not implemented!'
-        return s_pred_logits
-
+class MultiCropWrapperGeneral(MultiCropWrapperBase):
     def forward_student_vae(self, x_enc, indices):
         if self.args.student_prediction_type == 'predictor_first':
             s_pred, stoch_post, stats_post, stats_prior = self.predictor(x_enc, indices=indices)
