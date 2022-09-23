@@ -60,7 +60,6 @@ class GPTTwoMemoryLoss(FeatureLoss):
         total_loss = self.args.CE_fe_c * CE_fe + self.args.CE_ef_c * CE_ef
 
         self.update_centers(t_enc_logits, t_pred_logits)
-        print('t_enc_logits', t_enc_logits.shape)
         dirac_entropy, dirac_entropy_proportion2max = self.dirac_entropy(t_enc_logits)
 
         return total_loss, {'CE': total_loss,

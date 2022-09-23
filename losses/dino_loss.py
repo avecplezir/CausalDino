@@ -68,7 +68,7 @@ class DINOLoss(nn.Module):
         onehot = F.one_hot(labels)
         time_dirac_proba = onehot.float().mean(dim=1)
         dirac_entropy = -torch.sum(time_dirac_proba * torch.log(time_dirac_proba + 1e-8), dim=-1).mean()
-        max_entropy = np.log(onehot.size(1))
+        max_entropy = max(np.log(onehot.size(1)), 1)
         dirac_entropy_proportion2max = dirac_entropy / max_entropy
         return dirac_entropy, dirac_entropy_proportion2max
 
