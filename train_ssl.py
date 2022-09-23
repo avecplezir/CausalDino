@@ -236,6 +236,7 @@ def get_args_parser():
     parser.add_argument('--memory', default=None, type=str, help="""""")
     parser.add_argument('--temporal_aug', type=utils.bool_flag, default=False,
                         help="""wheather to use temperal augmentation like in svt""")
+    parser.add_argument('--scale_backbone_lr', default=1., type=float, help='loss scale coefficient')
 
     return parser
 

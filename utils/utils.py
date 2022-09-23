@@ -786,14 +786,6 @@ class PatchMemory:
 
 
 class MultiCropWrapperBase(nn.Module):
-    """
-    Perform forward pass separately on each resolution input.
-    The inputs corresponding to a single resolution are clubbed and single
-    forward is run on the same resolution inputs. Hence we do several
-    forward passes = number of different resolutions used. We then
-    concatenate all the output features and run the head forward on these
-    concatenated features.
-    """
     def __init__(self, backbone, head, predictor, predictor_past=None,
                  headprob=None, args=None, mode=None, loss_mode=None, memory=None, **kwargs):
         super(MultiCropWrapperBase, self).__init__()
@@ -876,7 +868,49 @@ class MultiCropWrapperBase(nn.Module):
             elif self.mode == 'student':
                 s_enc_logits = self.forward_encode(x_enc)
                 s_pred_logits = self.forward_predict(x_enc, indices)
-                return s_pred_logits, s_enc_logits, None
+                return s_pred_logits, s_enc_logits
+            else:
+                assert 0, f'mode {self.mode} not implemented!'
+        else:
+            return output
+
+
+class MultiCropWrapperMemory(MultiCropWrapperBase):
+    def forward(self, x, indices=None, video_indices=None, m_enc=None, m_mask=None, **kwargs):
+        if not isinstance(x, list):
+            x = [x]
+        n_crops = len(x)
+        output = self.forward_backbone(x, **kwargs)
+        # Run the head forward on the concatenated features.
+        if self.training:
+            enc_list = output.chunk(n_crops)
+            x_enc = torch.stack(enc_list, 1)
+            if self.mode == 'teacher':
+                self.memory.add(x_enc)
+                self.memory.remove(video_indices)
+                m_enc, m_mask = self.memory.retrieve()
+                t_m_enc_logits = self.forward_encode(m_enc)
+                indices = self.get_indices(m_enc, maxlen=False)
+                t_m_pred_logits = self.forward_predict(m_enc, indices=indices, mask=m_mask)
+                return t_m_pred_logits, t_m_enc_logits, m_mask, m_enc
+            elif self.mode == 'student':
+                t = x_enc.size(1)
+
+                if self.args.scale_backbone_lr:
+                    scale_lr = self.args.scale_backbone_lr
+                else:
+                    m_size = m_mask.sum().item()
+                    grad_size = (t - 1) * x_enc.size(0)
+                    scale_lr = max(m_size, 1) / grad_size
+
+                x_enc = x_enc * scale_lr
+                x_enc.data.div_(scale_lr)
+                x_m_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
+
+                s_m_enc_logits = self.forward_encode(x_m_enc)
+                indices = self.get_indices(x_m_enc, maxlen=False)
+                s_m_pred_logits = self.forward_predict(x_enc, indices=indices, mask=m_mask)
+                return s_m_pred_logits, s_m_enc_logits, m_mask
             else:
                 assert 0, f'mode {self.mode} not implemented!'
         else:
