@@ -646,7 +646,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             teacher_output = teacher(images[:args.teacher_views], indices=indices,
                                      video_indices=video_indices)  # only the 2 global views pass through the teacher
-            if 'memory' in args.loss_mode:
+            if args.memory:
                 memory_mask, memory_enc = teacher_output[-2:]
             else:
                 memory_mask, memory_enc = None, None

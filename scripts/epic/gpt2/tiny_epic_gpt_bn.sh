@@ -50,7 +50,7 @@ python -m torch.distributed.launch \
   --block_size 4 \
   --n_parts 4 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperGeneral \
+  --wrapper MultiCropWrapperBase \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \
