@@ -838,7 +838,7 @@ class MultiCropWrapperBase(nn.Module):
         else:
             return t_enc
 
-    def forward_predict(self, x_enc, indices, mask=None, attn_type='causal', future_index=None):
+    def forward_predict(self, x_enc, indices=None, mask=None, attn_type='causal', future_index=None):
         if self.args.student_prediction_type == 'predictor_first':
             s_pred = self.predictor(x_enc, indices=indices, mask=mask, attn_type=attn_type,
                                     future_index=future_index)
@@ -852,6 +852,16 @@ class MultiCropWrapperBase(nn.Module):
             assert 0, f'{self.args.student_prediction_type} not implemented!'
         return s_pred_logits
 
+    def forward_student(self, x_enc, indices, **kwargs):
+        s_enc_logits = self.forward_encode(x_enc)
+        s_pred_logits = self.forward_predict(x_enc, indices)
+        return s_pred_logits, s_enc_logits
+
+    def forward_teacher(self, x_enc, indices, **kwargs):
+        t_enc_logits = self.forward_encode(x_enc)
+        t_pred_logits = self.forward_predict(x_enc, indices)
+        return t_pred_logits, t_enc_logits
+
     def forward(self, x, indices=None, video_indices=None, m_enc=None, m_mask=None, **kwargs):
         if not isinstance(x, list):
             x = [x]
@@ -862,63 +872,85 @@ class MultiCropWrapperBase(nn.Module):
             enc_list = output.chunk(n_crops)
             x_enc = torch.stack(enc_list, 1)
             if self.mode == 'teacher':
-                t_enc_logits = self.forward_encode(x_enc)
-                t_pred_logits = self.forward_predict(x_enc, indices)
-                return t_pred_logits, t_enc_logits
+                return self.forward_teacher(x_enc=x_enc, indices=indices, video_indices=video_indices)
             elif self.mode == 'student':
-                s_enc_logits = self.forward_encode(x_enc)
-                s_pred_logits = self.forward_predict(x_enc, indices)
-                return s_pred_logits, s_enc_logits
+                return self.forward_student(x_enc=x_enc, indices=indices, m_enc=m_enc, m_mask=m_mask)
             else:
                 assert 0, f'mode {self.mode} not implemented!'
         else:
             return output
 
 
-class MultiCropWrapperMemory(MultiCropWrapperBase):
+class MultiCropWrapperGPTMemory(MultiCropWrapperBase):
     def get_indices(self, x, maxlen=True):
         t = self.args.maxlen if maxlen else x.size(1)
         return torch.arange(t).flip([0]).unsqueeze(0).to(x.device)
 
-    def forward(self, x, indices=None, video_indices=None, m_enc=None, m_mask=None, **kwargs):
-        if not isinstance(x, list):
-            x = [x]
-        n_crops = len(x)
-        output = self.forward_backbone(x, **kwargs)
-        # Run the head forward on the concatenated features.
-        if self.training:
-            enc_list = output.chunk(n_crops)
-            x_enc = torch.stack(enc_list, 1)
-            if self.mode == 'teacher':
-                self.memory.add(x_enc)
-                self.memory.remove(video_indices)
-                m_enc, m_mask = self.memory.retrieve()
-                t_m_enc_logits = self.forward_encode(m_enc)
-                indices = self.get_indices(m_enc, maxlen=False)
-                t_m_pred_logits = self.forward_predict(m_enc, indices=indices, mask=m_mask)
-                return t_m_pred_logits, t_m_enc_logits, m_mask, m_enc
-            elif self.mode == 'student':
-                t = x_enc.size(1)
+    def forward_student(self, x_enc, m_enc=None, m_mask=None, **kwargs):
+        t = x_enc.size(1)
 
-                if self.args.scale_backbone_lr:
-                    scale_lr = self.args.scale_backbone_lr
-                else:
-                    m_size = m_mask.sum().item()
-                    grad_size = (t - 1) * x_enc.size(0)
-                    scale_lr = max(m_size, 1) / grad_size
-
-                x_enc = x_enc * scale_lr
-                x_enc.data.div_(scale_lr)
-                x_m_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
-
-                s_m_enc_logits = self.forward_encode(x_m_enc)
-                indices = self.get_indices(x_m_enc, maxlen=False)
-                s_m_pred_logits = self.forward_predict(x_enc, indices=indices, mask=m_mask)
-                return s_m_pred_logits, s_m_enc_logits, m_mask
-            else:
-                assert 0, f'mode {self.mode} not implemented!'
+        if self.args.scale_backbone_lr:
+            scale_lr = self.args.scale_backbone_lr
         else:
-            return output
+            m_size = m_mask.sum().item()
+            grad_size = (t - 1) * x_enc.size(0)
+            scale_lr = max(m_size, 1) / grad_size
+
+        x_enc = x_enc * scale_lr
+        x_enc.data.div_(scale_lr)
+        x_m_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
+
+        s_m_enc_logits = self.forward_encode(x_m_enc)
+        indices = self.get_indices(x_m_enc, maxlen=False)
+        s_m_pred_logits = self.forward_predict(x_enc, indices=indices, mask=m_mask)
+        return s_m_pred_logits, s_m_enc_logits, m_mask
+
+    def forward_teacher(self, x_enc, video_indices=None, **kwargs):
+        self.memory.add(x_enc)
+        self.memory.remove(video_indices)
+        m_enc, m_mask = self.memory.retrieve()
+        t_m_enc_logits = self.forward_encode(m_enc)
+        indices = self.get_indices(m_enc, maxlen=False)
+        t_m_pred_logits = self.forward_predict(m_enc, indices=indices, mask=m_mask)
+        return t_m_pred_logits, t_m_enc_logits, m_mask, m_enc
+
+
+class MultiCropWrapperTE(MultiCropWrapperGPTMemory):
+    def forward_student(self, x_enc, indices=None, **kwargs):
+        s_enc_logits = self.forward_encode(x_enc)
+
+        s_pred_logits_list = []
+        for ie in range(1, self.args.n_global_views):  # future encoding
+            s_pred_logits = self.forward_predict(x_enc[:, :ie], future_index=indices[:, ie], indices=indices[:, :ie])
+            s_pred_logits_list.append(s_pred_logits[:, 1:])
+        return s_pred_logits_list, s_enc_logits
+
+
+class MultiCropWrapperTEMemory(MultiCropWrapperBase):
+    def forward_teacher(self, x_enc, video_indices=None, **kwargs):
+        self.memory.add(x_enc)
+        self.memory.remove(video_indices)
+        m_enc, m_mask = self.memory.retrieve()
+        t_enc_logits = self.forward_encode(x_enc)
+        indices = self.get_indices(m_enc, maxlen=False)
+        t_m_pred_logits = self.forward_predict(m_enc, indices=indices, mask=m_mask)
+        t_pred_logits = t_m_pred_logits[:, -self.args.n_global_views:]
+        return t_pred_logits, t_enc_logits, m_mask, m_enc
+
+    def forward_student(self, x_enc, m_enc=None, m_mask=None, **kwargs):
+        s_enc_logits = self.forward_encode(x_enc)
+
+        t = x_enc.size(1)
+        x_m_enc = torch.cat([m_enc[:, :-t], x_enc], 1)
+        indices = self.get_indices(x_m_enc, maxlen=False)
+        s_pred_logits_list = []
+        for ie in range(x_m_enc.size(1)-t, t):  # future encoding
+            s_pred_logits = self.forward_predict(x_m_enc[:, :ie],
+                                                 future_index=indices[:, ie],
+                                                 indices=indices[:, :ie],
+                                                 mask=m_mask)
+            s_pred_logits_list.append(s_pred_logits[:, 1:])
+        return s_pred_logits_list, s_enc_logits, m_mask
 
 
 class MultiCropWrapperGeneral(MultiCropWrapperBase):
@@ -942,13 +974,6 @@ class MultiCropWrapperGeneral(MultiCropWrapperBase):
             s_pred_logits = self.forward_predict(x_enc, indices, mask=mask, attn_type='all')
             s_pred_logits_list.append(s_pred_logits)
         return s_pred_logits_list, masks
-
-    def forward_timeemb(self, x_enc, indices):
-        s_pred_logits_list = []
-        for ie in range(1, self.args.n_global_views):  # future encoding
-            s_pred_logits = self.forward_predict(x_enc[:, :ie], future_index=indices[:, ie], indices=indices[:, :ie])
-            s_pred_logits_list.append(s_pred_logits[:, 1:])
-        return s_pred_logits_list
 
     def forward(self, x, indices=None, video_indices=None, m_enc=None, m_mask=None, **kwargs):
         if not isinstance(x, list):
@@ -974,26 +999,16 @@ class MultiCropWrapperGeneral(MultiCropWrapperBase):
                     memory_enc, memory_mask = self.memory.retrieve()
                     t_m_enc_logits = self.forward_encode(memory_enc)
                     return t_m_enc_logits, memory_mask, memory_enc
-                elif self.loss_mode == 'gpttwo':
-                    t_enc_logits = self.forward_encode(x_enc)
-                    t_pred_logits = self.forward_predict(x_enc, indices)
-                    return t_pred_logits, t_enc_logits
                 else:
                     return self.forward_encode(x_enc)
             elif self.mode == 'student':
                 if self.loss_mode == 'gpt':
                     return self.forward_predict(x_enc, indices), None
-                elif self.loss_mode == 'gpttwo':
-                    s_enc_logits = self.forward_encode(x_enc)
-                    s_pred_logits = self.forward_predict(x_enc, indices)
-                    return s_pred_logits, s_enc_logits, None
                 if self.loss_mode == 'bert':
                     return self.forward_student_bert(x_enc, indices)
                 elif self.loss_mode == 'vae':
                     print('loss_mode vae')
                     pass
-                elif self.loss_mode == 'timeemb':
-                    return self.forward_timeemb(x_enc, indices), None
                 elif self.loss_mode == 'memory':
                     bert_mask, bert_indices = self.get_memory_bert_indices_mask(indices)
                     bert_x_enc = torch.cat([torch.zeros_like(x_enc[:, :1].repeat(1, self.args.maxlen-1, 1)), x_enc[:, :1]], 1)
