@@ -1,4 +1,4 @@
-__all__ = ['GPTMaskLoss', 'MemoryLoss']
+__all__ = ['GPTMemoryLoss', 'MemoryLoss']
 
 import torch
 import torch.nn.functional as F
@@ -7,7 +7,7 @@ from .feature_loss import FeatureLoss
 from .bert_loss import BertLoss
 
 
-class GPTMaskLoss(BertLoss):
+class GPTMemoryLoss(BertLoss):
     def forward(self, student_output: tuple, teacher_output: tuple, epoch: int, **kwargs):
         """
         Cross-entropy between softmax outputs of the teacher and student networks.
