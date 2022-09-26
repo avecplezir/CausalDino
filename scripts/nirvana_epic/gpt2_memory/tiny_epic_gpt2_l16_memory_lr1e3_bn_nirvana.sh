@@ -38,7 +38,7 @@ python -m torch.distributed.launch \
   \
   --dataset EpicEvents \
   --continuous True \
-  --loss GPTTwoMemoryLoss \
+  --loss GPT2MemoryLoss \
   --local_crops_number 0 \
   --n_global_views 1 \
   --random_sampling False \
