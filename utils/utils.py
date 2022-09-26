@@ -915,7 +915,10 @@ class MultiCropWrapperGPTMemory(MultiCropWrapperBase):
         return t_m_pred_logits, t_m_enc_logits, m_mask, m_enc
 
 
-class MultiCropWrapperTE(MultiCropWrapperGPTMemory):
+class MultiCropWrapperTE(MultiCropWrapperBase):
+    def forward_teacher(self, x_enc, indices=None, **kwargs):
+        return self.forward_student(x_enc, indices=indices)
+
     def forward_student(self, x_enc, indices=None, **kwargs):
         s_enc_logits = self.forward_encode(x_enc)
 
