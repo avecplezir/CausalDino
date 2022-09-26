@@ -77,9 +77,9 @@ class TE2Loss(GPT2Loss):
         total_loss = 0
         n_loss_terms = 0
         for s_pred_logits in s_pred_logits_list:  # future encoding
-            s_pred_future_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
-            ie = s_pred_future_log.size(1)
-            loss = -torch.sum(t_enc_proba[:, ie:ie+1] * s_pred_future_log, dim=-1)
+            s_pred_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
+            ie = s_pred_log.size(1)
+            loss = -torch.sum(t_enc_proba[:, ie-1:ie] * s_pred_log, dim=-1)
             total_loss += loss.sum()
             n_loss_terms += loss.size(0) * ie
 
@@ -94,7 +94,7 @@ class TE2Loss(GPT2Loss):
         for t_pred_logits in t_pred_logits_list:  # future encoding
             t_pred_proba = F.softmax((t_pred_logits - self.predict_center) / temp, dim=-1)
             ie = t_pred_proba.size(1)
-            loss = -torch.sum(t_pred_proba * s_enc_log[:, ie:ie+1], dim=-1)
+            loss = -torch.sum(t_pred_proba * s_enc_log[:, ie-1:ie], dim=-1)
             total_loss += loss.sum()
             n_loss_terms += loss.size(0) * ie
 
