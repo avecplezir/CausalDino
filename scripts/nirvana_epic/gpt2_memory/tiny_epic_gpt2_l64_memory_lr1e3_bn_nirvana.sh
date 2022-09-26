@@ -34,7 +34,7 @@ python -m torch.distributed.launch \
   --eval_freq 5 \
   --use_wandb True \
   --weight_decay_end 0.1 \
-  --num_workers 30 \
+  --num_workers 20 \
   \
   --dataset EpicEvents \
   --continuous True \
