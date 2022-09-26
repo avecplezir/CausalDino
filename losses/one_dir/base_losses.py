@@ -51,7 +51,7 @@ class BertLoss(FeatureLoss):
 class GPTLoss(BertLoss):
     def compute_loss_fe(self, s_pred_logits, t_enc_proba, masks=None):
         s_pred_future_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
-        loss = -torch.sum(t_enc_proba[:, 1:] * s_pred_future_log[:, :-1], dim=-1)
+        loss = -torch.sum(t_enc_proba * s_pred_future_log, dim=-1)
         return loss.mean()
 
 

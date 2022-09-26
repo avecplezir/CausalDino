@@ -41,6 +41,7 @@ from eval_knn import extract_features, knn_classifier
 import losses
 import datasets
 import models
+import wrappers
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 logging.getLogger().setLevel('ERROR')
@@ -371,7 +372,7 @@ def train_svt(args):
     print('HeadProba', HeadProba)
 
     # multi-crop wrapper handles forward with inputs of different resolutions
-    Wrapper = getattr(utils, args.wrapper)
+    Wrapper = getattr(wrappers, args.wrapper)
     print('Wrapper', Wrapper)
     if args.student_prediction_type == 'predictor_first':
         in_dim_pred = embed_dim
