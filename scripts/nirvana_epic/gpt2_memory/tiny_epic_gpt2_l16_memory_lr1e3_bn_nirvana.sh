@@ -46,7 +46,7 @@ python -m torch.distributed.launch \
   --block_size 16 \
   --n_parts 16 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperMemory \
+  --wrapper MultiCropWrapperGPT2Memory \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \

@@ -881,7 +881,7 @@ class MultiCropWrapperBase(nn.Module):
             return output
 
 
-class MultiCropWrapperGPTMemory(MultiCropWrapperBase):
+class MultiCropWrapperGPT2Memory(MultiCropWrapperBase):
     def get_indices(self, x, maxlen=True):
         t = self.args.maxlen if maxlen else x.size(1)
         return torch.arange(t).flip([0]).unsqueeze(0).to(x.device)
