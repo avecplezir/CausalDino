@@ -44,15 +44,15 @@ python -m torch.distributed.launch \
   \
   --dataset EpicEvents \
   --continuous True \
-  --loss GPTTwoMemoryLoss \
+  --loss GPT2MemoryLoss \
   --local_crops_number 0 \
   --n_global_views 1 \
   --random_sampling False \
-  --maxlen 4 \
-  --block_size 4 \
-  --n_parts 4 \
+  --maxlen 16 \
+  --block_size 16 \
+  --n_parts 16 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperMemory \
+  --wrapper MultiCropWrapperGPT2Memory \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \

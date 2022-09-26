@@ -33,7 +33,10 @@ class GPT2MemoryLoss(FeatureLoss):
                             }
 
     def compute_loss_fe(self, s_pred_logits, t_enc_logits, temp, mask):
-        mask = mask[:, :-1]
+        print('compute_loss_fe')
+        print('s_pred_logits', s_pred_logits.shape)
+        print('t_enc_logits', t_enc_logits.shape)
+        print('mask', mask.shape)
         t_enc_proba = F.softmax((t_enc_logits - self.center) / temp, dim=-1)
         s_pred_future_log = F.log_softmax(s_pred_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_enc_proba * s_pred_future_log, dim=-1)
@@ -42,10 +45,13 @@ class GPT2MemoryLoss(FeatureLoss):
         loss = loss / n_terms
         return loss
 
-    def compute_loss_ef(self, s_enc_proba, t_pred_future_proba, temp, mask):
-        mask = mask[:, :-1]
-        t_pred_proba = F.softmax((t_pred_future_proba - self.predict_center) / temp, dim=-1)
-        s_enc_log = F.log_softmax(s_enc_proba / self.student_temp, dim=-1)
+    def compute_loss_ef(self, s_enc_logits, t_pred_logits, temp, mask):
+        print('compute_loss_ef')
+        print('s_pred_logits', s_enc_logits.shape)
+        print('t_enc_logits', t_pred_logits.shape)
+        print('mask', mask.shape)
+        t_pred_proba = F.softmax((t_pred_logits - self.predict_center) / temp, dim=-1)
+        s_enc_log = F.log_softmax(s_enc_logits / self.student_temp, dim=-1)
         loss = -torch.sum(t_pred_proba * s_enc_log, dim=-1)
         loss = (mask * loss).sum()
         n_terms = mask.sum() + 1e-16
