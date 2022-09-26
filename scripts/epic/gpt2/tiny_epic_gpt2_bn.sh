@@ -43,14 +43,14 @@ python -m torch.distributed.launch \
   --num_workers 10 \
   \
   --dataset EpicEvents \
-  --loss GPTTwoLoss \
+  --loss GPT2Loss \
   --local_crops_number 0 \
   --n_global_views 4 \
   --random_sampling False \
   --block_size 4 \
   --n_parts 4 \
   --global_crops_scale 0.14 1 \
-  --wrapper MultiCropWrapperBase \
+  --wrapper MultiCropWrapperGPT2 \
   --predictor GPT \
   --head Projector \
   --headproba HeadProbal2Norm \
