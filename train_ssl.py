@@ -538,7 +538,7 @@ def train_svt(args):
 
     if args.use_wandb and utils.is_main_process():
         wandb.init(
-            project='causal_videov5',
+            project='causal_videov4',
             config=config,
             entity="avecplezir",
             reinit=True,
