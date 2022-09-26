@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch import distributions as torchd
 
-from .bert_loss import BertLoss
+from losses.base.bert_loss import BertLoss
 import models.gpt_utils as tools
 
 

@@ -3,7 +3,7 @@ __all__ = ['GPT2Loss', 'GPT2MemoryLoss', 'TE2Loss']
 import torch
 import torch.nn.functional as F
 
-from .feature_loss import FeatureLoss
+from .base.feature_loss import FeatureLoss
 
 
 class GPT2Loss(FeatureLoss):

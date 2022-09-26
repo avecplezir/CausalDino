@@ -881,6 +881,20 @@ class MultiCropWrapperBase(nn.Module):
             return output
 
 
+class MultiCropWrapperTE(MultiCropWrapperBase):
+    def forward_teacher(self, x_enc, indices=None, **kwargs):
+        return self.forward_student(x_enc, indices=indices)
+
+    def forward_student(self, x_enc, indices=None, **kwargs):
+        s_enc_logits = self.forward_encode(x_enc)
+
+        s_pred_logits_list = []
+        for ie in range(1, self.args.n_global_views):  # future encoding
+            s_pred_logits = self.forward_predict(x_enc[:, :ie], future_index=indices[:, ie], indices=indices[:, :ie])
+            s_pred_logits_list.append(s_pred_logits[:, 1:])
+        return s_pred_logits_list, s_enc_logits
+
+
 class MultiCropWrapperGPT2Memory(MultiCropWrapperBase):
     def get_indices(self, x, maxlen=True):
         t = self.args.maxlen if maxlen else x.size(1)
@@ -913,20 +927,6 @@ class MultiCropWrapperGPT2Memory(MultiCropWrapperBase):
         indices = self.get_indices(m_enc, maxlen=False)
         t_m_pred_logits = self.forward_predict(m_enc, indices=indices, mask=m_mask)
         return t_m_pred_logits, t_m_enc_logits, m_mask, m_enc
-
-
-class MultiCropWrapperTE(MultiCropWrapperBase):
-    def forward_teacher(self, x_enc, indices=None, **kwargs):
-        return self.forward_student(x_enc, indices=indices)
-
-    def forward_student(self, x_enc, indices=None, **kwargs):
-        s_enc_logits = self.forward_encode(x_enc)
-
-        s_pred_logits_list = []
-        for ie in range(1, self.args.n_global_views):  # future encoding
-            s_pred_logits = self.forward_predict(x_enc[:, :ie], future_index=indices[:, ie], indices=indices[:, :ie])
-            s_pred_logits_list.append(s_pred_logits[:, 1:])
-        return s_pred_logits_list, s_enc_logits
 
 
 class MultiCropWrapperTEMemory(MultiCropWrapperBase):

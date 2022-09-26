@@ -3,8 +3,8 @@ __all__ = ['GPTMemoryLoss', 'MemoryLoss']
 import torch
 import torch.nn.functional as F
 
-from .feature_loss import FeatureLoss
-from .bert_loss import BertLoss
+from .base.feature_loss import FeatureLoss
+from losses.base.bert_loss import BertLoss
 
 
 class GPTMemoryLoss(BertLoss):
