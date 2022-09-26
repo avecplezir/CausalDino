@@ -1,7 +1,7 @@
 __all__ = ['MultiCropWrapperTEMemory']
 
 import torch
-from .base_wrapper import MultiCropWrapperBase
+from wrappers.base_wrapper import MultiCropWrapperBase
 
 
 class MultiCropWrapperTEMemory(MultiCropWrapperBase):

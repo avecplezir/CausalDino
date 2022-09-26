@@ -538,7 +538,7 @@ def train_svt(args):
 
     if args.use_wandb and utils.is_main_process():
         wandb.init(
-            project='causal_videov4',
+            project='causal_videov5',
             config=config,
             entity="avecplezir",
             reinit=True,
@@ -699,9 +699,6 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(**backbone_gradnorm)
         metric_logger.update(**dict_losses)
 
-        print('args.use_wandb', args.use_wandb)
-        print('it % args.log_every == 0', it % args.log_every == 0)
-        print('utils.is_main_process()', utils.is_main_process())
         if it % args.log_every == 0 and utils.is_main_process() and args.use_wandb:
             print('log wandb!')
             wandb.log(dict(
