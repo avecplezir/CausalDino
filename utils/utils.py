@@ -719,7 +719,15 @@ class PatchMemory:
         self.memory_mask = deque(maxlen=self.maxlen)
         self.current_video_indices = -torch.ones(batch_size)
 
+        # for _ in range(self.maxlen):
+        # self.memory.append(torch.zeros((self.batch_size, 1, )).cuda())
+        # self.memory_mask.append(torch.zeros((self.batch_size, 1)).cuda().long())
+
     def add(self, values):
+        if not self.memory:
+            self.memory.append(values.detach())
+            self.memory_mask.append(torch.zeros(self.batch_size, values.size(1)).to(values.device).long())
+
         self.memory.append(values.detach())
         self.memory_mask.append(torch.ones(self.batch_size, values.size(1)).to(values.device).long())
 
