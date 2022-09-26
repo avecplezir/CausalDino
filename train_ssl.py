@@ -615,6 +615,7 @@ def train_svt(args):
             with (Path(args.output_dir) / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
             if args.use_wandb:
+                print('log wandb')
                 wandb.log({'epoch': epoch}, step=step)
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
